@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { useBetelitas } from "@/hooks/useBetelitas";
 import { BetelitaRow } from "@/components/betelitas/BetelitaRow";
 import { BetelitasTableSkeleton } from "@/components/betelitas/BetelitasTableSkeleton";
+import { CreateBetelitaDialog } from "@/components/betelitas/CreateBetelitaDialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -22,6 +24,7 @@ export default function BetelitasPage() {
   const [filter, setFilter] = useState<"all" | "drivers" | "admins">("all");
 
   const { data: betelitas = [], isLoading } = useBetelitas();
+  const { isAdmin } = useAuth();
 
   const filteredBetelitas = betelitas.filter((person) => {
     const matchesSearch = person.full_name
@@ -44,10 +47,14 @@ export default function BetelitasPage() {
             {isLoading ? "Carregando..." : `${betelitas.length} membros cadastrados`}
           </p>
         </div>
-        <Button className="gap-2 bg-primary hover:bg-primary/90">
-          <Plus className="h-4 w-4" />
-          Adicionar Betelita
-        </Button>
+        {isAdmin && (
+          <CreateBetelitaDialog>
+            <Button className="gap-2 bg-primary hover:bg-primary/90">
+              <Plus className="h-4 w-4" />
+              Adicionar Betelita
+            </Button>
+          </CreateBetelitaDialog>
+        )}
       </div>
 
       {/* Filters */}
