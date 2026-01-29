@@ -1,0 +1,68 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+export interface Betelita {
+  id: string;
+  full_name: string;
+  email: string | null;
+  sex: "Homem" | "Mulher" | null;
+  is_driver: boolean | null;
+  is_exempt: boolean | null;
+  is_married: boolean | null;
+  pix_key: string | null;
+  spouse_id: string | null;
+  spouse_name: string | null;
+  is_admin: boolean;
+}
+
+export function useBetelitas() {
+  return useQuery({
+    queryKey: ["betelitas"],
+    queryFn: async (): Promise<Betelita[]> => {
+      // Fetch all profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, sex, is_driver, is_exempt, is_married, pix_key, spouse_id")
+        .order("full_name", { ascending: true });
+
+      if (profilesError) throw profilesError;
+
+      // Fetch admin user_ids
+      const { data: adminRoles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+
+      if (rolesError) throw rolesError;
+
+      // Fetch user_id mapping from profiles to check admin status
+      const { data: profilesWithUserId, error: userIdError } = await supabase
+        .from("profiles")
+        .select("id, user_id");
+
+      if (userIdError) throw userIdError;
+
+      const adminUserIds = new Set(adminRoles?.map((r) => r.user_id) ?? []);
+      const profileUserIdMap = new Map(
+        profilesWithUserId?.map((p) => [p.id, p.user_id]) ?? []
+      );
+
+      // Create a map for spouse names
+      const profileNameMap = new Map(
+        profiles?.map((p) => [p.id, p.full_name]) ?? []
+      );
+
+      // Map profiles with admin status and spouse name
+      return (profiles ?? []).map((profile) => {
+        const userId = profileUserIdMap.get(profile.id);
+        return {
+          ...profile,
+          spouse_name: profile.spouse_id
+            ? profileNameMap.get(profile.spouse_id) ?? null
+            : null,
+          is_admin: userId ? adminUserIds.has(userId) : false,
+        };
+      });
+    },
+  });
+}
