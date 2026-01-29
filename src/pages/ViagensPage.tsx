@@ -29,6 +29,8 @@ export default function ViagensPage() {
     isLoading,
     createTrip,
     isCreating,
+    updateTrip,
+    isUpdating,
     reserveSeat,
     isReserving,
     cancelReservation,
@@ -120,8 +122,10 @@ export default function ViagensPage() {
               onCancelReservation={cancelReservation}
               onRemovePassenger={removePassenger}
               onDeleteTrip={deleteTrip}
+              onUpdateTrip={updateTrip}
               isReserving={isReserving}
               isCanceling={isCanceling}
+              isUpdating={isUpdating}
             />
           ))}
         </motion.div>
