@@ -192,9 +192,9 @@ export function CreateTripDialog({ onCreateTrip, isCreating, isDriver }: CreateT
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="urgent">Viagem Urgente</Label>
+                  <Label htmlFor="urgent">Viagem Necessária</Label>
                   <p className="text-sm text-muted-foreground">
-                    Destaque a viagem como urgente
+                    Destaque que há necessidade de carona
                   </p>
                 </div>
                 <Switch

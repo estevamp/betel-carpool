@@ -4,6 +4,7 @@ import { Car, Filter, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTrips } from "@/hooks/useTrips";
+import { useProfiles } from "@/hooks/useProfiles";
 import { useAuth } from "@/contexts/AuthContext";
 import { TripCard } from "@/components/trips/TripCard";
 import { CreateTripDialog } from "@/components/trips/CreateTripDialog";
@@ -22,6 +23,7 @@ const containerVariants = {
 export default function ViagensPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const { profile } = useAuth();
+  const { data: profiles } = useProfiles();
   const {
     trips,
     isLoading,
@@ -32,6 +34,7 @@ export default function ViagensPage() {
     cancelReservation,
     isCanceling,
     deleteTrip,
+    removePassenger,
   } = useTrips();
 
   const filteredTrips = trips.filter(
@@ -112,8 +115,10 @@ export default function ViagensPage() {
               key={trip.id}
               trip={trip}
               currentUserId={profile?.id}
+              profiles={profiles}
               onReserveSeat={reserveSeat}
               onCancelReservation={cancelReservation}
+              onRemovePassenger={removePassenger}
               onDeleteTrip={deleteTrip}
               isReserving={isReserving}
               isCanceling={isCanceling}
