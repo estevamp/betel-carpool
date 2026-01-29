@@ -42,6 +42,10 @@ export interface CreateTripData {
   notes?: string;
 }
 
+export interface UpdateTripData extends CreateTripData {
+  tripId: string;
+}
+
 export function useTrips() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
@@ -91,6 +95,31 @@ export function useTrips() {
     },
     onError: (error) => {
       toast.error("Erro ao criar viagem: " + error.message);
+    },
+  });
+
+  const updateTripMutation = useMutation({
+    mutationFn: async (data: UpdateTripData) => {
+      const { error } = await supabase
+        .from("trips")
+        .update({
+          departure_at: data.departure_at,
+          return_at: data.return_at || null,
+          max_passengers: data.max_passengers,
+          is_urgent: data.is_urgent,
+          is_betel_car: data.is_betel_car,
+          notes: data.notes || null,
+        })
+        .eq("id", data.tripId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trips"] });
+      toast.success("Viagem atualizada com sucesso!");
+    },
+    onError: (error) => {
+      toast.error("Erro ao atualizar viagem: " + error.message);
     },
   });
 
@@ -179,6 +208,8 @@ export function useTrips() {
     error: tripsQuery.error,
     createTrip: createTripMutation.mutate,
     isCreating: createTripMutation.isPending,
+    updateTrip: updateTripMutation.mutate,
+    isUpdating: updateTripMutation.isPending,
     reserveSeat: reserveSeatMutation.mutate,
     isReserving: reserveSeatMutation.isPending,
     cancelReservation: cancelReservationMutation.mutate,

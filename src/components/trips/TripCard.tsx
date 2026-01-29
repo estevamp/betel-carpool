@@ -40,9 +40,10 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import type { Trip } from "@/hooks/useTrips";
+import type { Trip, UpdateTripData } from "@/hooks/useTrips";
 import type { Database } from "@/integrations/supabase/types";
 import type { Profile } from "@/hooks/useProfiles";
+import { EditTripDialog } from "./EditTripDialog";
 
 type TripType = Database["public"]["Enums"]["trip_type"];
 
@@ -63,8 +64,10 @@ interface TripCardProps {
   onCancelReservation: (tripId: string) => void;
   onRemovePassenger?: (data: { tripId: string; passengerId: string }) => void;
   onDeleteTrip: (tripId: string) => void;
+  onUpdateTrip?: (data: UpdateTripData) => void;
   isReserving?: boolean;
   isCanceling?: boolean;
+  isUpdating?: boolean;
 }
 
 export function TripCard({
@@ -75,11 +78,14 @@ export function TripCard({
   onCancelReservation,
   onRemovePassenger,
   onDeleteTrip,
+  onUpdateTrip,
   isReserving,
   isCanceling,
+  isUpdating,
 }: TripCardProps) {
   const [reserveDialogOpen, setReserveDialogOpen] = useState(false);
   const [addPassengerDialogOpen, setAddPassengerDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedTripType, setSelectedTripType] = useState<TripType>("Ida e Volta");
   const [selectedPassengerId, setSelectedPassengerId] = useState<string>("");
   
@@ -183,8 +189,9 @@ export function TripCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-popover">
-                <DropdownMenuItem>Ver detalhes</DropdownMenuItem>
-                <DropdownMenuItem>Editar viagem</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
+                  Editar viagem
+                </DropdownMenuItem>
                 <DropdownMenuItem 
                   className="text-destructive"
                   onClick={() => onDeleteTrip(trip.id)}
@@ -193,6 +200,17 @@ export function TripCard({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          )}
+
+          {/* Edit Dialog */}
+          {onUpdateTrip && (
+            <EditTripDialog
+              trip={trip}
+              open={editDialogOpen}
+              onOpenChange={setEditDialogOpen}
+              onUpdateTrip={onUpdateTrip}
+              isUpdating={isUpdating}
+            />
           )}
         </div>
 
