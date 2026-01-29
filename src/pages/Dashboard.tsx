@@ -1,75 +1,90 @@
 import { motion } from "framer-motion";
-import { 
-  Car, 
-  Plane, 
-  Search, 
-  AlertTriangle, 
-  Wallet,
-  Calendar,
-  Users,
-  CheckCircle2,
-  Clock,
-  TrendingUp,
-} from "lucide-react";
+import { Car, Plane, Search, AlertTriangle, Wallet, Calendar, Users, CheckCircle2, Clock, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Mock data for dashboard
-const todayTrips = [
-  { id: 1, driver: "Jonatã Bessa", time: "18:30", passengers: 3, total: 4 },
-  { id: 2, driver: "Rafael Maguetas", time: "21:00", passengers: 2, total: 4 },
-];
-
-const searchingRides = [
-  { id: 1, name: "Leonardo Silva", date: "15/01/2026" },
-];
-
-const absences = [
-  { id: 1, name: "Felipe Oliveira", until: "20/01/2026" },
-];
-
-const quickAccessItems = [
-  { icon: Car, label: "Viagens", path: "/viagens", color: "bg-primary" },
-  { icon: Plane, label: "Ausência", path: "/ausencia", color: "bg-info" },
-  { icon: Search, label: "Procura de Vagas", path: "/procura-vagas", color: "bg-warning" },
-  { icon: AlertTriangle, label: "Desocupação", path: "/desocupacao", color: "bg-destructive" },
-  { icon: Wallet, label: "Financeiro", path: "/financeiro", color: "bg-success" },
-];
-
+const todayTrips = [{
+  id: 1,
+  driver: "Jonatã Bessa",
+  time: "18:30",
+  passengers: 3,
+  total: 4
+}, {
+  id: 2,
+  driver: "Rafael Maguetas",
+  time: "21:00",
+  passengers: 2,
+  total: 4
+}];
+const searchingRides = [{
+  id: 1,
+  name: "Leonardo Silva",
+  date: "15/01/2026"
+}];
+const absences = [{
+  id: 1,
+  name: "Felipe Oliveira",
+  until: "20/01/2026"
+}];
+const quickAccessItems = [{
+  icon: Car,
+  label: "Viagens",
+  path: "/viagens",
+  color: "bg-primary"
+}, {
+  icon: Plane,
+  label: "Ausência",
+  path: "/ausencia",
+  color: "bg-info"
+}, {
+  icon: Search,
+  label: "Procura de Vagas",
+  path: "/procura-vagas",
+  color: "bg-warning"
+}, {
+  icon: AlertTriangle,
+  label: "Desocupação",
+  path: "/desocupacao",
+  color: "bg-destructive"
+}, {
+  icon: Wallet,
+  label: "Financeiro",
+  path: "/financeiro",
+  color: "bg-success"
+}];
 const containerVariants = {
-  hidden: { opacity: 0 },
+  hidden: {
+    opacity: 0
+  },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
-    },
-  },
+      staggerChildren: 0.1
+    }
+  }
 };
-
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: {
+    opacity: 0,
+    y: 20
+  },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
       duration: 0.4,
-      ease: [0.25, 0.1, 0.25, 1] as const,
-    },
-  },
+      ease: [0.25, 0.1, 0.25, 1] as const
+    }
+  }
 };
-
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const {
+    profile
+  } = useAuth();
   const firstName = profile?.full_name?.split(" ")[0] || "Usuário";
-
-  return (
-    <motion.div 
-      className="space-y-6"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
+  return <motion.div className="space-y-6" variants={containerVariants} initial="hidden" animate="visible">
       {/* Header */}
       <motion.div variants={itemVariants}>
         <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
@@ -81,47 +96,17 @@ export default function Dashboard() {
       </motion.div>
 
       {/* Stats Cards */}
-      <motion.div 
-        variants={itemVariants}
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-      >
-        <StatCard 
-          icon={Car}
-          label="Viagens Hoje"
-          value={todayTrips.length.toString()}
-          trend="+2 esta semana"
-          color="primary"
-        />
-        <StatCard 
-          icon={Users}
-          label="Procurando Carona"
-          value={searchingRides.length.toString()}
-          trend="Aguardando"
-          color="warning"
-        />
-        <StatCard 
-          icon={Plane}
-          label="Ausentes"
-          value={absences.length.toString()}
-          trend="Atualmente"
-          color="info"
-        />
-        <StatCard 
-          icon={TrendingUp}
-          label="Saldo do Mês"
-          value="R$ 97,50"
-          trend="A receber"
-          color="success"
-        />
+      <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard icon={Car} label="Viagens Hoje" value={todayTrips.length.toString()} trend="+2 esta semana" color="primary" />
+        <StatCard icon={Users} label="Procurando Carona" value={searchingRides.length.toString()} trend="Aguardando" color="warning" />
+        <StatCard icon={Plane} label="Ausentes" value={absences.length.toString()} trend="Atualmente" color="info" />
+        <StatCard icon={TrendingUp} label="Saldo do Mês" value="R$ 97,50" trend="A receber" color="success" />
       </motion.div>
 
       {/* Main Content Grid */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Today's Schedule */}
-        <motion.div 
-          variants={itemVariants}
-          className="lg:col-span-2"
-        >
+        <motion.div variants={itemVariants} className="lg:col-span-2">
           <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <div className="flex items-center gap-3">
@@ -131,25 +116,21 @@ export default function Dashboard() {
                 <div>
                   <h2 className="font-semibold text-foreground">Programação de Hoje</h2>
                   <p className="text-sm text-muted-foreground">
-                    {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    {new Date().toLocaleDateString('pt-BR', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long'
+                  })}
                   </p>
                 </div>
               </div>
-              <Link 
-                to="/viagens" 
-                className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-              >
+              <Link to="/viagens" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
                 Ver todas
               </Link>
             </div>
 
             <div className="divide-y divide-border">
-              {todayTrips.length > 0 ? (
-                todayTrips.map((trip) => (
-                  <div 
-                    key={trip.id}
-                    className="flex items-center gap-4 px-5 py-4 hover:bg-muted/50 transition-colors"
-                  >
+              {todayTrips.length > 0 ? todayTrips.map(trip => <div key={trip.id} className="flex items-center gap-4 px-5 py-4 hover:bg-muted/50 transition-colors">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                       <Car className="h-6 w-6 text-primary" />
                     </div>
@@ -163,18 +144,10 @@ export default function Dashboard() {
                       <Clock className="h-4 w-4" />
                       <span className="font-medium">{trip.time}</span>
                     </div>
-                    <span className={cn(
-                      "px-2.5 py-1 rounded-full text-xs font-medium",
-                      trip.passengers < trip.total 
-                        ? "bg-success/10 text-success" 
-                        : "bg-muted text-muted-foreground"
-                    )}>
+                    <span className={cn("px-2.5 py-1 rounded-full text-xs font-medium", trip.passengers < trip.total ? "bg-success/10 text-success" : "bg-muted text-muted-foreground")}>
                       {trip.passengers < trip.total ? `${trip.total - trip.passengers} vagas` : "Completo"}
                     </span>
-                  </div>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  </div>) : <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
                     <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
                   </div>
@@ -182,8 +155,7 @@ export default function Dashboard() {
                   <p className="text-sm text-muted-foreground mt-1">
                     Aproveite o dia de descanso!
                   </p>
-                </div>
-              )}
+                </div>}
             </div>
           </div>
         </motion.div>
@@ -199,10 +171,8 @@ export default function Dashboard() {
               <h3 className="font-semibold text-foreground">Procurando Vagas</h3>
             </div>
             <div className="p-5">
-              {searchingRides.length > 0 ? (
-                <div className="space-y-3">
-                  {searchingRides.map((person) => (
-                    <div key={person.id} className="flex items-center justify-between">
+              {searchingRides.length > 0 ? <div className="space-y-3">
+                  {searchingRides.map(person => <div key={person.id} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium">
                           {person.name.split(' ').map(n => n[0]).join('')}
@@ -210,15 +180,11 @@ export default function Dashboard() {
                         <span className="text-sm font-medium text-foreground">{person.name}</span>
                       </div>
                       <span className="text-xs text-muted-foreground">{person.date}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 text-success">
+                    </div>)}
+                </div> : <div className="flex items-center gap-3 text-success">
                   <CheckCircle2 className="h-5 w-5" />
                   <span className="text-sm font-medium">Parece que está tudo certo!</span>
-                </div>
-              )}
+                </div>}
             </div>
           </div>
 
@@ -231,10 +197,8 @@ export default function Dashboard() {
               <h3 className="font-semibold text-foreground">Ausentes</h3>
             </div>
             <div className="p-5">
-              {absences.length > 0 ? (
-                <div className="space-y-3">
-                  {absences.map((person) => (
-                    <div key={person.id} className="flex items-center justify-between">
+              {absences.length > 0 ? <div className="space-y-3">
+                  {absences.map(person => <div key={person.id} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium">
                           {person.name.split(' ').map(n => n[0]).join('')}
@@ -242,12 +206,8 @@ export default function Dashboard() {
                         <span className="text-sm font-medium text-foreground">{person.name}</span>
                       </div>
                       <span className="text-xs text-muted-foreground">até {person.until}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Nenhum ausente no momento</p>
-              )}
+                    </div>)}
+                </div> : <p className="text-sm text-muted-foreground">Nenhum ausente no momento</p>}
             </div>
           </div>
         </motion.div>
@@ -257,29 +217,18 @@ export default function Dashboard() {
       <motion.div variants={itemVariants}>
         <h2 className="font-semibold text-foreground mb-4">Acesso Rápido</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {quickAccessItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className="group flex flex-col items-center gap-3 p-5 bg-card rounded-xl border border-border shadow-card hover:shadow-elevated hover:-translate-y-1 transition-all duration-300"
-            >
-              <div className={cn(
-                "flex h-12 w-12 items-center justify-center rounded-xl text-white transition-transform group-hover:scale-110",
-                item.color
-              )}>
+          {quickAccessItems.map(item => <Link key={item.path} to={item.path} className="group flex flex-col items-center gap-3 p-5 bg-card rounded-xl border border-border shadow-card hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
+              <div className={cn("flex h-12 w-12 items-center justify-center rounded-xl text-white transition-transform group-hover:scale-110", item.color)}>
                 <item.icon className="h-6 w-6" />
               </div>
               <span className="text-sm font-medium text-foreground text-center">
                 {item.label}
               </span>
-            </Link>
-          ))}
+            </Link>)}
         </div>
       </motion.div>
-    </motion.div>
-  );
+    </motion.div>;
 }
-
 interface StatCardProps {
   icon: typeof Car;
   label: string;
@@ -287,27 +236,18 @@ interface StatCardProps {
   trend: string;
   color: 'primary' | 'success' | 'warning' | 'info';
 }
-
-function StatCard({ icon: Icon, label, value, trend, color }: StatCardProps) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  trend,
+  color
+}: StatCardProps) {
   const colorClasses = {
     primary: "bg-primary/10 text-primary",
     success: "bg-success/10 text-success",
     warning: "bg-warning/10 text-warning",
-    info: "bg-info/10 text-info",
+    info: "bg-info/10 text-info"
   };
-
-  return (
-    <div className="bg-card rounded-xl border border-border shadow-card p-4">
-      <div className="flex items-center gap-3 mb-3">
-        <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg", colorClasses[color])}>
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
-      <p className="text-2xl font-bold text-foreground">{value}</p>
-      <p className="text-sm text-muted-foreground mt-1">{label}</p>
-      <p className={cn("text-xs mt-2", colorClasses[color].split(' ')[1])}>
-        {trend}
-      </p>
-    </div>
-  );
+  return;
 }
