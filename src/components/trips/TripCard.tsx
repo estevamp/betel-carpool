@@ -10,6 +10,8 @@ import {
   MoreVertical,
   AlertTriangle,
   Building2,
+  UserPlus,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,11 +30,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import type { Trip } from "@/hooks/useTrips";
 import type { Database } from "@/integrations/supabase/types";
+import type { Profile } from "@/hooks/useProfiles";
 
 type TripType = Database["public"]["Enums"]["trip_type"];
 
@@ -48,8 +58,10 @@ const itemVariants = {
 interface TripCardProps {
   trip: Trip;
   currentUserId?: string;
-  onReserveSeat: (data: { tripId: string; tripType: TripType }) => void;
+  profiles?: Profile[];
+  onReserveSeat: (data: { tripId: string; tripType: TripType; passengerId?: string }) => void;
   onCancelReservation: (tripId: string) => void;
+  onRemovePassenger?: (data: { tripId: string; passengerId: string }) => void;
   onDeleteTrip: (tripId: string) => void;
   isReserving?: boolean;
   isCanceling?: boolean;
@@ -58,14 +70,18 @@ interface TripCardProps {
 export function TripCard({
   trip,
   currentUserId,
+  profiles,
   onReserveSeat,
   onCancelReservation,
+  onRemovePassenger,
   onDeleteTrip,
   isReserving,
   isCanceling,
 }: TripCardProps) {
   const [reserveDialogOpen, setReserveDialogOpen] = useState(false);
+  const [addPassengerDialogOpen, setAddPassengerDialogOpen] = useState(false);
   const [selectedTripType, setSelectedTripType] = useState<TripType>("Ida e Volta");
+  const [selectedPassengerId, setSelectedPassengerId] = useState<string>("");
   
   const availableSeats = (trip.max_passengers ?? 4) - trip.passengers.length;
   const isFull = availableSeats <= 0;
@@ -77,9 +93,23 @@ export function TripCard({
   const formattedTime = format(departureDate, "HH:mm");
   const returnTime = trip.return_at ? format(new Date(trip.return_at), "HH:mm") : null;
 
+  // Filter out profiles that are already passengers or the driver
+  const existingPassengerIds = trip.passengers.map(p => p.passenger_id);
+  const availableProfiles = profiles?.filter(
+    p => p.id !== trip.driver_id && !existingPassengerIds.includes(p.id)
+  ) ?? [];
+
   const handleReserve = () => {
     onReserveSeat({ tripId: trip.id, tripType: selectedTripType });
     setReserveDialogOpen(false);
+  };
+
+  const handleAddPassenger = () => {
+    if (!selectedPassengerId) return;
+    onReserveSeat({ tripId: trip.id, tripType: selectedTripType, passengerId: selectedPassengerId });
+    setAddPassengerDialogOpen(false);
+    setSelectedPassengerId("");
+    setSelectedTripType("Ida e Volta");
   };
 
   return (
@@ -108,7 +138,7 @@ export function TripCard({
           {trip.is_urgent && (
             <span className="flex items-center gap-1 text-warning">
               <AlertTriangle className="h-4 w-4" />
-              Urgente
+              Necessária
             </span>
           )}
           {trip.is_betel_car && (
@@ -168,9 +198,82 @@ export function TripCard({
 
         {/* Passengers */}
         <div className="mt-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-            <Users className="h-4 w-4" />
-            <span>Passageiros ({trip.passengers.length}/{trip.max_passengers ?? 4})</span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="h-4 w-4" />
+              <span>Passageiros ({trip.passengers.length}/{trip.max_passengers ?? 4})</span>
+            </div>
+            {isDriver && !isFull && (
+              <Dialog open={addPassengerDialogOpen} onOpenChange={setAddPassengerDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1">
+                    <UserPlus className="h-3 w-3" />
+                    Adicionar
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Adicionar Passageiro</DialogTitle>
+                    <DialogDescription>
+                      Selecione um passageiro para adicionar à viagem.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="grid gap-2">
+                      <Label>Passageiro</Label>
+                      <Select value={selectedPassengerId} onValueChange={setSelectedPassengerId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um passageiro" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          {availableProfiles.length === 0 ? (
+                            <SelectItem value="none" disabled>Nenhum disponível</SelectItem>
+                          ) : (
+                            availableProfiles.map((profile) => (
+                              <SelectItem key={profile.id} value={profile.id}>
+                                {profile.full_name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Tipo de Viagem</Label>
+                      <RadioGroup 
+                        value={selectedTripType} 
+                        onValueChange={(v) => setSelectedTripType(v as TripType)}
+                        className="flex gap-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="Ida e Volta" id="add-ida-volta" />
+                          <Label htmlFor="add-ida-volta" className="font-normal">Ida e Volta</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="Apenas Ida" id="add-ida" />
+                          <Label htmlFor="add-ida" className="font-normal">Ida</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="Apenas Volta" id="add-volta" />
+                          <Label htmlFor="add-volta" className="font-normal">Volta</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setAddPassengerDialogOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={handleAddPassenger}
+                      disabled={isReserving || !selectedPassengerId}
+                    >
+                      {isReserving ? "Adicionando..." : "Adicionar"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {trip.passengers.map((passenger) => (
@@ -178,7 +281,7 @@ export function TripCard({
                 key={passenger.id}
                 className={cn(
                   "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm",
-                  "bg-muted text-muted-foreground"
+                  "bg-muted text-muted-foreground group"
                 )}
               >
                 <span className="font-medium">{passenger.profile.full_name}</span>
@@ -186,6 +289,15 @@ export function TripCard({
                   <span className="text-xs opacity-70">
                     ({passenger.trip_type === "Apenas Ida" ? "Ida" : "Volta"})
                   </span>
+                )}
+                {isDriver && onRemovePassenger && (
+                  <button
+                    onClick={() => onRemovePassenger({ tripId: trip.id, passengerId: passenger.passenger_id })}
+                    className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+                    title="Remover passageiro"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                 )}
               </span>
             ))}

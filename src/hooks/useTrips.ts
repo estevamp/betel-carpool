@@ -95,12 +95,12 @@ export function useTrips() {
   });
 
   const reserveSeatMutation = useMutation({
-    mutationFn: async ({ tripId, tripType }: { tripId: string; tripType: TripType }) => {
+    mutationFn: async ({ tripId, tripType, passengerId }: { tripId: string; tripType: TripType; passengerId?: string }) => {
       if (!profile) throw new Error("Usuário não autenticado");
 
       const { error } = await supabase.from("trip_passengers").insert({
         trip_id: tripId,
-        passenger_id: profile.id,
+        passenger_id: passengerId || profile.id,
         trip_type: tripType,
       });
 
@@ -108,10 +108,10 @@ export function useTrips() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["trips"] });
-      toast.success("Vaga reservada com sucesso!");
+      toast.success("Passageiro adicionado com sucesso!");
     },
     onError: (error) => {
-      toast.error("Erro ao reservar vaga: " + error.message);
+      toast.error("Erro ao adicionar passageiro: " + error.message);
     },
   });
 
@@ -154,6 +154,25 @@ export function useTrips() {
     },
   });
 
+  const removePassengerMutation = useMutation({
+    mutationFn: async ({ tripId, passengerId }: { tripId: string; passengerId: string }) => {
+      const { error } = await supabase
+        .from("trip_passengers")
+        .delete()
+        .eq("trip_id", tripId)
+        .eq("passenger_id", passengerId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trips"] });
+      toast.success("Passageiro removido!");
+    },
+    onError: (error) => {
+      toast.error("Erro ao remover passageiro: " + error.message);
+    },
+  });
+
   return {
     trips: tripsQuery.data ?? [],
     isLoading: tripsQuery.isLoading,
@@ -166,5 +185,7 @@ export function useTrips() {
     isCanceling: cancelReservationMutation.isPending,
     deleteTrip: deleteTripMutation.mutate,
     isDeleting: deleteTripMutation.isPending,
+    removePassenger: removePassengerMutation.mutate,
+    isRemovingPassenger: removePassengerMutation.isPending,
   };
 }
