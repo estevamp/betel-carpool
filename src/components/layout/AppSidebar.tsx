@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Home,
@@ -12,11 +12,12 @@ import {
   Settings,
   LogOut,
   X,
-  ChevronRight,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/contexts/AuthContext";
 
 const mainNavItems = [
   { icon: Home, label: "Início", path: "/" },
@@ -40,6 +41,22 @@ interface AppSidebarProps {
 
 export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { profile, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  };
 
   const NavItem = ({ item }: { item: typeof mainNavItems[0] }) => {
     const isActive = location.pathname === item.path;
@@ -121,20 +138,31 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
       {/* User Section */}
       <div className="border-t border-sidebar-border p-4">
         <div className="flex items-center gap-3 rounded-lg bg-sidebar-accent/50 p-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sidebar-primary/20">
-            <span className="text-sm font-medium text-sidebar-primary">EP</span>
-          </div>
+          <NavLink
+            to="/perfil"
+            onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-sidebar-primary/20 hover:bg-sidebar-primary/30 transition-colors"
+          >
+            {profile?.full_name ? (
+              <span className="text-sm font-medium text-sidebar-primary">
+                {getInitials(profile.full_name)}
+              </span>
+            ) : (
+              <User className="h-4 w-4 text-sidebar-primary" />
+            )}
+          </NavLink>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-sidebar-foreground truncate">
-              Estevam Palombi
+              {profile?.full_name || "Usuário"}
             </p>
             <p className="text-xs text-sidebar-foreground/60 truncate">
-              estevamp@gmail.com
+              {profile?.email || ""}
             </p>
           </div>
           <Button
             variant="ghost"
             size="icon"
+            onClick={handleSignOut}
             className="shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
           >
             <LogOut className="h-4 w-4" />

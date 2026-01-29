@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Mock data for dashboard
 const todayTrips = [
@@ -59,6 +60,9 @@ const itemVariants = {
 };
 
 export default function Dashboard() {
+  const { profile } = useAuth();
+  const firstName = profile?.full_name?.split(" ")[0] || "Usuário";
+
   return (
     <motion.div 
       className="space-y-6"
@@ -69,7 +73,7 @@ export default function Dashboard() {
       {/* Header */}
       <motion.div variants={itemVariants}>
         <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
-          Olá, Estevam! 👋
+          Olá, {firstName}! 👋
         </h1>
         <p className="text-muted-foreground mt-1">
           Bem-vindo ao sistema de transporte de Betelitas
