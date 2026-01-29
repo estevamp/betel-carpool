@@ -1,0 +1,264 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+export interface MonthOption {
+  id: string;
+  label: string;
+  current: boolean;
+}
+
+export interface ProfileBalance {
+  profileId: string;
+  name: string;
+  toPay: number;
+  toReceive: number;
+}
+
+export interface Transfer {
+  id: string;
+  fromId: string;
+  fromName: string;
+  toId: string;
+  toName: string;
+  amount: number;
+  isPaid: boolean;
+  pixKey: string | null;
+}
+
+export interface MonthTrip {
+  id: string;
+  driverName: string;
+  departureAt: string;
+  returnAt: string | null;
+  passengerCount: number;
+}
+
+// Generate month options (current + past 5 months)
+export function getMonthOptions(): MonthOption[] {
+  const now = new Date();
+  const options: MonthOption[] = [];
+
+  for (let i = 0; i < 6; i++) {
+    const date = subMonths(now, i);
+    const monthStr = format(date, "yyyy-MM");
+    const label = format(date, "MMMM yyyy", { locale: ptBR });
+    // Capitalize first letter
+    const capitalizedLabel = label.charAt(0).toUpperCase() + label.slice(1);
+
+    options.push({
+      id: monthStr,
+      label: capitalizedLabel,
+      current: i === 0,
+    });
+  }
+
+  return options;
+}
+
+export function useFinanceiro(selectedMonth: string) {
+  const { profile, isAdmin } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Parse month string to get date range
+  const [year, month] = selectedMonth.split("-").map(Number);
+  const monthStart = startOfMonth(new Date(year, month - 1));
+  const monthEnd = endOfMonth(new Date(year, month - 1));
+
+  // Fetch all profiles for name mapping
+  const profilesQuery = useQuery({
+    queryKey: ["profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, pix_key");
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Fetch transactions for the month
+  const transactionsQuery = useQuery({
+    queryKey: ["transactions", selectedMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("month", selectedMonth);
+
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: isAdmin,
+  });
+
+  // Fetch transfers for the month
+  const transfersQuery = useQuery({
+    queryKey: ["transfers", selectedMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("transfers")
+        .select("*")
+        .eq("month", selectedMonth);
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Fetch trips for the month
+  const tripsQuery = useQuery({
+    queryKey: ["trips-month", selectedMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("trips")
+        .select(`
+          id,
+          driver_id,
+          departure_at,
+          return_at,
+          trip_passengers (id)
+        `)
+        .gte("departure_at", monthStart.toISOString())
+        .lte("departure_at", monthEnd.toISOString())
+        .order("departure_at", { ascending: true });
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Calculate balances per profile from transactions
+  const profileBalances: ProfileBalance[] = (() => {
+    if (!transactionsQuery.data || !profilesQuery.data) return [];
+
+    const balanceMap = new Map<string, { toPay: number; toReceive: number }>();
+
+    // Initialize all profiles
+    profilesQuery.data.forEach((p) => {
+      balanceMap.set(p.id, { toPay: 0, toReceive: 0 });
+    });
+
+    // Calculate from transactions
+    transactionsQuery.data.forEach((t) => {
+      const debtor = balanceMap.get(t.debtor_id);
+      if (debtor) {
+        debtor.toPay += Number(t.amount);
+      }
+
+      const creditor = balanceMap.get(t.creditor_id);
+      if (creditor) {
+        creditor.toReceive += Number(t.amount);
+      }
+    });
+
+    // Convert to array with names
+    const profileNameMap = new Map(
+      profilesQuery.data.map((p) => [p.id, p.full_name])
+    );
+
+    return Array.from(balanceMap.entries())
+      .map(([id, balance]) => ({
+        profileId: id,
+        name: profileNameMap.get(id) ?? "Desconhecido",
+        toPay: balance.toPay,
+        toReceive: balance.toReceive,
+      }))
+      .filter((b) => b.toPay > 0 || b.toReceive > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  })();
+
+  // Map transfers with names
+  const transfers: Transfer[] = (() => {
+    if (!transfersQuery.data || !profilesQuery.data) return [];
+
+    const profileMap = new Map(
+      profilesQuery.data.map((p) => [p.id, { name: p.full_name, pixKey: p.pix_key }])
+    );
+
+    return transfersQuery.data.map((t) => ({
+      id: t.id,
+      fromId: t.debtor_id,
+      fromName: profileMap.get(t.debtor_id)?.name ?? "Desconhecido",
+      toId: t.creditor_id,
+      toName: profileMap.get(t.creditor_id)?.name ?? "Desconhecido",
+      amount: Number(t.amount),
+      isPaid: t.is_paid ?? false,
+      pixKey: profileMap.get(t.creditor_id)?.pixKey ?? null,
+    }));
+  })();
+
+  // Map trips with names
+  const monthTrips: MonthTrip[] = (() => {
+    if (!tripsQuery.data || !profilesQuery.data) return [];
+
+    const profileNameMap = new Map(
+      profilesQuery.data.map((p) => [p.id, p.full_name])
+    );
+
+    return tripsQuery.data.map((t) => ({
+      id: t.id,
+      driverName: profileNameMap.get(t.driver_id) ?? "Desconhecido",
+      departureAt: t.departure_at,
+      returnAt: t.return_at,
+      passengerCount: t.trip_passengers?.length ?? 0,
+    }));
+  })();
+
+  // Calculate totals
+  const totalToPay = profileBalances.reduce((sum, b) => sum + b.toPay, 0);
+  const totalToReceive = profileBalances.reduce((sum, b) => sum + b.toReceive, 0);
+  const pendingTransfers = transfers.filter((t) => !t.isPaid).length;
+
+  // Mark transfer as paid mutation
+  const markAsPaidMutation = useMutation({
+    mutationFn: async (transferId: string) => {
+      const { error } = await supabase
+        .from("transfers")
+        .update({ is_paid: true, paid_at: new Date().toISOString() })
+        .eq("id", transferId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth] });
+      toast.success("Transferência marcada como paga!");
+    },
+    onError: (error) => {
+      console.error("Error marking transfer as paid:", error);
+      toast.error("Erro ao marcar como paga");
+    },
+  });
+
+  // Get user's transfers (what they owe and what they're owed)
+  const myTransfers = transfers.filter(
+    (t) => t.fromId === profile?.id || t.toId === profile?.id
+  );
+
+  return {
+    profileBalances,
+    transfers: isAdmin ? transfers : myTransfers,
+    monthTrips,
+    totalToPay,
+    totalToReceive,
+    pendingTransfers,
+    isLoading:
+      profilesQuery.isLoading ||
+      transactionsQuery.isLoading ||
+      transfersQuery.isLoading ||
+      tripsQuery.isLoading,
+    error:
+      profilesQuery.error ||
+      transactionsQuery.error ||
+      transfersQuery.error ||
+      tripsQuery.error,
+    markAsPaid: markAsPaidMutation.mutate,
+    isMarkingAsPaid: markAsPaidMutation.isPending,
+    isAdmin,
+    currentProfileId: profile?.id,
+  };
+}

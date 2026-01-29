@@ -7,40 +7,17 @@ import {
   Calendar,
   Check,
   Copy,
-  ChevronRight,
   Car,
+  Users,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-
-// Mock data
-const months = [
-  { id: "jan2026", label: "Janeiro 2026", current: true },
-  { id: "dec2025", label: "Dezembro 2025", current: false },
-  { id: "nov2025", label: "Novembro 2025", current: false },
-];
-
-const report = [
-  { name: "Adriano Diniz", toPay: 75, toReceive: 0 },
-  { name: "Emerson Nogueira", toPay: 90, toReceive: 0 },
-  { name: "Estevam Palombi", toPay: 75, toReceive: 172.5 },
-  { name: "Felipe Oliveira", toPay: 120, toReceive: 0 },
-  { name: "Francis Parenti", toPay: 165, toReceive: 0 },
-  { name: "Jonatã Bessa", toPay: 135, toReceive: 217.5 },
-  { name: "João Paulo", toPay: 240, toReceive: 157.5 },
-  { name: "Leonardo Silva", toPay: 90, toReceive: 0 },
-  { name: "Lucas Pivatto", toPay: 0, toReceive: 90 },
-  { name: "Rafael Maguetas", toPay: 0, toReceive: 142.5 },
-  { name: "Ruan Oliveira", toPay: 0, toReceive: 142.5 },
-];
-
-const transfers = [
-  { from: "Emerson Nogueira", to: "Lucas Pivatto", amount: 90, paid: false },
-  { from: "João Paulo", to: "Jonatã Bessa", amount: 82.5, paid: false },
-  { from: "Adriano Diniz", to: "Estevam Palombi", amount: 75, paid: true },
-  { from: "Leonardo Silva", to: "Rafael Maguetas", amount: 90, paid: false },
-  { from: "Felipe Oliveira", to: "Ruan Oliveira", amount: 120, paid: false },
-];
+import { useFinanceiro, getMonthOptions } from "@/hooks/useFinanceiro";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -61,8 +38,24 @@ const itemVariants = {
 };
 
 export default function FinanceiroPage() {
-  const [selectedMonth, setSelectedMonth] = useState("jan2026");
+  const months = getMonthOptions();
+  const [selectedMonth, setSelectedMonth] = useState(months[0]?.id ?? "");
   const [activeTab, setActiveTab] = useState<"report" | "transfers" | "trips">("report");
+
+  const {
+    profileBalances,
+    transfers,
+    monthTrips,
+    totalToPay,
+    totalToReceive,
+    pendingTransfers,
+    isLoading,
+    error,
+    markAsPaid,
+    isMarkingAsPaid,
+    isAdmin,
+    currentProfileId,
+  } = useFinanceiro(selectedMonth);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -70,6 +63,23 @@ export default function FinanceiroPage() {
       currency: 'BRL',
     }).format(value);
   };
+
+  const copyPixKey = (pixKey: string | null, name: string) => {
+    if (!pixKey) {
+      toast.error(`${name} não cadastrou chave PIX`);
+      return;
+    }
+    navigator.clipboard.writeText(pixKey);
+    toast.success("Chave PIX copiada!");
+  };
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <p className="text-destructive">Erro ao carregar dados financeiros</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -110,7 +120,11 @@ export default function FinanceiroPage() {
               <TrendingDown className="h-5 w-5 text-destructive" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-foreground">{formatCurrency(990)}</p>
+          {isLoading ? (
+            <Skeleton className="h-8 w-24 mb-1" />
+          ) : (
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalToPay)}</p>
+          )}
           <p className="text-sm text-muted-foreground">Total a Pagar</p>
         </div>
         <div className="bg-card rounded-xl border border-border shadow-card p-5">
@@ -119,7 +133,11 @@ export default function FinanceiroPage() {
               <TrendingUp className="h-5 w-5 text-success" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-foreground">{formatCurrency(922.5)}</p>
+          {isLoading ? (
+            <Skeleton className="h-8 w-24 mb-1" />
+          ) : (
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalToReceive)}</p>
+          )}
           <p className="text-sm text-muted-foreground">Total a Receber</p>
         </div>
         <div className="bg-card rounded-xl border border-border shadow-card p-5">
@@ -128,24 +146,30 @@ export default function FinanceiroPage() {
               <Wallet className="h-5 w-5 text-primary" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-foreground">{transfers.filter(t => !t.paid).length}</p>
+          {isLoading ? (
+            <Skeleton className="h-8 w-12 mb-1" />
+          ) : (
+            <p className="text-2xl font-bold text-foreground">{pendingTransfers}</p>
+          )}
           <p className="text-sm text-muted-foreground">Transferências Pendentes</p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-        <button
-          onClick={() => setActiveTab("report")}
-          className={cn(
-            "px-4 py-2 rounded-md text-sm font-medium transition-colors",
-            activeTab === "report"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Relatório
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setActiveTab("report")}
+            className={cn(
+              "px-4 py-2 rounded-md text-sm font-medium transition-colors",
+              activeTab === "report"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Relatório
+          </button>
+        )}
         <button
           onClick={() => setActiveTab("transfers")}
           className={cn(
@@ -170,8 +194,15 @@ export default function FinanceiroPage() {
         </button>
       </div>
 
-      {/* Content */}
-      {activeTab === "report" && (
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {/* Report Tab - Admin Only */}
+      {!isLoading && activeTab === "report" && isAdmin && (
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -181,109 +212,184 @@ export default function FinanceiroPage() {
           <div className="px-5 py-4 border-b border-border">
             <h2 className="font-semibold text-foreground">Relatório do Mês</h2>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/50">
-                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Betelita</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">A Pagar</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">A Receber</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">Acerto</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {report.map((row, idx) => {
-                  const balance = row.toReceive - row.toPay;
-                  return (
-                    <motion.tr key={idx} variants={itemVariants} className="hover:bg-muted/30">
-                      <td className="px-4 py-3 font-medium text-foreground">{row.name}</td>
-                      <td className="px-4 py-3 text-right text-destructive">
-                        {row.toPay > 0 ? formatCurrency(row.toPay) : "-"}
-                      </td>
-                      <td className="px-4 py-3 text-right text-success">
-                        {row.toReceive > 0 ? formatCurrency(row.toReceive) : "-"}
-                      </td>
-                      <td className={cn(
-                        "px-4 py-3 text-right font-medium",
-                        balance > 0 ? "text-success" : balance < 0 ? "text-destructive" : "text-muted-foreground"
-                      )}>
-                        {balance > 0 ? `+${formatCurrency(balance)}` : balance < 0 ? `-${formatCurrency(Math.abs(balance))}` : formatCurrency(0)}
-                      </td>
-                    </motion.tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          {profileBalances.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Wallet className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="font-semibold text-foreground">Nenhuma transação</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Não há transações registradas para este mês
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Betelita</th>
+                    <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">A Pagar</th>
+                    <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">A Receber</th>
+                    <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">Acerto</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {profileBalances.map((row) => {
+                    const balance = row.toReceive - row.toPay;
+                    return (
+                      <motion.tr key={row.profileId} variants={itemVariants} className="hover:bg-muted/30">
+                        <td className="px-4 py-3 font-medium text-foreground">{row.name}</td>
+                        <td className="px-4 py-3 text-right text-destructive">
+                          {row.toPay > 0 ? formatCurrency(row.toPay) : "-"}
+                        </td>
+                        <td className="px-4 py-3 text-right text-success">
+                          {row.toReceive > 0 ? formatCurrency(row.toReceive) : "-"}
+                        </td>
+                        <td className={cn(
+                          "px-4 py-3 text-right font-medium",
+                          balance > 0 ? "text-success" : balance < 0 ? "text-destructive" : "text-muted-foreground"
+                        )}>
+                          {balance > 0 ? `+${formatCurrency(balance)}` : balance < 0 ? `-${formatCurrency(Math.abs(balance))}` : formatCurrency(0)}
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </motion.div>
       )}
 
-      {activeTab === "transfers" && (
+      {/* Transfers Tab */}
+      {!isLoading && activeTab === "transfers" && (
         <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
           className="space-y-3"
         >
-          {transfers.map((transfer, idx) => (
-            <motion.div
-              key={idx}
-              variants={itemVariants}
-              className={cn(
-                "bg-card rounded-xl border shadow-card p-4",
-                transfer.paid ? "border-success/30 bg-success/5" : "border-border"
-              )}
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {transfer.paid ? (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success/20 shrink-0">
-                      <Check className="h-4 w-4 text-success" />
-                    </div>
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0">
-                      <Wallet className="h-4 w-4 text-muted-foreground" />
-                    </div>
+          {transfers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center bg-card rounded-xl border border-border shadow-card">
+              <Wallet className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="font-semibold text-foreground">Nenhuma transferência</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Não há transferências pendentes para este mês
+              </p>
+            </div>
+          ) : (
+            transfers.map((transfer) => {
+              const isDebtor = transfer.fromId === currentProfileId;
+              const canMarkAsPaid = isDebtor || isAdmin;
+
+              return (
+                <motion.div
+                  key={transfer.id}
+                  variants={itemVariants}
+                  className={cn(
+                    "bg-card rounded-xl border shadow-card p-4",
+                    transfer.isPaid ? "border-success/30 bg-success/5" : "border-border"
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm">
-                      <span className="font-medium text-foreground">{transfer.from}</span>
-                      <span className="text-muted-foreground"> deve transferir </span>
-                      <span className="font-semibold text-primary">{formatCurrency(transfer.amount)}</span>
-                      <span className="text-muted-foreground"> para </span>
-                      <span className="font-medium text-foreground">{transfer.to}</span>
-                    </p>
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {transfer.isPaid ? (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success/20 shrink-0">
+                          <Check className="h-4 w-4 text-success" />
+                        </div>
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0">
+                          <Wallet className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm">
+                          <span className="font-medium text-foreground">{transfer.fromName}</span>
+                          <span className="text-muted-foreground"> deve transferir </span>
+                          <span className="font-semibold text-primary">{formatCurrency(transfer.amount)}</span>
+                          <span className="text-muted-foreground"> para </span>
+                          <span className="font-medium text-foreground">{transfer.toName}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => copyPixKey(transfer.pixKey, transfer.toName)}
+                        title="Copiar chave PIX"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      {!transfer.isPaid && canMarkAsPaid && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1"
+                          onClick={() => markAsPaid(transfer.id)}
+                          disabled={isMarkingAsPaid}
+                        >
+                          {isMarkingAsPaid ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                          Pago
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  {!transfer.paid && (
-                    <Button size="sm" variant="outline" className="gap-1">
-                      <Check className="h-4 w-4" />
-                      Pago
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
+                </motion.div>
+              );
+            })
+          )}
         </motion.div>
       )}
 
-      {activeTab === "trips" && (
-        <div className="flex flex-col items-center justify-center py-12 text-center bg-card rounded-xl border border-border shadow-card">
-          <Car className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="font-semibold text-foreground">Lista de Viagens</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Visualize todas as viagens realizadas no mês
-          </p>
-          <Button variant="outline" className="mt-4 gap-2">
-            Ver viagens
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+      {/* Trips Tab */}
+      {!isLoading && activeTab === "trips" && (
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="space-y-3"
+        >
+          {monthTrips.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center bg-card rounded-xl border border-border shadow-card">
+              <Car className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="font-semibold text-foreground">Nenhuma viagem</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Não há viagens registradas para este mês
+              </p>
+            </div>
+          ) : (
+            monthTrips.map((trip) => (
+              <motion.div
+                key={trip.id}
+                variants={itemVariants}
+                className="bg-card rounded-xl border border-border shadow-card p-4"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                      <Car className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{trip.driverName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {format(new Date(trip.departureAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                        {trip.returnAt && ` - ${format(new Date(trip.returnAt), "HH:mm")}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <span>{trip.passengerCount}</span>
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </motion.div>
       )}
     </div>
   );
