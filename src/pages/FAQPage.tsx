@@ -83,9 +83,10 @@ export default function FAQPage() {
                 )}
               />
             </button>
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
               {openId === faq.id && (
                 <motion.div
+                  key={`answer-${faq.id}`}
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
