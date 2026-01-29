@@ -1,45 +1,11 @@
 import { motion } from "framer-motion";
-import { 
-  AlertTriangle,
-  Car,
-  Users,
-  MapPin,
-  Plus,
-} from "lucide-react";
+import { AlertTriangle, Plus, Users, Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-
-// Mock data
-const evacuationCars = [
-  { 
-    id: 1, 
-    driver: "Estevam Palombi", 
-    destination: "São Roque - SP", 
-    passengers: ["Aline Palombi"],
-    totalSeats: 4,
-  },
-  { 
-    id: 2, 
-    driver: "Jonatã Bessa", 
-    destination: "Socorro, SP", 
-    passengers: ["Gabi Bessa"],
-    totalSeats: 4,
-  },
-  { 
-    id: 3, 
-    driver: "Ruan Oliveira", 
-    destination: "Embu-Guaçu SP", 
-    passengers: ["Felipe Oliveira", "Leonardo Silva"],
-    totalSeats: 4,
-  },
-  { 
-    id: 4, 
-    driver: "Rafael Maguetas", 
-    destination: "Sorocaba - SP", 
-    passengers: [],
-    totalSeats: 4,
-  },
-];
+import { useEvacuation } from "@/hooks/useEvacuation";
+import { useAuth } from "@/contexts/AuthContext";
+import { CreateEvacuationCarDialog } from "@/components/evacuation/CreateEvacuationCarDialog";
+import { EvacuationCarCard } from "@/components/evacuation/EvacuationCarCard";
+import { EvacuationSkeleton } from "@/components/evacuation/EvacuationSkeleton";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -51,17 +17,30 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: {
-    opacity: 1,
-    y: 0,
-  },
-};
-
 export default function DesocupacaoPage() {
-  const totalAllocated = evacuationCars.reduce((sum, car) => sum + car.passengers.length, 0);
-  const totalCapacity = evacuationCars.reduce((sum, car) => sum + car.totalSeats, 0);
+  const { evacuationCars, isLoading, error, allocatedDriverIds } = useEvacuation();
+  const { profile } = useAuth();
+
+  const totalAllocated = evacuationCars.reduce(
+    (sum, car) => sum + car.passengers.length,
+    0
+  );
+  const totalDrivers = evacuationCars.length;
+  const totalCapacity = evacuationCars.reduce(
+    (sum, car) => sum + car.max_seats,
+    0
+  );
+
+  // Check if user is already a driver
+  const isAlreadyDriver = profile?.id ? allocatedDriverIds.has(profile.id) : false;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <p className="text-destructive">Erro ao carregar plano de evacuação</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -76,87 +55,70 @@ export default function DesocupacaoPage() {
             Plano de evacuação de emergência
           </p>
         </div>
-        <Button className="gap-2 bg-destructive hover:bg-destructive/90">
-          <Plus className="h-4 w-4" />
-          Adicionar Carro
-        </Button>
+        {!isAlreadyDriver && (
+          <CreateEvacuationCarDialog>
+            <Button className="gap-2 bg-destructive hover:bg-destructive/90">
+              <Plus className="h-4 w-4" />
+              Adicionar Carro
+            </Button>
+          </CreateEvacuationCarDialog>
+        )}
       </div>
 
       {/* Stats */}
       <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
             <Users className="h-5 w-5 text-destructive" />
             <span className="font-medium text-foreground">
-              {totalAllocated} pessoas alocadas
+              {isLoading ? "..." : `${totalAllocated + totalDrivers} pessoas alocadas`}
             </span>
           </div>
-          <span className="text-sm text-muted-foreground">
-            {totalCapacity - totalAllocated} vagas disponíveis
-          </span>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Car className="h-4 w-4" />
+              {isLoading ? "..." : `${evacuationCars.length} carros`}
+            </span>
+            <span>
+              {isLoading
+                ? "..."
+                : `${totalCapacity - totalAllocated} vagas disponíveis`}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Cars Grid */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid gap-4 md:grid-cols-2"
-      >
-        {evacuationCars.map((car) => (
-          <motion.div
-            key={car.id}
-            variants={itemVariants}
-            className="bg-card rounded-xl border border-border shadow-card overflow-hidden"
-          >
-            <div className="p-5">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                  <Car className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground">{car.driver}</h3>
-                  <p className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                    <MapPin className="h-4 w-4" />
-                    {car.destination}
-                  </p>
-                </div>
-                <span className={cn(
-                  "px-2.5 py-1 rounded-full text-xs font-medium",
-                  car.passengers.length < car.totalSeats
-                    ? "bg-success/10 text-success"
-                    : "bg-muted text-muted-foreground"
-                )}>
-                  {car.passengers.length}/{car.totalSeats}
-                </span>
-              </div>
+      {/* Loading State */}
+      {isLoading && <EvacuationSkeleton />}
 
-              <div className="mt-4">
-                <p className="text-sm text-muted-foreground mb-2">Passageiros:</p>
-                <div className="flex flex-wrap gap-2">
-                  {car.passengers.map((passenger, idx) => (
-                    <span
-                      key={idx}
-                      className="px-3 py-1.5 rounded-full text-sm bg-muted text-muted-foreground"
-                    >
-                      {passenger}
-                    </span>
-                  ))}
-                  {Array.from({ length: car.totalSeats - car.passengers.length }).map((_, idx) => (
-                    <button
-                      key={`empty-${idx}`}
-                      className="px-3 py-1.5 rounded-full text-sm border border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary hover:text-primary transition-colors"
-                    >
-                      + Adicionar
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </motion.div>
+      {/* Cars Grid */}
+      {!isLoading && evacuationCars.length > 0 && (
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid gap-4 md:grid-cols-2"
+        >
+          {evacuationCars.map((car) => (
+            <EvacuationCarCard key={car.id} car={car} />
+          ))}
+        </motion.div>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && evacuationCars.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+            <Car className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="font-semibold text-foreground">
+            Nenhum carro cadastrado
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Adicione seu carro ao plano de evacuação
+          </p>
+        </div>
+      )}
     </div>
   );
 }
