@@ -6,6 +6,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { CreateEvacuationCarDialog } from "@/components/evacuation/CreateEvacuationCarDialog";
 import { EvacuationCarCard } from "@/components/evacuation/EvacuationCarCard";
 import { EvacuationSkeleton } from "@/components/evacuation/EvacuationSkeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -55,14 +61,36 @@ export default function DesocupacaoPage() {
             Plano de evacuação de emergência
           </p>
         </div>
-        {!isAlreadyDriver && (
-          <CreateEvacuationCarDialog>
-            <Button className="gap-2 bg-destructive hover:bg-destructive/90">
-              <Plus className="h-4 w-4" />
-              Adicionar Carro
-            </Button>
-          </CreateEvacuationCarDialog>
-        )}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                {isAlreadyDriver ? (
+                  <Button
+                    className="gap-2"
+                    variant="outline"
+                    disabled
+                  >
+                    <Plus className="h-4 w-4" />
+                    Adicionar Carro
+                  </Button>
+                ) : (
+                  <CreateEvacuationCarDialog>
+                    <Button className="gap-2 bg-destructive hover:bg-destructive/90">
+                      <Plus className="h-4 w-4" />
+                      Adicionar Carro
+                    </Button>
+                  </CreateEvacuationCarDialog>
+                )}
+              </div>
+            </TooltipTrigger>
+            {isAlreadyDriver && (
+              <TooltipContent>
+                <p>Você já possui um carro cadastrado</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Stats */}
