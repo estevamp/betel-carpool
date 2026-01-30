@@ -15,6 +15,7 @@ interface BetelitaRowProps {
   person: Betelita;
   onViewProfile: (person: Betelita) => void;
   onEdit: (person: Betelita) => void;
+  onDelete: (person: Betelita) => void;
 }
 
 const itemVariants = {
@@ -28,7 +29,7 @@ const itemVariants = {
 const MotionTr = motion.tr;
 
 export const BetelitaRow = forwardRef<HTMLTableRowElement, BetelitaRowProps>(
-  function BetelitaRow({ person, onViewProfile, onEdit }, ref) {
+  function BetelitaRow({ person, onViewProfile, onEdit, onDelete }, ref) {
     const initials = person.full_name
       .split(" ")
       .map((n) => n[0])
@@ -56,12 +57,6 @@ export const BetelitaRow = forwardRef<HTMLTableRowElement, BetelitaRowProps>(
             </div>
             <div>
               <p className="font-medium text-foreground">{person.full_name}</p>
-              {person.is_married && person.spouse_name && (
-                <p className="text-xs text-muted-foreground">
-                  {person.sex === "Mulher" ? "Casada com" : "Casado com"}{" "}
-                  {person.spouse_name}
-                </p>
-              )}
             </div>
           </div>
         </td>
@@ -115,6 +110,12 @@ export const BetelitaRow = forwardRef<HTMLTableRowElement, BetelitaRowProps>(
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onEdit(person)}>
                 Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onDelete(person)}
+                className="text-destructive focus:text-destructive"
+              >
+                Excluir
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
