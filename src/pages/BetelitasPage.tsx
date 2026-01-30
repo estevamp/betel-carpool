@@ -1,8 +1,21 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, Search, Car, Shield } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { useBetelitas, type Betelita } from "@/hooks/useBetelitas";
 import { BetelitaRow } from "@/components/betelitas/BetelitaRow";
 import { BetelitasTableSkeleton } from "@/components/betelitas/BetelitasTableSkeleton";
@@ -26,9 +39,46 @@ export default function BetelitasPage() {
   const [filter, setFilter] = useState<"all" | "drivers" | "admins">("all");
   const [viewPerson, setViewPerson] = useState<Betelita | null>(null);
   const [editPerson, setEditPerson] = useState<Betelita | null>(null);
+  const [deletePerson, setDeletePerson] = useState<Betelita | null>(null);
 
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: betelitas = [], isLoading } = useBetelitas();
   const { isAdmin } = useAuth();
+
+  const deleteMutation = useMutation({
+    mutationFn: async (person: Betelita) => {
+      // If the person has a spouse, clear their spouse's link first
+      if (person.spouse_id) {
+        await supabase
+          .from("profiles")
+          .update({ spouse_id: null, is_married: false })
+          .eq("id", person.spouse_id);
+      }
+
+      const { error } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", person.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["betelitas"] });
+      toast({
+        title: "Betelita excluído",
+        description: "O membro foi removido com sucesso.",
+      });
+      setDeletePerson(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao excluir",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const filteredBetelitas = betelitas.filter((person) => {
     const matchesSearch = person.full_name
@@ -151,6 +201,7 @@ export default function BetelitasPage() {
                       person={person}
                       onViewProfile={setViewPerson}
                       onEdit={setEditPerson}
+                      onDelete={setDeletePerson}
                     />
                   ))
                 )}
@@ -172,6 +223,26 @@ export default function BetelitasPage() {
         onOpenChange={(open) => !open && setEditPerson(null)}
         allBetelitas={betelitas}
       />
+
+      <AlertDialog open={!!deletePerson} onOpenChange={(open) => !open && setDeletePerson(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Betelita</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deletePerson?.full_name}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletePerson && deleteMutation.mutate(deletePerson)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
