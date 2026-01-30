@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -26,12 +26,14 @@ interface EditBetelitaDialogProps {
   person: Betelita | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  allBetelitas: Betelita[];
 }
 
 export function EditBetelitaDialog({
   person,
   open,
   onOpenChange,
+  allBetelitas,
 }: EditBetelitaDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -43,6 +45,8 @@ export function EditBetelitaDialog({
     is_driver: false,
     is_exempt: false,
     pix_key: "",
+    is_married: false,
+    spouse_id: "",
   });
 
   useEffect(() => {
@@ -54,14 +58,37 @@ export function EditBetelitaDialog({
         is_driver: person.is_driver ?? false,
         is_exempt: person.is_exempt ?? false,
         pix_key: person.pix_key ?? "",
+        is_married: person.is_married ?? false,
+        spouse_id: person.spouse_id ?? "",
       });
     }
   }, [person]);
+
+  // Filter available spouses: opposite sex, not married (or current spouse), not self
+  const availableSpouses = useMemo(() => {
+    if (!person || !formData.sex) return [];
+    
+    const oppositeSex = formData.sex === "Homem" ? "Mulher" : "Homem";
+    
+    return allBetelitas.filter((b) => {
+      // Exclude self
+      if (b.id === person.id) return false;
+      // Must be opposite sex
+      if (b.sex !== oppositeSex) return false;
+      // Must be single OR already this person's spouse
+      if (b.is_married && b.spouse_id !== person.id) return false;
+      return true;
+    });
+  }, [allBetelitas, person, formData.sex]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       if (!person) throw new Error("No person to update");
 
+      const previousSpouseId = person.spouse_id;
+      const newSpouseId = data.is_married && data.spouse_id ? data.spouse_id : null;
+
+      // Update the current person
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -71,10 +98,29 @@ export function EditBetelitaDialog({
           is_driver: data.is_driver,
           is_exempt: data.is_exempt,
           pix_key: data.pix_key || null,
+          is_married: data.is_married,
+          spouse_id: newSpouseId,
         })
         .eq("id", person.id);
 
       if (error) throw error;
+
+      // Handle bidirectional sync
+      // If there was a previous spouse and it changed, clear the old spouse's link
+      if (previousSpouseId && previousSpouseId !== newSpouseId) {
+        await supabase
+          .from("profiles")
+          .update({ spouse_id: null, is_married: false })
+          .eq("id", previousSpouseId);
+      }
+
+      // If there's a new spouse, update their profile to link back
+      if (newSpouseId) {
+        await supabase
+          .from("profiles")
+          .update({ spouse_id: person.id, is_married: true })
+          .eq("id", newSpouseId);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["betelitas"] });
@@ -182,6 +228,44 @@ export function EditBetelitaDialog({
               }
             />
           </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="is_married">Casado(a)</Label>
+            <Switch
+              id="is_married"
+              checked={formData.is_married}
+              onCheckedChange={(checked) =>
+                setFormData({
+                  ...formData,
+                  is_married: checked,
+                  spouse_id: checked ? formData.spouse_id : "",
+                })
+              }
+            />
+          </div>
+
+          {formData.is_married && (
+            <div className="space-y-2">
+              <Label htmlFor="spouse_id">Cônjuge</Label>
+              <Select
+                value={formData.spouse_id}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, spouse_id: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o cônjuge" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSpouses.map((spouse) => (
+                    <SelectItem key={spouse.id} value={spouse.id}>
+                      {spouse.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <DialogFooter>
             <Button

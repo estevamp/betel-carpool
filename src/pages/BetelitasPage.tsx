@@ -170,6 +170,7 @@ export default function BetelitasPage() {
         person={editPerson}
         open={!!editPerson}
         onOpenChange={(open) => !open && setEditPerson(null)}
+        allBetelitas={betelitas}
       />
     </div>
   );
