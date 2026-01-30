@@ -3,6 +3,8 @@ import { Car, Plane, Search, AlertTriangle, Wallet, Calendar, Users, CheckCircle
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock data for dashboard
 const todayTrips = [{
@@ -84,6 +86,23 @@ export default function Dashboard() {
     profile
   } = useAuth();
   const firstName = profile?.full_name?.split(" ")[0] || "Usuário";
+
+  const { data: congregationName } = useQuery({
+    queryKey: ['settings', 'congregation_name'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'congregation_name')
+        .maybeSingle();
+      return data?.value || null;
+    },
+  });
+
+  const subtitle = congregationName 
+    ? `Sistema de Transporte de Betelitas - ${congregationName}`
+    : "Bem-vindo ao sistema de transporte de Betelitas";
+
   return <motion.div className="space-y-6" variants={containerVariants} initial="hidden" animate="visible">
       {/* Header */}
       <motion.div variants={itemVariants}>
@@ -91,17 +110,26 @@ export default function Dashboard() {
           Olá, {firstName}! 👋
         </h1>
         <p className="text-muted-foreground mt-1">
-          Bem-vindo ao sistema de transporte de Betelitas
+          {subtitle}
         </p>
       </motion.div>
 
-      {/* Stats Cards */}
-      <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Car} label="Viagens Hoje" value={todayTrips.length.toString()} trend="+2 esta semana" color="primary" />
-        <StatCard icon={Users} label="Procurando Carona" value={searchingRides.length.toString()} trend="Aguardando" color="warning" />
-        <StatCard icon={Plane} label="Ausentes" value={absences.length.toString()} trend="Atualmente" color="info" />
-        <StatCard icon={TrendingUp} label="Saldo do Mês" value="R$ 97,50" trend="A receber" color="success" />
+      {/* Quick Access - Moved to top */}
+      <motion.div variants={itemVariants}>
+        <h2 className="font-semibold text-foreground mb-4">Acesso Rápido</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          {quickAccessItems.map(item => <Link key={item.path} to={item.path} className="group flex flex-col items-center gap-3 p-5 bg-card rounded-xl border border-border shadow-card hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
+              <div className={cn("flex h-12 w-12 items-center justify-center rounded-xl text-white transition-transform group-hover:scale-110", item.color)}>
+                <item.icon className="h-6 w-6" />
+              </div>
+              <span className="text-sm font-medium text-foreground text-center">
+                {item.label}
+              </span>
+            </Link>)}
+        </div>
       </motion.div>
+
+      {/* Main Content Grid */}
 
       {/* Main Content Grid */}
       <div className="grid lg:grid-cols-3 gap-6">
@@ -213,19 +241,12 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      {/* Quick Access */}
-      <motion.div variants={itemVariants}>
-        <h2 className="font-semibold text-foreground mb-4">Acesso Rápido</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {quickAccessItems.map(item => <Link key={item.path} to={item.path} className="group flex flex-col items-center gap-3 p-5 bg-card rounded-xl border border-border shadow-card hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-              <div className={cn("flex h-12 w-12 items-center justify-center rounded-xl text-white transition-transform group-hover:scale-110", item.color)}>
-                <item.icon className="h-6 w-6" />
-              </div>
-              <span className="text-sm font-medium text-foreground text-center">
-                {item.label}
-              </span>
-            </Link>)}
-        </div>
+      {/* Stats Cards - Moved to bottom */}
+      <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard icon={Car} label="Viagens Hoje" value={todayTrips.length.toString()} trend="+2 esta semana" color="primary" />
+        <StatCard icon={Users} label="Procurando Carona" value={searchingRides.length.toString()} trend="Aguardando" color="warning" />
+        <StatCard icon={Plane} label="Ausentes" value={absences.length.toString()} trend="Atualmente" color="info" />
+        <StatCard icon={TrendingUp} label="Saldo do Mês" value="R$ 97,50" trend="A receber" color="success" />
       </motion.div>
     </motion.div>;
 }
