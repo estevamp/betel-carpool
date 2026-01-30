@@ -249,5 +249,18 @@ function StatCard({
     warning: "bg-warning/10 text-warning",
     info: "bg-info/10 text-info"
   };
-  return;
+  return (
+    <div className="bg-card rounded-xl border border-border shadow-card p-5">
+      <div className="flex items-center gap-3">
+        <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg", colorClasses[color])}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-muted-foreground truncate">{label}</p>
+          <p className="text-xl font-bold text-foreground">{value}</p>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground mt-3">{trend}</p>
+    </div>
+  );
 }
