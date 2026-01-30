@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useCallback } from "react";
 
 export interface MonthOption {
   id: string;
@@ -234,9 +235,52 @@ export function useFinanceiro(selectedMonth: string) {
     },
   });
 
+  // Close month mutation
+  const closeMonthMutation = useMutation({
+    mutationFn: async (monthToClose: string) => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      
+      if (!token) throw new Error("Não autenticado");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/close-month`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ month: monthToClose }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erro ao fechar mês");
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["transactions", selectedMonth] });
+      queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth] });
+      toast.success(data.message || "Mês fechado com sucesso!");
+    },
+    onError: (error) => {
+      console.error("Error closing month:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao fechar mês");
+    },
+  });
+
   // Get user's transfers (what they owe and what they're owed)
   const myTransfers = transfers.filter(
     (t) => t.fromId === profile?.id || t.toId === profile?.id
+  );
+
+  const closeMonth = useCallback(
+    (monthToClose: string) => closeMonthMutation.mutate(monthToClose),
+    [closeMonthMutation]
   );
 
   return {
@@ -258,6 +302,8 @@ export function useFinanceiro(selectedMonth: string) {
       tripsQuery.error,
     markAsPaid: markAsPaidMutation.mutate,
     isMarkingAsPaid: markAsPaidMutation.isPending,
+    closeMonth,
+    isClosingMonth: closeMonthMutation.isPending,
     isAdmin,
     currentProfileId: profile?.id,
   };

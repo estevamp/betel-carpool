@@ -10,9 +10,21 @@ import {
   Car,
   Users,
   Loader2,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useFinanceiro, getMonthOptions } from "@/hooks/useFinanceiro";
 import { format } from "date-fns";
@@ -53,6 +65,8 @@ export default function FinanceiroPage() {
     error,
     markAsPaid,
     isMarkingAsPaid,
+    closeMonth,
+    isClosingMonth,
     isAdmin,
     currentProfileId,
   } = useFinanceiro(selectedMonth);
@@ -84,11 +98,42 @@ export default function FinanceiroPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Ajuda de Transporte</h1>
-        <p className="text-muted-foreground">
-          Relatórios e transferências mensais
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Ajuda de Transporte</h1>
+          <p className="text-muted-foreground">
+            Relatórios e transferências mensais
+          </p>
+        </div>
+        {isAdmin && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="default" className="gap-2" disabled={isClosingMonth}>
+                {isClosingMonth ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Lock className="h-4 w-4" />
+                )}
+                Fechar Mês
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Fechar mês {months.find(m => m.id === selectedMonth)?.label}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação irá calcular todas as transações e transferências do mês baseado nas viagens registradas.
+                  Os dados existentes para este mês serão recalculados.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => closeMonth(selectedMonth)}>
+                  Confirmar Fechamento
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       {/* Month Selector */}
