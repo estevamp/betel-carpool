@@ -3,10 +3,12 @@ import { motion } from "framer-motion";
 import { Plus, Search, Car, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useBetelitas } from "@/hooks/useBetelitas";
+import { useBetelitas, type Betelita } from "@/hooks/useBetelitas";
 import { BetelitaRow } from "@/components/betelitas/BetelitaRow";
 import { BetelitasTableSkeleton } from "@/components/betelitas/BetelitasTableSkeleton";
 import { CreateBetelitaDialog } from "@/components/betelitas/CreateBetelitaDialog";
+import { ViewBetelitaDialog } from "@/components/betelitas/ViewBetelitaDialog";
+import { EditBetelitaDialog } from "@/components/betelitas/EditBetelitaDialog";
 import { useAuth } from "@/contexts/AuthContext";
 
 const containerVariants = {
@@ -22,6 +24,8 @@ const containerVariants = {
 export default function BetelitasPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<"all" | "drivers" | "admins">("all");
+  const [viewPerson, setViewPerson] = useState<Betelita | null>(null);
+  const [editPerson, setEditPerson] = useState<Betelita | null>(null);
 
   const { data: betelitas = [], isLoading } = useBetelitas();
   const { isAdmin } = useAuth();
@@ -142,7 +146,12 @@ export default function BetelitasPage() {
                   </tr>
                 ) : (
                   filteredBetelitas.map((person) => (
-                    <BetelitaRow key={person.id} person={person} />
+                    <BetelitaRow
+                      key={person.id}
+                      person={person}
+                      onViewProfile={setViewPerson}
+                      onEdit={setEditPerson}
+                    />
                   ))
                 )}
               </tbody>
@@ -150,6 +159,18 @@ export default function BetelitasPage() {
           </div>
         </motion.div>
       )}
+
+      <ViewBetelitaDialog
+        person={viewPerson}
+        open={!!viewPerson}
+        onOpenChange={(open) => !open && setViewPerson(null)}
+      />
+
+      <EditBetelitaDialog
+        person={editPerson}
+        open={!!editPerson}
+        onOpenChange={(open) => !open && setEditPerson(null)}
+      />
     </div>
   );
 }
