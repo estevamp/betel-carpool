@@ -137,7 +137,7 @@ export default function Dashboard() {
       {/* Quick Access */}
       <motion.div variants={itemVariants}>
         <h2 className="font-semibold text-foreground mb-4">Acesso Rápido</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-4">
           {quickAccessItems.map((item) => (
             <Link
               key={item.path}
