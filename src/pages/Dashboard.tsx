@@ -38,18 +38,17 @@ const quickAccessItems = [
     path: "/procura-vagas",
     color: "bg-warning",
   },
-  {
-    icon: Wallet,
-    label: "Financeiro",
-    path: "/financeiro",
-    color: "bg-success",
-  },
 ];
 const secondaryItems = [
   {
     icon: AlertTriangle,
     label: "Desocupação",
     path: "/desocupacao",
+  },
+  {
+    icon: Wallet,
+    label: "Financeiro",
+    path: "/financeiro",
   },
   {
     icon: HelpCircle,
