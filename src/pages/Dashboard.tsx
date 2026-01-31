@@ -128,7 +128,7 @@ export default function Dashboard() {
       <motion.div variants={itemVariants}>
         <h2 className="font-semibold text-foreground mb-4">Acesso Rápido</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {quickAccessItems.map(item => <Link key={item.path} to={item.path} className="group flex flex-col items-center gap-3 p-5 bg-card border border-border hover:-translate-y-1 transition-all duration-300 shadow-sm rounded-md">
+          {quickAccessItems.map(item => <Link key={item.path} to={item.path} className="group flex flex-col items-center gap-3 p-5 bg-card border border-border hover:-translate-y-1 transition-all duration-300 text-right rounded-xl shadow-lg">
               <div className={cn("flex h-12 w-12 items-center justify-center rounded-xl text-white transition-transform group-hover:scale-110", item.color)}>
                 <item.icon className="h-6 w-6" />
               </div>
