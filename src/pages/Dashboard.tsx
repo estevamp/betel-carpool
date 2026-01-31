@@ -27,12 +27,6 @@ const quickAccessItems = [
     color: "bg-primary",
   },
   {
-    icon: Plane,
-    label: "Ausência",
-    path: "/ausencia",
-    color: "bg-info",
-  },
-  {
     icon: Search,
     label: "Procura de Vagas",
     path: "/procura-vagas",
@@ -40,6 +34,11 @@ const quickAccessItems = [
   },
 ];
 const secondaryItems = [
+  {
+    icon: Plane,
+    label: "Ausência",
+    path: "/ausencia",
+  },
   {
     icon: AlertTriangle,
     label: "Desocupação",
