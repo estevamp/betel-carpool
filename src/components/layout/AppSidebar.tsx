@@ -8,40 +8,49 @@ import { useAuth } from "@/contexts/AuthContext";
 const mainNavItems = [{
   icon: Home,
   label: "Início",
-  path: "/"
+  path: "/",
+  adminOnly: false
 }, {
   icon: Car,
   label: "Viagens",
-  path: "/viagens"
+  path: "/viagens",
+  adminOnly: false
 }, {
   icon: Users,
   label: "Betelitas",
-  path: "/betelitas"
+  path: "/betelitas",
+  adminOnly: true
 }, {
   icon: Plane,
   label: "Ausência",
-  path: "/ausencia"
+  path: "/ausencia",
+  adminOnly: false
 }, {
   icon: Search,
   label: "Procura de Vagas",
-  path: "/procura-vagas"
+  path: "/procura-vagas",
+  adminOnly: false
 }, {
   icon: AlertTriangle,
   label: "Desocupação",
-  path: "/desocupacao"
+  path: "/desocupacao",
+  adminOnly: false
 }, {
   icon: Wallet,
   label: "Ajuda de Transporte",
-  path: "/financeiro"
+  path: "/financeiro",
+  adminOnly: false
 }];
 const secondaryNavItems = [{
   icon: HelpCircle,
   label: "Perguntas Frequentes",
-  path: "/faq"
+  path: "/faq",
+  adminOnly: false
 }, {
   icon: Settings,
   label: "Configurações",
-  path: "/configuracoes"
+  path: "/configuracoes",
+  adminOnly: true
 }];
 interface AppSidebarProps {
   mobile?: boolean;
@@ -55,7 +64,8 @@ export function AppSidebar({
   const navigate = useNavigate();
   const {
     profile,
-    signOut
+    signOut,
+    isAdmin
   } = useAuth();
   const handleSignOut = async () => {
     await signOut();
@@ -96,7 +106,9 @@ export function AppSidebar({
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
         <div className="space-y-1">
-          {mainNavItems.map(item => <NavItem key={item.path} item={item} />)}
+          {mainNavItems
+            .filter(item => !item.adminOnly || isAdmin)
+            .map(item => <NavItem key={item.path} item={item} />)}
         </div>
 
         <div className="mt-6 pt-4 border-t border-sidebar-border">
