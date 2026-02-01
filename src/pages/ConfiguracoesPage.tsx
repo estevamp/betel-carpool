@@ -170,6 +170,7 @@ export default function ConfiguracoesPage() {
             </div>
           </div>
         </div>
+
         <div className="p-5 space-y-4">
           <div className="grid gap-2">
             <Label htmlFor="maxPassengers">Máximo de passageiros por viagem</Label>
