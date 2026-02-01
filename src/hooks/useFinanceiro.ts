@@ -272,11 +272,6 @@ export function useFinanceiro(selectedMonth: string) {
     },
   });
 
-  // Get user's transfers (what they owe and what they're owed)
-  const myTransfers = transfers.filter(
-    (t) => t.fromId === profile?.id || t.toId === profile?.id
-  );
-
   const closeMonth = useCallback(
     (monthToClose: string) => closeMonthMutation.mutate(monthToClose),
     [closeMonthMutation]
