@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Home, Car, Users, Plane, Search, AlertTriangle, Wallet, HelpCircle, Settings, LogOut, X, User } from "lucide-react";
+import { Home, Car, Users, Plane, Search, AlertTriangle, Wallet, HelpCircle, Settings, LogOut, X, User, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,6 +40,11 @@ const mainNavItems = [{
   label: "Ajuda de Transporte",
   path: "/financeiro",
   adminOnly: false
+}, {
+  icon: Building2,
+  label: "Congregações",
+  path: "/congregacoes",
+  adminOnly: true // Only super-admins can see this
 }];
 const secondaryNavItems = [{
   icon: HelpCircle,
@@ -56,6 +61,7 @@ interface AppSidebarProps {
   mobile?: boolean;
   onClose?: () => void;
 }
+import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
 export function AppSidebar({
   mobile,
   onClose
@@ -67,6 +73,7 @@ export function AppSidebar({
     signOut,
     isAdmin
   } = useAuth();
+  const { isSuperAdmin } = useIsSuperAdmin();
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
@@ -107,7 +114,7 @@ export function AppSidebar({
       <ScrollArea className="flex-1 px-3 py-4">
         <div className="space-y-1">
           {mainNavItems
-            .filter(item => !item.adminOnly || isAdmin)
+            .filter(item => !item.adminOnly || isAdmin || isSuperAdmin)
             .map(item => <NavItem key={item.path} item={item} />)}
         </div>
 

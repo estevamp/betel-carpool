@@ -13,17 +13,32 @@ export interface Betelita {
   spouse_id: string | null;
   spouse_name: string | null;
   is_admin: boolean;
+  congregation_id: string | null;
 }
 
-export function useBetelitas() {
+import { useIsSuperAdmin } from "./useIsSuperAdmin";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
+
+export function useBetelitas(options?: { congregationId?: string }) {
+  const { isSuperAdmin } = useIsSuperAdmin();
+  const { selectedCongregationId } = useSelectedCongregation();
+
+  const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : options?.congregationId;
+
   return useQuery({
-    queryKey: ["betelitas"],
+    queryKey: ["betelitas", effectiveCongregationId],
     queryFn: async (): Promise<Betelita[]> => {
-      // Fetch all profiles
-      const { data: profiles, error: profilesError } = await supabase
+      let query = supabase
         .from("profiles")
-        .select("id, full_name, email, sex, is_driver, is_exempt, is_married, pix_key, spouse_id")
+        .select("id, full_name, email, sex, is_driver, is_exempt, is_married, pix_key, spouse_id, congregation_id")
         .order("full_name", { ascending: true });
+
+      if (effectiveCongregationId) {
+        query = query.eq("congregation_id", effectiveCongregationId);
+      }
+
+      // Fetch all profiles
+      const { data: profiles, error: profilesError } = await query;
 
       if (profilesError) throw profilesError;
 

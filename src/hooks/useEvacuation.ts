@@ -9,6 +9,9 @@ export interface EvacuationPassenger {
   passenger_name: string;
 }
 
+import { useIsSuperAdmin } from "./useIsSuperAdmin";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
+
 export interface EvacuationCar {
   id: string;
   driver_id: string;
@@ -17,25 +20,35 @@ export interface EvacuationCar {
   notes: string | null;
   passengers: EvacuationPassenger[];
   max_seats: number;
+  congregation_id: string | null;
 }
 
 export interface CreateEvacuationCarData {
   destination?: string;
   notes?: string;
+  congregation_id?: string; // Adicionar para super-admin
 }
 
 export function useEvacuation() {
   const { profile, isAdmin } = useAuth();
   const queryClient = useQueryClient();
+  const { isSuperAdmin } = useIsSuperAdmin();
+  const { selectedCongregationId } = useSelectedCongregation();
 
   const evacuationQuery = useQuery({
-    queryKey: ["evacuation"],
+    queryKey: ["evacuation", selectedCongregationId],
     queryFn: async (): Promise<EvacuationCar[]> => {
-      // Fetch all evacuation cars
-      const { data: cars, error: carsError } = await supabase
+      let query = supabase
         .from("evacuation_cars")
-        .select("*")
+        .select("*, driver:profiles(id, full_name)")
         .order("created_at", { ascending: true });
+
+      if (isSuperAdmin && selectedCongregationId) {
+        query = query.eq("congregation_id", selectedCongregationId);
+      }
+
+      // Fetch all evacuation cars
+      const { data: cars, error: carsError } = await query;
 
       if (carsError) throw carsError;
 
@@ -46,7 +59,7 @@ export function useEvacuation() {
 
       if (passengersError) throw passengersError;
 
-      // Fetch profiles for names
+      // Fetch profiles for names (only if not already fetched by driver:profiles)
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, full_name");
@@ -72,11 +85,12 @@ export function useEvacuation() {
       return (cars ?? []).map((car) => ({
         id: car.id,
         driver_id: car.driver_id,
-        driver_name: profileNameMap.get(car.driver_id) ?? "Desconhecido",
+        driver_name: car.driver?.full_name ?? "Desconhecido",
         destination: car.destination,
         notes: car.notes,
         passengers: passengersByCar.get(car.id) ?? [],
         max_seats: 4, // Default capacity
+        congregation_id: car.congregation_id,
       }));
     },
   });
@@ -89,6 +103,7 @@ export function useEvacuation() {
         driver_id: profile.id,
         destination: data.destination || null,
         notes: data.notes || null,
+        congregation_id: isSuperAdmin && selectedCongregationId ? selectedCongregationId : profile.congregation_id,
       });
 
       if (error) throw error;
@@ -97,9 +112,9 @@ export function useEvacuation() {
       queryClient.invalidateQueries({ queryKey: ["evacuation"] });
       toast.success("Carro adicionado ao plano de evacuação!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Error creating evacuation car:", error);
-      toast.error("Erro ao adicionar carro");
+      toast.error("Erro ao adicionar carro: " + error.message);
     },
   });
 
@@ -116,9 +131,9 @@ export function useEvacuation() {
       queryClient.invalidateQueries({ queryKey: ["evacuation"] });
       toast.success("Carro removido do plano!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Error deleting evacuation car:", error);
-      toast.error("Erro ao remover carro");
+      toast.error("Erro ao remover carro: " + error.message);
     },
   });
 
@@ -141,9 +156,9 @@ export function useEvacuation() {
       queryClient.invalidateQueries({ queryKey: ["evacuation"] });
       toast.success("Passageiro adicionado!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Error adding passenger:", error);
-      toast.error("Erro ao adicionar passageiro");
+      toast.error("Erro ao adicionar passageiro: " + error.message);
     },
   });
 
@@ -160,9 +175,9 @@ export function useEvacuation() {
       queryClient.invalidateQueries({ queryKey: ["evacuation"] });
       toast.success("Passageiro removido!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Error removing passenger:", error);
-      toast.error("Erro ao remover passageiro");
+      toast.error("Erro ao remover passageiro: " + error.message);
     },
   });
 

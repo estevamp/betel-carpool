@@ -16,6 +16,9 @@ export interface TripPassenger {
   };
 }
 
+import { useIsSuperAdmin } from "./useIsSuperAdmin";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
+
 export interface Trip {
   id: string;
   driver_id: string;
@@ -26,6 +29,7 @@ export interface Trip {
   is_urgent: boolean | null;
   is_betel_car: boolean | null;
   notes: string | null;
+  congregation_id: string | null;
   driver: {
     id: string;
     full_name: string;
@@ -40,6 +44,7 @@ export interface CreateTripData {
   is_urgent: boolean;
   is_betel_car: boolean;
   notes?: string;
+  congregation_id?: string; // Adicionar para super-admin
 }
 
 export interface UpdateTripData extends CreateTripData {
@@ -49,11 +54,13 @@ export interface UpdateTripData extends CreateTripData {
 export function useTrips() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  const { isSuperAdmin } = useIsSuperAdmin();
+  const { selectedCongregationId } = useSelectedCongregation();
 
   const tripsQuery = useQuery({
-    queryKey: ["trips"],
+    queryKey: ["trips", selectedCongregationId],
     queryFn: async (): Promise<Trip[]> => {
-      const { data: trips, error } = await supabase
+      let query = supabase
         .from("trips")
         .select(`
           *,
@@ -67,6 +74,12 @@ export function useTrips() {
         `)
         .eq("is_active", true)
         .order("departure_at", { ascending: true });
+
+      if (isSuperAdmin && selectedCongregationId) {
+        query = query.eq("congregation_id", selectedCongregationId);
+      }
+
+      const { data: trips, error } = await query;
 
       if (error) throw error;
       return trips as unknown as Trip[];
@@ -85,6 +98,7 @@ export function useTrips() {
         is_urgent: data.is_urgent,
         is_betel_car: data.is_betel_car,
         notes: data.notes || null,
+        congregation_id: isSuperAdmin && selectedCongregationId ? selectedCongregationId : profile.congregation_id,
       });
 
       if (error) throw error;
@@ -93,7 +107,7 @@ export function useTrips() {
       queryClient.invalidateQueries({ queryKey: ["trips"] });
       toast.success("Viagem criada com sucesso!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast.error("Erro ao criar viagem: " + error.message);
     },
   });
@@ -109,6 +123,7 @@ export function useTrips() {
           is_urgent: data.is_urgent,
           is_betel_car: data.is_betel_car,
           notes: data.notes || null,
+          congregation_id: isSuperAdmin && selectedCongregationId ? selectedCongregationId : undefined, // Apenas super-admin pode mudar
         })
         .eq("id", data.tripId);
 
@@ -118,7 +133,7 @@ export function useTrips() {
       queryClient.invalidateQueries({ queryKey: ["trips"] });
       toast.success("Viagem atualizada com sucesso!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast.error("Erro ao atualizar viagem: " + error.message);
     },
   });
@@ -139,7 +154,7 @@ export function useTrips() {
       queryClient.invalidateQueries({ queryKey: ["trips"] });
       toast.success("Passageiro adicionado com sucesso!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast.error("Erro ao adicionar passageiro: " + error.message);
     },
   });
@@ -160,7 +175,7 @@ export function useTrips() {
       queryClient.invalidateQueries({ queryKey: ["trips"] });
       toast.success("Reserva cancelada!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast.error("Erro ao cancelar reserva: " + error.message);
     },
   });
@@ -178,7 +193,7 @@ export function useTrips() {
       queryClient.invalidateQueries({ queryKey: ["trips"] });
       toast.success("Viagem cancelada!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast.error("Erro ao cancelar viagem: " + error.message);
     },
   });
@@ -197,7 +212,7 @@ export function useTrips() {
       queryClient.invalidateQueries({ queryKey: ["trips"] });
       toast.success("Passageiro removido!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast.error("Erro ao remover passageiro: " + error.message);
     },
   });

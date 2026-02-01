@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
+import { useIsSuperAdmin } from "./useIsSuperAdmin";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
+
 export interface Absence {
   id: string;
   profile_id: string;
@@ -11,43 +14,42 @@ export interface Absence {
   notes: string | null;
   created_at: string;
   profile_name: string;
+  congregation_id: string | null;
 }
 
 export interface CreateAbsenceData {
   start_date: string;
   end_date: string;
   notes?: string;
+  congregation_id?: string; // Adicionar para super-admin
 }
 
 export function useAbsences() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  const { isSuperAdmin } = useIsSuperAdmin();
+  const { selectedCongregationId } = useSelectedCongregation();
 
   const absencesQuery = useQuery({
-    queryKey: ["absences"],
+    queryKey: ["absences", selectedCongregationId],
     queryFn: async (): Promise<Absence[]> => {
-      // Fetch absences
-      const { data: absences, error: absencesError } = await supabase
+      let query = supabase
         .from("absences")
-        .select("*")
+        .select("*, profile:profiles(id, full_name)")
         .order("start_date", { ascending: true });
+
+      if (isSuperAdmin && selectedCongregationId) {
+        query = query.eq("congregation_id", selectedCongregationId);
+      }
+
+      // Fetch absences
+      const { data: absences, error: absencesError } = await query;
 
       if (absencesError) throw absencesError;
 
-      // Fetch profiles for names
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, full_name");
-
-      if (profilesError) throw profilesError;
-
-      const profileNameMap = new Map(
-        profiles?.map((p) => [p.id, p.full_name]) ?? []
-      );
-
       return (absences ?? []).map((absence) => ({
         ...absence,
-        profile_name: profileNameMap.get(absence.profile_id) ?? "Desconhecido",
+        profile_name: absence.profile?.full_name ?? "Desconhecido",
       }));
     },
   });
@@ -61,6 +63,7 @@ export function useAbsences() {
         start_date: data.start_date,
         end_date: data.end_date,
         notes: data.notes || null,
+        congregation_id: isSuperAdmin && selectedCongregationId ? selectedCongregationId : profile.congregation_id,
       });
 
       if (error) throw error;
@@ -69,9 +72,9 @@ export function useAbsences() {
       queryClient.invalidateQueries({ queryKey: ["absences"] });
       toast.success("Ausência registrada com sucesso!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Error creating absence:", error);
-      toast.error("Erro ao registrar ausência");
+      toast.error("Erro ao registrar ausência: " + error.message);
     },
   });
 
@@ -88,9 +91,9 @@ export function useAbsences() {
       queryClient.invalidateQueries({ queryKey: ["absences"] });
       toast.success("Ausência removida com sucesso!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Error deleting absence:", error);
-      toast.error("Erro ao remover ausência");
+      toast.error("Erro ao remover ausência: " + error.message);
     },
   });
 

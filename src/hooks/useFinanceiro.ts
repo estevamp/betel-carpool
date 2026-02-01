@@ -12,11 +12,15 @@ export interface MonthOption {
   current: boolean;
 }
 
+import { useIsSuperAdmin } from "./useIsSuperAdmin";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
+
 export interface ProfileBalance {
   profileId: string;
   name: string;
   toPay: number;
   toReceive: number;
+  congregationId: string | null;
 }
 
 export interface Transfer {
@@ -28,6 +32,7 @@ export interface Transfer {
   amount: number;
   isPaid: boolean;
   pixKey: string | null;
+  congregationId: string | null;
 }
 
 export interface MonthTrip {
@@ -36,6 +41,7 @@ export interface MonthTrip {
   departureAt: string;
   returnAt: string | null;
   passengerCount: number;
+  congregationId: string | null;
 }
 
 // Generate month options (current + past 5 months)
@@ -63,6 +69,8 @@ export function getMonthOptions(): MonthOption[] {
 export function useFinanceiro(selectedMonth: string) {
   const { profile, isAdmin } = useAuth();
   const queryClient = useQueryClient();
+  const { isSuperAdmin } = useIsSuperAdmin();
+  const { selectedCongregationId } = useSelectedCongregation();
 
   // Parse month string to get date range
   const [year, month] = selectedMonth.split("-").map(Number);
@@ -71,12 +79,17 @@ export function useFinanceiro(selectedMonth: string) {
 
   // Fetch all profiles for name mapping
   const profilesQuery = useQuery({
-    queryKey: ["profiles"],
+    queryKey: ["profiles", selectedCongregationId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("profiles")
-        .select("id, full_name, pix_key");
+        .select("id, full_name, pix_key, congregation_id");
 
+      if (isSuperAdmin && selectedCongregationId) {
+        query = query.eq("congregation_id", selectedCongregationId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data ?? [];
     },
@@ -84,13 +97,18 @@ export function useFinanceiro(selectedMonth: string) {
 
   // Fetch transactions for the month
   const transactionsQuery = useQuery({
-    queryKey: ["transactions", selectedMonth],
+    queryKey: ["transactions", selectedMonth, selectedCongregationId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("transactions")
         .select("*")
         .eq("month", selectedMonth);
 
+      if (isSuperAdmin && selectedCongregationId) {
+        query = query.eq("congregation_id", selectedCongregationId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data ?? [];
     },
@@ -98,13 +116,18 @@ export function useFinanceiro(selectedMonth: string) {
 
   // Fetch transfers for the month
   const transfersQuery = useQuery({
-    queryKey: ["transfers", selectedMonth],
+    queryKey: ["transfers", selectedMonth, selectedCongregationId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("transfers")
         .select("*")
         .eq("month", selectedMonth);
 
+      if (isSuperAdmin && selectedCongregationId) {
+        query = query.eq("congregation_id", selectedCongregationId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data ?? [];
     },
@@ -112,21 +135,27 @@ export function useFinanceiro(selectedMonth: string) {
 
   // Fetch trips for the month
   const tripsQuery = useQuery({
-    queryKey: ["trips-month", selectedMonth],
+    queryKey: ["trips-month", selectedMonth, selectedCongregationId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("trips")
         .select(`
           id,
           driver_id,
           departure_at,
           return_at,
-          trip_passengers (id)
+          trip_passengers (id),
+          congregation_id
         `)
         .gte("departure_at", monthStart.toISOString())
         .lte("departure_at", monthEnd.toISOString())
         .order("departure_at", { ascending: true });
 
+      if (isSuperAdmin && selectedCongregationId) {
+        query = query.eq("congregation_id", selectedCongregationId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data ?? [];
     },
@@ -136,11 +165,11 @@ export function useFinanceiro(selectedMonth: string) {
   const profileBalances: ProfileBalance[] = (() => {
     if (!transactionsQuery.data || !profilesQuery.data) return [];
 
-    const balanceMap = new Map<string, { toPay: number; toReceive: number }>();
+    const balanceMap = new Map<string, { toPay: number; toReceive: number; congregationId: string | null }>();
 
     // Initialize all profiles
     profilesQuery.data.forEach((p) => {
-      balanceMap.set(p.id, { toPay: 0, toReceive: 0 });
+      balanceMap.set(p.id, { toPay: 0, toReceive: 0, congregationId: p.congregation_id });
     });
 
     // Calculate from transactions
@@ -167,6 +196,7 @@ export function useFinanceiro(selectedMonth: string) {
         name: profileNameMap.get(id) ?? "Desconhecido",
         toPay: balance.toPay,
         toReceive: balance.toReceive,
+        congregationId: balance.congregationId,
       }))
       .filter((b) => b.toPay > 0 || b.toReceive > 0)
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -177,7 +207,7 @@ export function useFinanceiro(selectedMonth: string) {
     if (!transfersQuery.data || !profilesQuery.data) return [];
 
     const profileMap = new Map(
-      profilesQuery.data.map((p) => [p.id, { name: p.full_name, pixKey: p.pix_key }])
+      profilesQuery.data.map((p) => [p.id, { name: p.full_name, pixKey: p.pix_key, congregationId: p.congregation_id }])
     );
 
     return transfersQuery.data.map((t) => ({
@@ -189,6 +219,7 @@ export function useFinanceiro(selectedMonth: string) {
       amount: Number(t.amount),
       isPaid: t.is_paid ?? false,
       pixKey: profileMap.get(t.creditor_id)?.pixKey ?? null,
+      congregationId: t.congregation_id,
     }));
   })();
 
@@ -206,6 +237,7 @@ export function useFinanceiro(selectedMonth: string) {
       departureAt: t.departure_at,
       returnAt: t.return_at,
       passengerCount: t.trip_passengers?.length ?? 0,
+      congregationId: t.congregation_id,
     }));
   })();
 
@@ -225,12 +257,12 @@ export function useFinanceiro(selectedMonth: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth] });
+      queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth, selectedCongregationId] });
       toast.success("Transferência marcada como paga!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Error marking transfer as paid:", error);
-      toast.error("Erro ao marcar como paga");
+      toast.error("Erro ao marcar como paga: " + error.message);
     },
   });
 
@@ -250,7 +282,7 @@ export function useFinanceiro(selectedMonth: string) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ month: monthToClose }),
+          body: JSON.stringify({ month: monthToClose, congregation_id: isSuperAdmin ? selectedCongregationId : profile?.congregation_id }),
         }
       );
 
@@ -262,11 +294,11 @@ export function useFinanceiro(selectedMonth: string) {
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["transactions", selectedMonth] });
-      queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth] });
+      queryClient.invalidateQueries({ queryKey: ["transactions", selectedMonth, selectedCongregationId] });
+      queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth, selectedCongregationId] });
       toast.success(data.message || "Mês fechado com sucesso!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Error closing month:", error);
       toast.error(error instanceof Error ? error.message : "Erro ao fechar mês");
     },
@@ -299,6 +331,7 @@ export function useFinanceiro(selectedMonth: string) {
     closeMonth,
     isClosingMonth: closeMonthMutation.isPending,
     isAdmin,
+    isSuperAdmin,
     currentProfileId: profile?.id,
   };
 }
