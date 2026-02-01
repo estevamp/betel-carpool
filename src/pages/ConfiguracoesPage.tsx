@@ -7,9 +7,11 @@ import { Switch } from "@/components/ui/switch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ConfiguracoesPage() {
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
   const [congregationName, setCongregationName] = useState("");
 
   const { data: settings, isLoading } = useQuery({
@@ -105,7 +107,8 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Admin Only */}
-      <div className="bg-card rounded-xl border border-warning/30 shadow-card overflow-hidden">
+      {isAdmin && (
+        <div className="bg-card rounded-xl border border-warning/30 shadow-card overflow-hidden">
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-warning/5">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
             <Shield className="h-5 w-5 text-warning" />
@@ -175,7 +178,8 @@ export default function ConfiguracoesPage() {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Save Button */}
       <div className="flex justify-end">
