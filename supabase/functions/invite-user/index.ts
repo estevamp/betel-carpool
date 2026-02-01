@@ -70,10 +70,10 @@ serve(async (req: Request): Promise<Response> => {
       },
     });
 
-    // Check if user already exists
+    // Check if profile already exists
     const { data: existingProfile } = await adminClient
       .from("profiles")
-      .select("id")
+      .select("id, user_id")
       .eq("email", email)
       .maybeSingle();
 
@@ -81,30 +81,83 @@ serve(async (req: Request): Promise<Response> => {
       throw new Error("Já existe um membro com este email");
     }
 
-    // Invite user by email (sends magic link)
-    const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: {
-        full_name: fullName,
-        sex: sex || null,
-        is_driver: isDriver || false,
-        is_exempt: isExempt || false,
-      },
-      redirectTo: `${req.headers.get("origin")}/`,
-    });
-
-    if (inviteError) {
-      console.error("Invite error:", inviteError);
-      throw new Error(`Erro ao enviar convite: ${inviteError.message}`);
+    // Check if auth user already exists (invited but not completed)
+    const { data: existingAuthUsers, error: listError } = await adminClient.auth.admin.listUsers();
+    
+    if (listError) {
+      console.error("Error listing users:", listError);
     }
 
-    // Create profile for the invited user
-    const { error: profileError } = await adminClient.from("profiles").insert({
+    const existingAuthUser = existingAuthUsers?.users?.find((u: any) => u.email === email);
+
+    let inviteData;
+    
+    if (existingAuthUser) {
+      // User was invited before but didn't complete registration
+      // Resend the invite
+      const { data: resendData, error: resendError } = await adminClient.auth.admin.inviteUserByEmail(email, {
+        data: {
+          full_name: fullName,
+          sex: sex || null,
+          is_driver: isDriver || false,
+          is_exempt: isExempt || false,
+        },
+        redirectTo: `${req.headers.get("origin")}/`,
+      });
+
+      if (resendError) {
+        console.error("Resend invite error:", resendError);
+        throw new Error(`Erro ao reenviar convite: ${resendError.message}`);
+      }
+
+      inviteData = resendData;
+
+      // Update user metadata
+      const { error: updateError } = await adminClient.auth.admin.updateUserById(
+        existingAuthUser.id,
+        {
+          user_metadata: {
+            full_name: fullName,
+            sex: sex || null,
+            is_driver: isDriver || false,
+            is_exempt: isExempt || false,
+          }
+        }
+      );
+
+      if (updateError) {
+        console.error("Error updating user metadata:", updateError);
+      }
+    } else {
+      // New user - send invite
+      const { data: newInviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
+        data: {
+          full_name: fullName,
+          sex: sex || null,
+          is_driver: isDriver || false,
+          is_exempt: isExempt || false,
+        },
+        redirectTo: `${req.headers.get("origin")}/`,
+      });
+
+      if (inviteError) {
+        console.error("Invite error:", inviteError);
+        throw new Error(`Erro ao enviar convite: ${inviteError.message}`);
+      }
+
+      inviteData = newInviteData;
+    }
+
+    // Create or update profile for the invited user
+    const { error: profileError } = await adminClient.from("profiles").upsert({
       user_id: inviteData.user.id,
       full_name: fullName,
       email: email,
       sex: sex || null,
       is_driver: isDriver || false,
       is_exempt: isExempt || false,
+    }, {
+      onConflict: 'user_id'
     });
 
     if (profileError) {
