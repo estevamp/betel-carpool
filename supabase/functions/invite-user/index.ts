@@ -161,9 +161,7 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: isResend
-          ? `Convite reenviado para ${email}`
-          : `Convite enviado para ${email}`,
+        message: isResend ? `Convite reenviado para ${email}` : `Convite enviado para ${email}`,
         userId: inviteData.user.id,
         isResend,
       }),
