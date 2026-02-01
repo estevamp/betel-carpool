@@ -33,7 +33,7 @@ const itemVariants = {
 export default function FinanceiroPage() {
   const months = getMonthOptions();
   const [selectedMonth, setSelectedMonth] = useState(months[0]?.id ?? "");
-  const [activeTab, setActiveTab] = useState<"report" | "transfers" | "trips">("report");
+  const [activeTab, setActiveTab] = useState<"report" | "transfers" | "trips">("transfers");
   const {
     profileBalances,
     transfers,
