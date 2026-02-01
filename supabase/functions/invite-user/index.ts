@@ -38,7 +38,10 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     // Get current user
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await userClient.auth.getUser();
     if (userError || !user) {
       throw new Error("Usuário não autenticado");
     }
@@ -83,7 +86,7 @@ serve(async (req: Request): Promise<Response> => {
 
     // Check if auth user already exists (invited but not completed)
     const { data: existingAuthUsers, error: listError } = await adminClient.auth.admin.listUsers();
-    
+
     if (listError) {
       console.error("Error listing users:", listError);
     }
@@ -91,7 +94,7 @@ serve(async (req: Request): Promise<Response> => {
     const existingAuthUser = existingAuthUsers?.users?.find((u: any) => u.email === email);
 
     let inviteData;
-    
+
     if (existingAuthUser) {
       // User was invited before but didn't complete registration
       // Resend the invite
@@ -113,17 +116,14 @@ serve(async (req: Request): Promise<Response> => {
       inviteData = resendData;
 
       // Update user metadata
-      const { error: updateError } = await adminClient.auth.admin.updateUserById(
-        existingAuthUser.id,
-        {
-          user_metadata: {
-            full_name: fullName,
-            sex: sex || null,
-            is_driver: isDriver || false,
-            is_exempt: isExempt || false,
-          }
-        }
-      );
+      const { error: updateError } = await adminClient.auth.admin.updateUserById(existingAuthUser.id, {
+        user_metadata: {
+          full_name: fullName,
+          sex: sex || null,
+          is_driver: isDriver || false,
+          is_exempt: isExempt || false,
+        },
+      });
 
       if (updateError) {
         console.error("Error updating user metadata:", updateError);
@@ -149,16 +149,19 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // Create or update profile for the invited user
-    const { error: profileError } = await adminClient.from("profiles").upsert({
-      user_id: inviteData.user.id,
-      full_name: fullName,
-      email: email,
-      sex: sex || null,
-      is_driver: isDriver || false,
-      is_exempt: isExempt || false,
-    }, {
-      onConflict: 'user_id'
-    });
+    const { error: profileError } = await adminClient.from("profiles").upsert(
+      {
+        user_id: inviteData.user.id,
+        full_name: fullName,
+        email: email,
+        sex: sex || null,
+        is_driver: isDriver || false,
+        is_exempt: isExempt || false,
+      },
+      {
+        onConflict: "user_id",
+      },
+    );
 
     if (profileError) {
       console.error("Profile creation error:", profileError);
@@ -174,16 +177,13 @@ serve(async (req: Request): Promise<Response> => {
       {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      },
     );
   } catch (error: any) {
     console.error("Error in invite-user function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 400,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 });
