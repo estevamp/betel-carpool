@@ -73,18 +73,7 @@ serve(async (req: Request): Promise<Response> => {
       },
     });
 
-    // Check if profile already exists
-    const { data: existingProfile } = await adminClient
-      .from("profiles")
-      .select("id, user_id")
-      .eq("email", email)
-      .maybeSingle();
-
-    if (existingProfile) {
-      throw new Error("Já existe um membro com este email");
-    }
-
-    // Check if auth user already exists (invited but not completed)
+    // Check if auth user already exists
     const { data: existingAuthUsers, error: listError } = await adminClient.auth.admin.listUsers();
 
     if (listError) {
@@ -94,10 +83,11 @@ serve(async (req: Request): Promise<Response> => {
     const existingAuthUser = existingAuthUsers?.users?.find((u: any) => u.email === email);
 
     let inviteData;
+    let isResend = false;
 
     if (existingAuthUser) {
-      // User was invited before but didn't complete registration
-      // Resend the invite
+      // User already exists (either invited or registered) - resend the invite
+      isResend = true;
       const { data: resendData, error: resendError } = await adminClient.auth.admin.inviteUserByEmail(email, {
         data: {
           full_name: fullName,
@@ -171,8 +161,11 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Convite enviado para ${email}`,
+        message: isResend
+          ? `Convite reenviado para ${email}`
+          : `Convite enviado para ${email}`,
         userId: inviteData.user.id,
+        isResend,
       }),
       {
         status: 200,
