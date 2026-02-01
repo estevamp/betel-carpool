@@ -85,7 +85,7 @@ export function AppSidebar({
           </div>
           <div className="flex flex-col">
             <span className="font-semibold text-sidebar-foreground">Carpool</span>
-            <span className="text-xs text-sidebar-foreground/60">Betelitas</span>
+            <span className="text-xs text-sidebar-foreground/60">Betel</span>
           </div>
         </div>
         {mobile && <Button variant="ghost" size="icon" onClick={onClose} className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent">

@@ -17,7 +17,7 @@ export function MobileHeader({
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
             <span className="text-primary-foreground font-bold text-sm">C</span>
           </div>
-          <span className="font-semibold text-foreground">Carpool</span>
+          <span className="font-semibold text-foreground">Carpool Betel</span>
         </div>
       </div>
 
