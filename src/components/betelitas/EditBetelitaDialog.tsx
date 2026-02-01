@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Mail } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useInviteUser } from "@/hooks/useInviteUser";
 import type { Betelita } from "@/hooks/useBetelitas";
 
 interface EditBetelitaDialogProps {
@@ -37,6 +39,7 @@ export function EditBetelitaDialog({
 }: EditBetelitaDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { sendInvite, isInviting } = useInviteUser();
 
   const [formData, setFormData] = useState({
     full_name: "",
@@ -142,6 +145,20 @@ export function EditBetelitaDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateMutation.mutate(formData);
+  };
+
+  const handleSendInvite = async () => {
+    const success = await sendInvite({
+      email: formData.email,
+      fullName: formData.full_name,
+      sex: formData.sex || undefined,
+      isDriver: formData.is_driver,
+      isExempt: formData.is_exempt,
+    });
+
+    if (success) {
+      onOpenChange(false);
+    }
   };
 
   if (!person) return null;
@@ -267,15 +284,30 @@ export function EditBetelitaDialog({
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={updateMutation.isPending || isInviting}
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={updateMutation.isPending}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={updateMutation.isPending || isInviting || !formData.email}
+              onClick={handleSendInvite}
+              className="gap-2"
+            >
+              {isInviting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Mail className="h-4 w-4" />
+              )}
+              Enviar Convite
+            </Button>
+            <Button type="submit" disabled={updateMutation.isPending || isInviting}>
               {updateMutation.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>

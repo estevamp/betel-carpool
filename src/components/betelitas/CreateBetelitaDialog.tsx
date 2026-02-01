@@ -34,6 +34,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useInviteUser } from "@/hooks/useInviteUser";
 
 const formSchema = z.object({
   fullName: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
@@ -55,6 +56,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
   const [submitAction, setSubmitAction] = useState<"save" | "invite" | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { sendInvite, isInviting } = useInviteUser();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -106,50 +108,24 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
   };
 
   const handleSendInvite = async (data: FormData) => {
-    if (!data.email) {
-      toast({
-        title: "Email obrigatório",
-        description: "Para enviar um convite, é necessário informar o email.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setSubmitAction("invite");
     setIsSubmitting(true);
-    try {
-      const { data: response, error } = await supabase.functions.invoke("invite-user", {
-        body: {
-          email: data.email,
-          fullName: data.fullName,
-          sex: data.sex,
-          isDriver: data.isDriver,
-          isExempt: data.isExempt,
-        },
-      });
+    
+    const success = await sendInvite({
+      email: data.email,
+      fullName: data.fullName,
+      sex: data.sex,
+      isDriver: data.isDriver,
+      isExempt: data.isExempt,
+    });
 
-      if (error) throw new Error(error.message);
-      if (response?.error) throw new Error(response.error);
-
-      toast({
-        title: "Convite enviado!",
-        description: `Um email foi enviado para ${data.email} com o link de cadastro.`,
-      });
-
+    if (success) {
       form.reset();
       setOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["betelitas"] });
-    } catch (error: any) {
-      console.error("Error inviting user:", error);
-      toast({
-        title: "Erro ao enviar convite",
-        description: error.message || "Não foi possível enviar o convite. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-      setSubmitAction(null);
     }
+    
+    setIsSubmitting(false);
+    setSubmitAction(null);
   };
 
   const email = form.watch("email");
@@ -296,7 +272,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                 onClick={form.handleSubmit(handleSendInvite)}
                 className="gap-2"
               >
-                {isSubmitting && submitAction === "invite" ? (
+                {(isSubmitting && submitAction === "invite") || isInviting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Mail className="h-4 w-4" />
