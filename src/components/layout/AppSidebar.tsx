@@ -50,7 +50,7 @@ const secondaryNavItems = [{
   icon: Settings,
   label: "Configurações",
   path: "/configuracoes",
-  adminOnly: true
+  adminOnly: false
 }];
 interface AppSidebarProps {
   mobile?: boolean;
