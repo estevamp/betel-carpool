@@ -284,7 +284,7 @@ export function EditBetelitaDialog({
             </div>
           )}
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
             <Button
               type="button"
               variant="outline"
@@ -293,9 +293,11 @@ export function EditBetelitaDialog({
             >
               Cancelar
             </Button>
+            <Button type="submit" disabled={updateMutation.isPending || isInviting}>
+              {updateMutation.isPending ? "Salvando..." : "Salvar"}
+            </Button>
             <Button
               type="button"
-              variant="secondary"
               disabled={updateMutation.isPending || isInviting || !formData.email}
               onClick={handleSendInvite}
               className="gap-2"
@@ -306,9 +308,6 @@ export function EditBetelitaDialog({
                 <Mail className="h-4 w-4" />
               )}
               Enviar Convite
-            </Button>
-            <Button type="submit" disabled={updateMutation.isPending || isInviting}>
-              {updateMutation.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </form>
