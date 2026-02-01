@@ -40,33 +40,33 @@ RETURNING id;
 
 -- 2. Atualizar perfis existentes (exceto Visitante)
 UPDATE public.profiles 
-SET congregation_id = '<CONGREGATION_ID>'
+SET congregation_id = '7bdf82ec-1493-4861-8b7c-83db2b55ac9a'
 WHERE congregation_id IS NULL 
 AND id != '00000000-0000-0000-0000-000000000001';
 
 -- 3. Atualizar dados existentes
 UPDATE public.trips 
-SET congregation_id = '<CONGREGATION_ID>' 
+SET congregation_id = '7bdf82ec-1493-4861-8b7c-83db2b55ac9a' 
 WHERE congregation_id IS NULL;
 
 UPDATE public.absences 
-SET congregation_id = '<CONGREGATION_ID>' 
+SET congregation_id = '7bdf82ec-1493-4861-8b7c-83db2b55ac9a' 
 WHERE congregation_id IS NULL;
 
 UPDATE public.ride_requests 
-SET congregation_id = '<CONGREGATION_ID>' 
+SET congregation_id = '7bdf82ec-1493-4861-8b7c-83db2b55ac9a' 
 WHERE congregation_id IS NULL;
 
 UPDATE public.evacuation_cars 
-SET congregation_id = '<CONGREGATION_ID>' 
+SET congregation_id = '7bdf82ec-1493-4861-8b7c-83db2b55ac9a' 
 WHERE congregation_id IS NULL;
 
 UPDATE public.transactions 
-SET congregation_id = '<CONGREGATION_ID>' 
+SET congregation_id = '7bdf82ec-1493-4861-8b7c-83db2b55ac9a' 
 WHERE congregation_id IS NULL;
 
 UPDATE public.transfers 
-SET congregation_id = '<CONGREGATION_ID>' 
+SET congregation_id = '7bdf82ec-1493-4861-8b7c-83db2b55ac9a' 
 WHERE congregation_id IS NULL;
 
 -- 4. Verificar se há dados sem congregação (opcional)
@@ -96,7 +96,7 @@ Execute no Supabase Dashboard (SQL Editor):
 -- Você pode encontrar o user_id na tabela auth.users
 
 INSERT INTO public.user_roles (user_id, role)
-VALUES ('<USER_ID>', 'super_admin')
+VALUES ('eb4960d3-716a-4c14-9abd-0c62e057919d', 'super_admin')
 ON CONFLICT (user_id, role) DO NOTHING;
 
 -- Verificar se foi criado
