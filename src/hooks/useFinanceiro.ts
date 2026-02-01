@@ -284,7 +284,7 @@ export function useFinanceiro(selectedMonth: string) {
 
   return {
     profileBalances,
-    transfers: isAdmin ? transfers : myTransfers,
+    transfers: transfers,
     monthTrips,
     totalToPay,
     totalToReceive,
