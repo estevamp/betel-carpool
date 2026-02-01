@@ -219,7 +219,6 @@ export default function Dashboard() {
                   <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <p className="font-medium text-foreground">Sem viagens hoje</p>
-                <p className="text-sm text-muted-foreground mt-1">Aproveite o dia de descanso!</p>
               </div>
             )}
           </div>
