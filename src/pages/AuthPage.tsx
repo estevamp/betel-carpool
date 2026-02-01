@@ -93,8 +93,8 @@ export default function AuthPage() {
           <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary mb-4">
             <Car className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Betelitas</h1>
-          <p className="text-muted-foreground">Sistema de Transporte</p>
+          <h1 className="text-2xl font-bold text-foreground">Carpool Betel</h1>
+          <p className="text-muted-foreground">Sistema de Transporte de Betelitas</p>
         </div>
 
         {/* Card */}
