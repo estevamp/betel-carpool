@@ -39,13 +39,24 @@ export default function ViagensPage() {
     removePassenger,
   } = useTrips();
 
-  const filteredTrips = trips.filter(
-    (trip) =>
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to start of day for comparison
+
+  const filteredTrips = trips.filter((trip) => {
+    // Filter out past trips (only show today and future)
+    const tripDate = new Date(trip.departure_at);
+    if (tripDate < today) {
+      return false;
+    }
+
+    // Apply search filter
+    return (
       trip.driver.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       trip.passengers.some((p) =>
         p.profile.full_name.toLowerCase().includes(searchTerm.toLowerCase())
       )
-  );
+    );
+  });
 
   return (
     <div className="space-y-6">
