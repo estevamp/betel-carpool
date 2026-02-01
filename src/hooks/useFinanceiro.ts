@@ -94,7 +94,6 @@ export function useFinanceiro(selectedMonth: string) {
       if (error) throw error;
       return data ?? [];
     },
-    enabled: isAdmin,
   });
 
   // Fetch transfers for the month
