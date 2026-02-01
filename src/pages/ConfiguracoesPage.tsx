@@ -68,6 +68,62 @@ export default function ConfiguracoesPage() {
         <p className="text-muted-foreground">Gerencie as configurações do sistema</p>
       </div>
 
+      {/* Congregation Settings */}
+      <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <Building2 className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-foreground">Congregação</h2>
+            <p className="text-sm text-muted-foreground">Identificação da congregação</p>
+          </div>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="grid gap-2">
+            <Label htmlFor="congregationName">Nome da Congregação</Label>
+            <Input
+              id="congregationName"
+              type="text"
+              placeholder="Ex: Congregação Norte - Boituva"
+              value={congregationName}
+              onChange={(e) => setCongregationName(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Será exibido no subtítulo da página inicial</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Transport Settings */}
+      <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
+            <Wallet className="h-5 w-5 text-success" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-foreground">Ajuda de Transporte</h2>
+            <p className="text-sm text-muted-foreground">Configurações financeiras</p>
+          </div>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="grid gap-2">
+            <Label htmlFor="tripValue">Valor por viagem (Ida e Volta)</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+              <Input id="tripValue" type="number" defaultValue="15.00" step="0.50" className="pl-10" />
+            </div>
+            <p className="text-xs text-muted-foreground">Viagens apenas de ida ou volta custam metade deste valor</p>
+          </div>
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <Label>Exibir módulo de ajuda de transporte</Label>
+              <p className="text-sm text-muted-foreground">Mostrar seção financeira para todos os usuários</p>
+            </div>
+            <Switch defaultChecked />
+          </div>
+        </div>
+      </div>
+
       {/* Notifications */}
       <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
@@ -115,62 +171,6 @@ export default function ConfiguracoesPage() {
             <p className="text-sm text-muted-foreground">Apenas administradores</p>
           </div>
         </div>
-        {/* Congregation Settings */}
-        <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <Building2 className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-foreground">Congregação</h2>
-              <p className="text-sm text-muted-foreground">Identificação da congregação</p>
-            </div>
-          </div>
-          <div className="p-5 space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="congregationName">Nome da Congregação</Label>
-              <Input
-                id="congregationName"
-                type="text"
-                placeholder="Ex: Congregação Norte - Boituva"
-                value={congregationName}
-                onChange={(e) => setCongregationName(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Será exibido no subtítulo da página inicial</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Transport Settings */}
-        <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
-              <Wallet className="h-5 w-5 text-success" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-foreground">Ajuda de Transporte</h2>
-              <p className="text-sm text-muted-foreground">Configurações financeiras</p>
-            </div>
-          </div>
-          <div className="p-5 space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="tripValue">Valor por viagem (Ida e Volta)</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
-                <Input id="tripValue" type="number" defaultValue="15.00" step="0.50" className="pl-10" />
-              </div>
-              <p className="text-xs text-muted-foreground">Viagens apenas de ida ou volta custam metade deste valor</p>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <Label>Exibir módulo de ajuda de transporte</Label>
-                <p className="text-sm text-muted-foreground">Mostrar seção financeira para todos os usuários</p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-          </div>
-        </div>
-
         <div className="p-5 space-y-4">
           <div className="grid gap-2">
             <Label htmlFor="maxPassengers">Máximo de passageiros por viagem</Label>
