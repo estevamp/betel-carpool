@@ -323,7 +323,7 @@ export function TripCard({
                     ({passenger.trip_type === "Apenas Ida" ? "Ida" : "Volta"})
                   </span>
                 )}
-                {isDriver && onRemovePassenger && (
+                {onRemovePassenger && (
                   <button
                     onClick={() => onRemovePassenger({ tripId: trip.id, passengerId: passenger.passenger_id })}
                     className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
