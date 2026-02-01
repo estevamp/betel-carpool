@@ -13,6 +13,9 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
+
+// Special UUID for Visitante profile
+const VISITANTE_PROFILE_ID = "00000000-0000-0000-0000-000000000001";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -88,6 +91,7 @@ export function TripCard({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedTripType, setSelectedTripType] = useState<TripType>("Ida e Volta");
   const [selectedPassengerId, setSelectedPassengerId] = useState<string>("");
+  const [selectedReservePassengerId, setSelectedReservePassengerId] = useState<string>("");
   
   const availableSeats = (trip.max_passengers ?? 4) - trip.passengers.length;
   const isFull = availableSeats <= 0;
@@ -105,9 +109,20 @@ export function TripCard({
     p => p.id !== trip.driver_id && !existingPassengerIds.includes(p.id)
   ) ?? [];
 
+  // For reserve dialog, include all profiles except the driver and existing passengers
+  const reserveAvailableProfiles = profiles?.filter(
+    p => p.id !== trip.driver_id && !existingPassengerIds.includes(p.id)
+  ) ?? [];
+
   const handleReserve = () => {
-    onReserveSeat({ tripId: trip.id, tripType: selectedTripType });
+    // If "Visitante" is selected, use the special Visitante profile ID
+    const passengerId = selectedReservePassengerId === "visitante"
+      ? VISITANTE_PROFILE_ID
+      : selectedReservePassengerId;
+    onReserveSeat({ tripId: trip.id, tripType: selectedTripType, passengerId });
     setReserveDialogOpen(false);
+    setSelectedReservePassengerId("");
+    setSelectedTripType("Ida e Volta");
   };
 
   const handleAddPassenger = () => {
@@ -362,34 +377,59 @@ export function TripCard({
                 <DialogHeader>
                   <DialogTitle>Reservar Vaga</DialogTitle>
                   <DialogDescription>
-                    Selecione o tipo de viagem que você precisa.
+                    Selecione para quem você está reservando e o tipo de viagem.
                   </DialogDescription>
                 </DialogHeader>
-                <RadioGroup 
-                  value={selectedTripType} 
-                  onValueChange={(v) => setSelectedTripType(v as TripType)}
-                  className="gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Ida e Volta" id="ida-volta" />
-                    <Label htmlFor="ida-volta">Ida e Volta</Label>
+                <div className="space-y-4">
+                  <div className="grid gap-2">
+                    <Label>Reservar para</Label>
+                    <Select value={selectedReservePassengerId} onValueChange={setSelectedReservePassengerId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um passageiro" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover">
+                        {reserveAvailableProfiles.map((profile) => (
+                          <SelectItem key={profile.id} value={profile.id}>
+                            {profile.full_name}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="visitante">Visitante</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Apenas Ida" id="ida" />
-                    <Label htmlFor="ida">Apenas Ida</Label>
+                  <div className="grid gap-2">
+                    <Label>Tipo de Viagem</Label>
+                    <RadioGroup
+                      value={selectedTripType}
+                      onValueChange={(v) => setSelectedTripType(v as TripType)}
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Ida e Volta" id="reserve-ida-volta" />
+                        <Label htmlFor="reserve-ida-volta" className="font-normal">Ida e Volta</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Apenas Ida" id="reserve-ida" />
+                        <Label htmlFor="reserve-ida" className="font-normal">Apenas Ida</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Apenas Volta" id="reserve-volta" />
+                        <Label htmlFor="reserve-volta" className="font-normal">Apenas Volta</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Apenas Volta" id="volta" />
-                    <Label htmlFor="volta">Apenas Volta</Label>
-                  </div>
-                </RadioGroup>
+                </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setReserveDialogOpen(false)}>
+                  <Button variant="outline" onClick={() => {
+                    setReserveDialogOpen(false);
+                    setSelectedReservePassengerId("");
+                    setSelectedTripType("Ida e Volta");
+                  }}>
                     Cancelar
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleReserve}
-                    disabled={isReserving}
+                    disabled={isReserving || !selectedReservePassengerId}
                     className="bg-success hover:bg-success/90"
                   >
                     {isReserving ? "Reservando..." : "Confirmar Reserva"}
