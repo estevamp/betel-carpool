@@ -23,6 +23,8 @@ import { CreateBetelitaDialog } from "@/components/betelitas/CreateBetelitaDialo
 import { ViewBetelitaDialog } from "@/components/betelitas/ViewBetelitaDialog";
 import { EditBetelitaDialog } from "@/components/betelitas/EditBetelitaDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
+import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -45,6 +47,11 @@ export default function BetelitasPage() {
   const queryClient = useQueryClient();
   const { data: betelitas = [], isLoading } = useBetelitas();
   const { isAdmin } = useAuth();
+  const { isSuperAdmin } = useIsSuperAdmin();
+  const { selectedCongregationId } = useSelectedCongregation();
+
+  // Get the effective congregation ID for query invalidation
+  const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : undefined;
 
   const deleteMutation = useMutation({
     mutationFn: async (person: Betelita) => {
@@ -65,35 +72,18 @@ export default function BetelitasPage() {
       
       return person.id;
     },
-    onMutate: async (person) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["betelitas"] });
-
-      // Snapshot the previous value
-      const previousBetelitas = queryClient.getQueryData(["betelitas"]);
-
-      // Optimistically update to remove the betelita
-      queryClient.setQueryData(["betelitas"], (old: Betelita[] | undefined) => {
-        return old?.filter((b) => b.id !== person.id) ?? [];
-      });
-
-      // Return a context object with the snapshotted value
-      return { previousBetelitas };
-    },
     onSuccess: () => {
-      // Invalidate and refetch
-      queryClient.invalidateQueries({ queryKey: ["betelitas"] });
+      // Invalidate and refetch with the correct query key
+      queryClient.invalidateQueries({
+        queryKey: ["betelitas", effectiveCongregationId]
+      });
       toast({
         title: "Betelita excluído",
         description: "O membro foi removido com sucesso.",
       });
       setDeletePerson(null);
     },
-    onError: (error, person, context) => {
-      // Rollback to the previous value on error
-      if (context?.previousBetelitas) {
-        queryClient.setQueryData(["betelitas"], context.previousBetelitas);
-      }
+    onError: (error) => {
       toast({
         title: "Erro ao excluir",
         description: error.message,
