@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       absences: {
         Row: {
+          congregation_id: string | null
           created_at: string
           end_date: string
           id: string
@@ -24,6 +25,7 @@ export type Database = {
           start_date: string
         }
         Insert: {
+          congregation_id?: string | null
           created_at?: string
           end_date: string
           id?: string
@@ -32,6 +34,7 @@ export type Database = {
           start_date: string
         }
         Update: {
+          congregation_id?: string | null
           created_at?: string
           end_date?: string
           id?: string
@@ -41,6 +44,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "absences_congregation_id_fkey"
+            columns: ["congregation_id"]
+            isOneToOne: false
+            referencedRelation: "congregations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "absences_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
@@ -49,8 +59,69 @@ export type Database = {
           },
         ]
       }
+      congregation_administrators: {
+        Row: {
+          congregation_id: string
+          created_at: string
+          id: string
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          congregation_id: string
+          created_at?: string
+          id?: string
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          congregation_id?: string
+          created_at?: string
+          id?: string
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "congregation_administrators_congregation_id_fkey"
+            columns: ["congregation_id"]
+            isOneToOne: false
+            referencedRelation: "congregations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "congregation_administrators_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      congregations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       evacuation_cars: {
         Row: {
+          congregation_id: string | null
           created_at: string
           destination: string | null
           driver_id: string
@@ -59,6 +130,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          congregation_id?: string | null
           created_at?: string
           destination?: string | null
           driver_id: string
@@ -67,6 +139,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          congregation_id?: string | null
           created_at?: string
           destination?: string | null
           driver_id?: string
@@ -75,6 +148,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "evacuation_cars_congregation_id_fkey"
+            columns: ["congregation_id"]
+            isOneToOne: false
+            referencedRelation: "congregations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "evacuation_cars_driver_id_fkey"
             columns: ["driver_id"]
@@ -152,6 +232,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          congregation_id: string | null
           created_at: string
           email: string | null
           full_name: string
@@ -167,6 +248,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          congregation_id?: string | null
           created_at?: string
           email?: string | null
           full_name: string
@@ -182,6 +264,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          congregation_id?: string | null
           created_at?: string
           email?: string | null
           full_name?: string
@@ -198,6 +281,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "profiles_congregation_id_fkey"
+            columns: ["congregation_id"]
+            isOneToOne: false
+            referencedRelation: "congregations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "profiles_spouse_id_fkey"
             columns: ["spouse_id"]
             isOneToOne: false
@@ -208,6 +298,7 @@ export type Database = {
       }
       ride_requests: {
         Row: {
+          congregation_id: string | null
           created_at: string
           id: string
           is_fulfilled: boolean | null
@@ -216,6 +307,7 @@ export type Database = {
           requested_date: string
         }
         Insert: {
+          congregation_id?: string | null
           created_at?: string
           id?: string
           is_fulfilled?: boolean | null
@@ -224,6 +316,7 @@ export type Database = {
           requested_date: string
         }
         Update: {
+          congregation_id?: string | null
           created_at?: string
           id?: string
           is_fulfilled?: boolean | null
@@ -232,6 +325,13 @@ export type Database = {
           requested_date?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ride_requests_congregation_id_fkey"
+            columns: ["congregation_id"]
+            isOneToOne: false
+            referencedRelation: "congregations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ride_requests_profile_id_fkey"
             columns: ["profile_id"]
@@ -268,6 +368,7 @@ export type Database = {
       transactions: {
         Row: {
           amount: number
+          congregation_id: string | null
           created_at: string
           creditor_id: string
           debtor_id: string
@@ -278,6 +379,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          congregation_id?: string | null
           created_at?: string
           creditor_id: string
           debtor_id: string
@@ -288,6 +390,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          congregation_id?: string | null
           created_at?: string
           creditor_id?: string
           debtor_id?: string
@@ -297,6 +400,13 @@ export type Database = {
           trip_type?: Database["public"]["Enums"]["trip_type"] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_congregation_id_fkey"
+            columns: ["congregation_id"]
+            isOneToOne: false
+            referencedRelation: "congregations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_creditor_id_fkey"
             columns: ["creditor_id"]
@@ -323,6 +433,7 @@ export type Database = {
       transfers: {
         Row: {
           amount: number
+          congregation_id: string | null
           created_at: string
           creditor_id: string
           debtor_id: string
@@ -333,6 +444,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          congregation_id?: string | null
           created_at?: string
           creditor_id: string
           debtor_id: string
@@ -343,6 +455,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          congregation_id?: string | null
           created_at?: string
           creditor_id?: string
           debtor_id?: string
@@ -352,6 +465,13 @@ export type Database = {
           paid_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "transfers_congregation_id_fkey"
+            columns: ["congregation_id"]
+            isOneToOne: false
+            referencedRelation: "congregations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transfers_creditor_id_fkey"
             columns: ["creditor_id"]
@@ -409,6 +529,7 @@ export type Database = {
       }
       trips: {
         Row: {
+          congregation_id: string | null
           created_at: string
           departure_at: string
           driver_id: string
@@ -422,6 +543,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          congregation_id?: string | null
           created_at?: string
           departure_at: string
           driver_id: string
@@ -435,6 +557,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          congregation_id?: string | null
           created_at?: string
           departure_at?: string
           driver_id?: string
@@ -448,6 +571,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "trips_congregation_id_fkey"
+            columns: ["congregation_id"]
+            isOneToOne: false
+            referencedRelation: "congregations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "trips_driver_id_fkey"
             columns: ["driver_id"]
@@ -483,6 +613,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_congregation: {
+        Args: { _congregation_id: string }
+        Returns: boolean
+      }
+      get_current_congregation_id: { Args: never; Returns: string }
       get_current_profile_id: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -491,9 +626,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_congregation_admin: {
+        Args: { _congregation_id: string }
+        Returns: boolean
+      }
+      is_super_admin: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "super_admin"
       sex_type: "Homem" | "Mulher"
       trip_type: "Ida e Volta" | "Apenas Ida" | "Apenas Volta"
     }
@@ -623,7 +763,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "super_admin"],
       sex_type: ["Homem", "Mulher"],
       trip_type: ["Ida e Volta", "Apenas Ida", "Apenas Volta"],
     },
