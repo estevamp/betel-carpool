@@ -14,6 +14,7 @@ interface Profile {
   is_driver: boolean;
   show_tips: boolean;
   spouse_id: string | null;
+  congregation_id: string | null;
 }
 
 interface AuthContextType {
