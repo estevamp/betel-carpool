@@ -87,26 +87,9 @@ serve(async (req: Request): Promise<Response> => {
     let isResend = false;
 
     if (existingAuthUser) {
-      // User already exists (either invited or registered) - resend the invite
+      // User already exists - just update metadata and profile, don't create a new auth user
       isResend = true;
-      const { data: resendData, error: resendError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-        data: {
-          full_name: fullName,
-          sex: sex || null,
-          is_driver: isDriver || false,
-          is_exempt: isExempt || false,
-          congregation_id: congregationId || null,
-        },
-        redirectTo: `${req.headers.get("origin")}/`,
-      });
-
-      if (resendError) {
-        console.error("Resend invite error:", resendError);
-        throw new Error(`Erro ao reenviar convite: ${resendError.message}`);
-      }
-
-      inviteData = resendData;
-
+      
       // Update user metadata
       const { error: updateError } = await adminClient.auth.admin.updateUserById(existingAuthUser.id, {
         user_metadata: {
@@ -120,7 +103,10 @@ serve(async (req: Request): Promise<Response> => {
 
       if (updateError) {
         console.error("Error updating user metadata:", updateError);
+        throw new Error(`Erro ao atualizar metadados: ${updateError.message}`);
       }
+
+      inviteData = { user: existingAuthUser };
     } else {
       // New user - send invite
       const { data: newInviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
