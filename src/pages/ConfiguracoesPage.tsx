@@ -8,62 +8,69 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-
 export default function ConfiguracoesPage() {
   const queryClient = useQueryClient();
-  const { isAdmin } = useAuth();
+  const {
+    isAdmin
+  } = useAuth();
   const [congregationName, setCongregationName] = useState("");
-
-  const { data: settings, isLoading } = useQuery({
+  const {
+    data: settings,
+    isLoading
+  } = useQuery({
     queryKey: ["settings"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("settings").select("*");
+      const {
+        data,
+        error
+      } = await supabase.from("settings").select("*");
       if (error) throw error;
       return data;
-    },
+    }
   });
-
   useEffect(() => {
     if (settings) {
-      const congregation = settings.find((s) => s.key === "congregation_name");
+      const congregation = settings.find(s => s.key === "congregation_name");
       if (congregation) {
         setCongregationName(congregation.value);
       }
     }
   }, [settings]);
-
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const { data: existing } = await supabase
-        .from("settings")
-        .select("id")
-        .eq("key", "congregation_name")
-        .maybeSingle();
-
+      const {
+        data: existing
+      } = await supabase.from("settings").select("id").eq("key", "congregation_name").maybeSingle();
       if (existing) {
-        const { error } = await supabase
-          .from("settings")
-          .update({ value: congregationName })
-          .eq("key", "congregation_name");
+        const {
+          error
+        } = await supabase.from("settings").update({
+          value: congregationName
+        }).eq("key", "congregation_name");
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from("settings")
-          .insert({ key: "congregation_name", value: congregationName, type: "string" });
+        const {
+          error
+        } = await supabase.from("settings").insert({
+          key: "congregation_name",
+          value: congregationName,
+          type: "string"
+        });
         if (error) throw error;
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      queryClient.invalidateQueries({
+        queryKey: ["settings"]
+      });
       toast.success("Configurações salvas com sucesso!");
     },
-    onError: (error) => {
+    onError: error => {
       toast.error("Erro ao salvar configurações");
       console.error(error);
-    },
+    }
   });
-  return (
-    <div className="space-y-6 max-w-2xl">
+  return <div className="space-y-6 max-w-2xl">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
@@ -85,7 +92,7 @@ export default function ConfiguracoesPage() {
           <div className="flex items-center justify-between py-2">
             <div>
               <Label>Lembrete de viagem</Label>
-              <p className="text-sm text-muted-foreground">Receber lembrete 24h antes da viagem</p>
+              <p className="text-sm text-muted-foreground">Receber lembrete 30 minutos antes da viagem</p>
             </div>
             <Switch defaultChecked />
           </div>
@@ -107,8 +114,7 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Admin Only */}
-      {isAdmin && (
-        <div className="bg-card rounded-xl border border-warning/30 shadow-card overflow-hidden">
+      {isAdmin && <div className="bg-card rounded-xl border border-warning/30 shadow-card overflow-hidden">
           <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-warning/5">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
               <Shield className="h-5 w-5 text-warning" />
@@ -161,19 +167,13 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button
-          className="bg-primary hover:bg-primary/90"
-          onClick={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending}
-        >
+        <Button className="bg-primary hover:bg-primary/90" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Salvando..." : "Salvar Alterações"}
         </Button>
       </div>
-    </div>
-  );
+    </div>;
 }
