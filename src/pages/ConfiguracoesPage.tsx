@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, Wallet, Bell, Shield, Database, Building2 } from "lucide-react";
+import { Settings, Wallet, Bell, Shield, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function ConfiguracoesPage() {
   const queryClient = useQueryClient();
-  const { isAdmin } = useAuth();
+  const { isSuperAdmin, profile } = useAuth();
   const [congregationName, setCongregationName] = useState("");
 
   const { data: settings, isLoading } = useQuery({
@@ -23,39 +23,35 @@ export default function ConfiguracoesPage() {
     },
   });
 
+  // Fetch congregation name from congregations table
+  const { data: congregation } = useQuery({
+    queryKey: ["congregation", profile?.congregation_id],
+    queryFn: async () => {
+      if (!profile?.congregation_id) return null;
+      const { data, error } = await supabase
+        .from("congregations")
+        .select("name")
+        .eq("id", profile.congregation_id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!profile?.congregation_id,
+  });
+
   useEffect(() => {
-    if (settings) {
-      const congregation = settings.find((s) => s.key === "congregation_name");
-      if (congregation) {
-        setCongregationName(congregation.value);
-      }
+    if (congregation?.name) {
+      setCongregationName(congregation.name);
     }
-  }, [settings]);
+  }, [congregation]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const { data: existing } = await supabase
-        .from("settings")
-        .select("id")
-        .eq("key", "congregation_name")
-        .maybeSingle();
-
-      if (existing) {
-        const { error } = await supabase
-          .from("settings")
-          .update({ value: congregationName })
-          .eq("key", "congregation_name");
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("settings")
-          .insert({ key: "congregation_name", value: congregationName, type: "string" });
-        if (error) throw error;
-      }
+      // Save other settings here if needed
+      toast.success("Configurações salvas com sucesso!");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
-      toast.success("Configurações salvas com sucesso!");
     },
     onError: (error) => {
       toast.error("Erro ao salvar configurações");
@@ -106,8 +102,23 @@ export default function ConfiguracoesPage() {
         </div>
       </div>
 
-      {/* Admin Only */}
-      {isAdmin && (
+      {/* Display Congregation Name (Read-only) */}
+      {congregationName && (
+        <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <Shield className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-foreground">Congregação</h2>
+              <p className="text-sm text-muted-foreground">{congregationName}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Super Admin Only */}
+      {isSuperAdmin && (
         <div className="bg-card rounded-xl border border-warning/30 shadow-card overflow-hidden">
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-warning/5">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
@@ -115,28 +126,10 @@ export default function ConfiguracoesPage() {
           </div>
           <div>
             <h2 className="font-semibold text-foreground">Área Administrativa</h2>
-            <p className="text-sm text-muted-foreground">Apenas administradores</p>
+            <p className="text-sm text-muted-foreground">Apenas super administradores</p>
           </div>
         </div>
         <div className="p-5 space-y-6">
-          {/* Congregation Settings */}
-          <div className="space-y-4 pb-6 border-b border-border">
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold text-foreground">Congregação</h3>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="congregationName">Nome da Congregação</Label>
-              <Input
-                id="congregationName"
-                type="text"
-                placeholder="Ex: Congregação Norte - Boituva"
-                value={congregationName}
-                onChange={(e) => setCongregationName(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Será exibido no subtítulo da página inicial</p>
-            </div>
-          </div>
 
           {/* Transport Settings */}
           <div className="space-y-4 pb-6 border-b border-border">

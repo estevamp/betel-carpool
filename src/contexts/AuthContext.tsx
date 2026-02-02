@@ -22,6 +22,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   isLoading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
@@ -81,15 +83,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(profileData as Profile | null);
       }
 
-      // Check if user is admin
+      // Check if user is admin or super admin
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
+        .in("role", ["admin", "super_admin"]);
 
-      setIsAdmin(!!roleData);
+      const roles = roleData || [];
+      setIsAdmin(roles.some(r => r.role === "admin" || r.role === "super_admin"));
+      setIsSuperAdmin(roles.some(r => r.role === "super_admin"));
     } catch (error) {
       console.error("Error in fetchProfile:", error);
     }
@@ -114,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setProfile(null);
           setIsAdmin(false);
+          setIsSuperAdmin(false);
         }
 
         setIsLoading(false);
@@ -195,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setProfile(null);
     setIsAdmin(false);
+    setIsSuperAdmin(false);
   };
 
   return (
@@ -204,6 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         profile,
         isAdmin,
+        isSuperAdmin,
         isLoading,
         signUp,
         signIn,
