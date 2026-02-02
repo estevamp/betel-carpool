@@ -49,39 +49,17 @@ export const useCongregationAdmins = (congregationId?: string) => {
   // Adicionar administrador
   const addAdmin = useMutation({
     mutationFn: async ({ profileId, congregationId }: { profileId: string; congregationId: string }) => {
-      // Primeiro, adicionar a role de admin se não existir
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
+      // Usar a Edge Function que tem a lógica correta e permissões adequadas
+      const { data, error } = await supabase.functions.invoke('assign-congregation-admin', {
+        body: {
+          profile_id: profileId,
+          congregation_id: congregationId,
+        },
+      });
 
-      // Buscar o user_id do profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('id', profileId)
-        .single();
-
-      if (profileError) throw profileError;
-      if (!profile?.user_id) throw new Error('Perfil não tem usuário associado');
-
-      // Adicionar role de admin
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({ user_id: profile.user_id, role: 'admin' })
-        .select();
-
-      // Ignorar erro se já existir
-      if (roleError && !roleError.message.includes('duplicate')) {
-        throw roleError;
-      }
-
-      // Adicionar como administrador da congregação
-      const { data, error } = await supabase
-        .from('congregation_administrators')
-        .insert({ profile_id: profileId, congregation_id: congregationId })
-        .select()
-        .single();
-      
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
       return data;
     },
     onSuccess: () => {

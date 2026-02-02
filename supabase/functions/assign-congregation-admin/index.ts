@@ -36,14 +36,23 @@ serve(async (req) => {
   // Get the user_id from the profile_id
   const { data: profileData, error: profileError } = await supabaseClient
     .from("profiles")
-    .select("user_id")
+    .select("user_id, full_name, email")
     .eq("id", profile_id)
     .single();
 
-  if (profileError || !profileData?.user_id) {
-    return new Response(JSON.stringify({ error: "Profile not found or has no user_id" }), {
+  if (profileError) {
+    return new Response(JSON.stringify({ error: "Perfil não encontrado" }), {
       headers: { "Content-Type": "application/json" },
       status: 404,
+    });
+  }
+
+  if (!profileData?.user_id) {
+    return new Response(JSON.stringify({
+      error: `O usuário ${profileData.full_name || profileData.email || ''} ainda não aceitou o convite. Apenas usuários que já aceitaram o convite podem ser designados como administradores.`
+    }), {
+      headers: { "Content-Type": "application/json" },
+      status: 400,
     });
   }
 
