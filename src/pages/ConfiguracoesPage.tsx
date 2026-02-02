@@ -1,4 +1,5 @@
-import { Settings, Wallet, Bell, Shield } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Settings, Wallet, Bell, Shield, Database, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function ConfiguracoesPage() {
   const queryClient = useQueryClient();
-  const { isSuperAdmin } = useAuth();
+  const { isAdmin } = useAuth();
+  const [congregationName, setCongregationName] = useState("");
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["settings"],
@@ -21,13 +23,39 @@ export default function ConfiguracoesPage() {
     },
   });
 
+  useEffect(() => {
+    if (settings) {
+      const congregation = settings.find((s) => s.key === "congregation_name");
+      if (congregation) {
+        setCongregationName(congregation.value);
+      }
+    }
+  }, [settings]);
+
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Save other settings here if needed
-      toast.success("Configurações salvas com sucesso!");
+      const { data: existing } = await supabase
+        .from("settings")
+        .select("id")
+        .eq("key", "congregation_name")
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from("settings")
+          .update({ value: congregationName })
+          .eq("key", "congregation_name");
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("settings")
+          .insert({ key: "congregation_name", value: congregationName, type: "string" });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
+      toast.success("Configurações salvas com sucesso!");
     },
     onError: (error) => {
       toast.error("Erro ao salvar configurações");
@@ -78,60 +106,61 @@ export default function ConfiguracoesPage() {
         </div>
       </div>
 
-      {/* Super Admin Only */}
-      {isSuperAdmin && (
+      {/* Admin Only */}
+      {isAdmin && (
         <div className="bg-card rounded-xl border border-warning/30 shadow-card overflow-hidden">
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-warning/5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
-            <Shield className="h-5 w-5 text-warning" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-foreground">Área Administrativa</h2>
-            <p className="text-sm text-muted-foreground">Apenas super administradores</p>
-          </div>
-        </div>
-        <div className="p-5 space-y-6">
-
-          {/* Transport Settings */}
-          <div className="space-y-4 pb-6 border-b border-border">
-            <div className="flex items-center gap-2">
-              <Wallet className="h-4 w-4 text-success" />
-              <h3 className="font-semibold text-foreground">Ajuda de Transporte</h3>
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-warning/5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
+              <Shield className="h-5 w-5 text-warning" />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="tripValue">Valor por viagem (Ida e Volta)</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
-                <Input id="tripValue" type="number" defaultValue="15.00" step="0.50" className="pl-10" />
+            <div>
+              <h2 className="font-semibold text-foreground">Área Administrativa</h2>
+              <p className="text-sm text-muted-foreground">Apenas administradores</p>
+            </div>
+          </div>
+          <div className="p-5 space-y-6">
+            {/* Transport Settings */}
+            <div className="space-y-4 pb-6 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-success" />
+                <h3 className="font-semibold text-foreground">Ajuda de Transporte</h3>
               </div>
-              <p className="text-xs text-muted-foreground">Viagens apenas de ida ou volta custam metade deste valor</p>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <Label>Exibir módulo de ajuda de transporte</Label>
-                <p className="text-sm text-muted-foreground">Mostrar seção financeira para todos os usuários</p>
+              <div className="grid gap-2">
+                <Label htmlFor="tripValue">Valor por viagem (Ida e Volta)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                  <Input id="tripValue" type="number" defaultValue="15.00" step="0.50" className="pl-10" />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Viagens apenas de ida ou volta custam metade deste valor
+                </p>
               </div>
-              <Switch defaultChecked />
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <Label>Exibir módulo de ajuda de transporte</Label>
+                  <p className="text-sm text-muted-foreground">Mostrar seção financeira para todos os usuários</p>
+                </div>
+                <Switch defaultChecked />
+              </div>
             </div>
-          </div>
 
-          {/* System Settings */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Settings className="h-4 w-4 text-warning" />
-              <h3 className="font-semibold text-foreground">Sistema</h3>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="maxPassengers">Máximo de passageiros por viagem</Label>
-              <Input id="maxPassengers" type="number" defaultValue="4" min="1" max="10" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="closingDay">Dia de fechamento mensal</Label>
-              <Input id="closingDay" type="number" defaultValue="31" min="1" max="31" />
-              <p className="text-xs text-muted-foreground">Dia do mês em que o relatório é fechado</p>
+            {/* System Settings */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Settings className="h-4 w-4 text-warning" />
+                <h3 className="font-semibold text-foreground">Sistema</h3>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="maxPassengers">Máximo de passageiros por viagem</Label>
+                <Input id="maxPassengers" type="number" defaultValue="4" min="1" max="10" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="closingDay">Dia de fechamento mensal</Label>
+                <Input id="closingDay" type="number" defaultValue="31" min="1" max="31" />
+                <p className="text-xs text-muted-foreground">Dia do mês em que o relatório é fechado</p>
+              </div>
             </div>
           </div>
-        </div>
         </div>
       )}
 
