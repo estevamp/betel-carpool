@@ -4,17 +4,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
+import { useCongregations } from "@/hooks/useCongregations";
 export default function ConfiguracoesPage() {
   const queryClient = useQueryClient();
   const {
     isAdmin
   } = useAuth();
   const { isSuperAdmin } = useIsSuperAdmin();
+  const { congregations } = useCongregations();
   
   // Se não for super-admin, mostrar mensagem de acesso negado
   if (!isSuperAdmin) {
@@ -30,6 +39,7 @@ export default function ConfiguracoesPage() {
   }
   
   const [congregationName, setCongregationName] = useState("");
+  const [defaultCongregationId, setDefaultCongregationId] = useState("");
   const {
     data: settings,
     isLoading
@@ -50,10 +60,15 @@ export default function ConfiguracoesPage() {
       if (congregation) {
         setCongregationName(congregation.value);
       }
+      const defaultCong = settings.find(s => s.key === "default_congregation_id");
+      if (defaultCong) {
+        setDefaultCongregationId(defaultCong.value);
+      }
     }
   }, [settings]);
   const saveMutation = useMutation({
     mutationFn: async () => {
+      // Save congregation name
       const {
         data: existing
       } = await supabase.from("settings").select("id").eq("key", "congregation_name").maybeSingle();
@@ -70,6 +85,28 @@ export default function ConfiguracoesPage() {
         } = await supabase.from("settings").insert({
           key: "congregation_name",
           value: congregationName,
+          type: "string"
+        });
+        if (error) throw error;
+      }
+
+      // Save default congregation ID
+      const {
+        data: existingDefault
+      } = await supabase.from("settings").select("id").eq("key", "default_congregation_id").maybeSingle();
+      if (existingDefault) {
+        const {
+          error
+        } = await supabase.from("settings").update({
+          value: defaultCongregationId
+        }).eq("key", "default_congregation_id");
+        if (error) throw error;
+      } else if (defaultCongregationId) {
+        const {
+          error
+        } = await supabase.from("settings").insert({
+          key: "default_congregation_id",
+          value: defaultCongregationId,
           type: "string"
         });
         if (error) throw error;
@@ -180,6 +217,24 @@ export default function ConfiguracoesPage() {
                 <Label htmlFor="closingDay">Dia de fechamento mensal</Label>
                 <Input id="closingDay" type="number" defaultValue="31" min="1" max="31" />
                 <p className="text-xs text-muted-foreground">Dia do mês em que o relatório é fechado</p>
+              </div>
+              <div className="grid gap-2 pt-4 border-t border-border">
+                <Label htmlFor="defaultCongregation">Congregação Padrão para Super-Admin</Label>
+                <Select value={defaultCongregationId} onValueChange={setDefaultCongregationId}>
+                  <SelectTrigger id="defaultCongregation">
+                    <SelectValue placeholder="Selecione uma congregação..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {congregations && congregations.map((cong) => (
+                      <SelectItem key={cong.id} value={cong.id}>
+                        {cong.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Esta congregação será selecionada automaticamente ao fazer login
+                </p>
               </div>
             </div>
           </div>
