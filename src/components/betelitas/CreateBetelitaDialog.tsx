@@ -22,7 +22,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useInviteUser } from "@/hooks/useInviteUser";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
-import { useBetelitas } from "@/hooks/useBetelitas";
 
 const formSchema = z.object({
   fullName: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
@@ -30,9 +29,6 @@ const formSchema = z.object({
   sex: z.enum(["Homem", "Mulher"]).optional(),
   isDriver: z.boolean().default(false),
   isExempt: z.boolean().default(false),
-  pixKey: z.string().optional(),
-  isMarried: z.boolean().default(false),
-  spouseId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -49,7 +45,6 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
   const queryClient = useQueryClient();
   const { sendInvite, isInviting } = useInviteUser();
   const { selectedCongregationId } = useSelectedCongregation();
-  const { data: allBetelitas = [] } = useBetelitas();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -58,9 +53,6 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
       email: "",
       isDriver: false,
       isExempt: false,
-      pixKey: "",
-      isMarried: false,
-      spouseId: "",
     },
   });
 
@@ -78,9 +70,6 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
         sex: data.sex || null,
         is_driver: data.isDriver,
         is_exempt: data.isExempt,
-        pix_key: data.pixKey || null,
-        is_married: data.isMarried,
-        spouse_id: data.isMarried && data.spouseId ? data.spouseId : null,
         congregation_id: selectedCongregationId,
       });
 
@@ -265,75 +254,6 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="pixKey"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs">Chave PIX</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Chave PIX (opcional)" {...field} className="text-sm h-8" />
-                  </FormControl>
-                  <FormMessage className="text-xs" />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex items-center justify-between py-1">
-              <FormField
-                control={form.control}
-                name="isMarried"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center gap-3">
-                    <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                    <div className="space-y-0">
-                      <FormLabel className="text-xs">Casado(a)</FormLabel>
-                    </div>
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {form.watch("isMarried") && (
-              <FormField
-                control={form.control}
-                name="spouseId"
-                render={({ field }) => {
-                  const availableSpouses = allBetelitas.filter((b) => {
-                    const selectedSex = form.watch("sex");
-                    if (!selectedSex) return false;
-                    const oppositeSex = selectedSex === "Homem" ? "Mulher" : "Homem";
-                    if (b.sex !== oppositeSex) return false;
-                    if (b.is_married && b.spouse_id !== field.value) return false;
-                    return true;
-                  });
-
-                  return (
-                    <FormItem>
-                      <FormLabel className="text-xs">Cônjuge</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
-                        <FormControl>
-                          <SelectTrigger className="text-sm h-8">
-                            <SelectValue placeholder="Selecione o cônjuge" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {availableSpouses.map((spouse) => (
-                            <SelectItem key={spouse.id} value={spouse.id}>
-                              {spouse.full_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage className="text-xs" />
-                    </FormItem>
-                  );
-                }}
-              />
-            )}
 
             <DialogFooter className="flex-col sm:flex-row gap-1 pt-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting} size="sm">
