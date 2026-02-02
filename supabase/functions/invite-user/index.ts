@@ -142,25 +142,49 @@ serve(async (req: Request): Promise<Response> => {
       inviteData = newInviteData;
     }
 
-    // Create or update profile for the invited user
-    const { error: profileError } = await adminClient.from("profiles").upsert(
-      {
-        user_id: inviteData.user.id,
-        full_name: fullName,
-        email: email,
-        sex: sex || null,
-        is_driver: isDriver || false,
-        is_exempt: isExempt || false,
-        congregation_id: congregationId || null,
-      },
-      {
-        onConflict: "user_id",
-      },
-    );
+    // Create or update profile for the invited user WITHOUT user_id
+    // The user_id will be linked when the user accepts the invite and logs in
+    // First, check if profile already exists by email
+    const { data: existingProfile } = await adminClient
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
 
-    if (profileError) {
-      console.error("Profile creation error:", profileError);
-      // Don't fail completely - user was invited, profile can be created on first login
+    if (existingProfile) {
+      // Update existing profile
+      const { error: profileError } = await adminClient
+        .from("profiles")
+        .update({
+          full_name: fullName,
+          sex: sex || null,
+          is_driver: isDriver || false,
+          is_exempt: isExempt || false,
+          congregation_id: congregationId || null,
+        })
+        .eq("id", existingProfile.id);
+
+      if (profileError) {
+        console.error("Profile update error:", profileError);
+      }
+    } else {
+      // Create new profile without user_id (will be linked on first login)
+      const { error: profileError } = await adminClient
+        .from("profiles")
+        .insert({
+          full_name: fullName,
+          email: email,
+          sex: sex || null,
+          is_driver: isDriver || false,
+          is_exempt: isExempt || false,
+          congregation_id: congregationId || null,
+          user_id: null, // Explicitly set to null - will be linked on first login
+        });
+
+      if (profileError) {
+        console.error("Profile creation error:", profileError);
+        // Don't fail completely - user was invited, profile can be created on first login
+      }
     }
 
     return new Response(

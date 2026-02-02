@@ -24,7 +24,6 @@ interface AuthContextType {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   isLoading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -53,31 +52,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // If profile doesn't exist, create it (for OAuth users)
+      // If profile doesn't exist, try to find and link existing profile by email
       if (!profileData) {
         const { data: userData } = await supabase.auth.getUser();
         if (userData.user) {
-          const fullName = userData.user.user_metadata?.full_name ||
-                          userData.user.user_metadata?.name ||
-                          userData.user.email?.split('@')[0] ||
-                          'Usuário';
+          const userEmail = userData.user.email;
           
-          const { data: newProfile, error: createError } = await supabase
+          // Try to find existing profile with this email but no user_id (invited betelita)
+          const { data: existingProfile, error: existingError } = await supabase
             .from("profiles")
-            .insert({
-              user_id: userId,
-              full_name: fullName,
-              email: userData.user.email,
-            })
-            .select()
-            .single();
+            .select("*")
+            .eq("email", userEmail)
+            .is("user_id", null)
+            .maybeSingle();
 
-          if (createError) {
-            console.error("Error creating profile:", createError);
-            return;
+          if (existingError) {
+            console.error("Error finding existing profile:", existingError);
           }
 
-          setProfile(newProfile as Profile);
+          if (existingProfile) {
+            // Link existing profile to this user
+            const { data: updatedProfile, error: updateError } = await supabase
+              .from("profiles")
+              .update({ user_id: userId })
+              .eq("id", existingProfile.id)
+              .select()
+              .single();
+
+            if (updateError) {
+              console.error("Error linking profile to user:", updateError);
+              return;
+            }
+
+            setProfile(updatedProfile as Profile);
+          } else {
+            // No existing profile found, create new one
+            const fullName = userData.user.user_metadata?.full_name ||
+                            userData.user.user_metadata?.name ||
+                            userData.user.email?.split('@')[0] ||
+                            'Usuário';
+            
+            const { data: newProfile, error: createError } = await supabase
+              .from("profiles")
+              .insert({
+                user_id: userId,
+                full_name: fullName,
+                email: userData.user.email,
+                sex: userData.user.user_metadata?.sex || null,
+                is_driver: userData.user.user_metadata?.is_driver || false,
+                is_exempt: userData.user.user_metadata?.is_exempt || false,
+                congregation_id: userData.user.user_metadata?.congregation_id || null,
+              })
+              .select()
+              .single();
+
+            if (createError) {
+              console.error("Error creating profile:", createError);
+              return;
+            }
+
+            setProfile(newProfile as Profile);
+          }
         }
       } else {
         setProfile(profileData as Profile | null);
@@ -141,45 +176,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    try {
-      const redirectUrl = window.location.origin;
-      
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            full_name: fullName,
-          },
-        },
-      });
-
-      if (error) {
-        return { error };
-      }
-
-      // Create profile for the new user
-      if (data.user) {
-        const { error: profileError } = await supabase.from("profiles").insert({
-          user_id: data.user.id,
-          full_name: fullName,
-          email: email,
-        });
-
-        if (profileError) {
-          console.error("Error creating profile:", profileError);
-          return { error: profileError };
-        }
-      }
-
-      return { error: null };
-    } catch (error) {
-      return { error: error as Error };
-    }
-  };
-
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -211,7 +207,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin,
         isSuperAdmin,
         isLoading,
-        signUp,
         signIn,
         signOut,
         refreshProfile,
