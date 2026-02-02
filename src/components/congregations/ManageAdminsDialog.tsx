@@ -18,7 +18,8 @@ interface ManageAdminsDialogProps {
 export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageAdminsDialogProps) => {
   const [selectedProfileId, setSelectedProfileId] = useState<string>('');
   const { admins, isLoading, addAdmin, removeAdmin } = useCongregationAdmins(congregation?.id);
-  const { data: betelitas } = useBetelitas();
+  // Buscar apenas betelitas da congregação selecionada
+  const { data: betelitas } = useBetelitas({ congregationId: congregation?.id });
 
   const handleAddAdmin = async () => {
     if (!selectedProfileId || !congregation) return;
@@ -38,7 +39,7 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
 
   // Filtrar betelitas que já não são administradores desta congregação
   const availableBetelitas = betelitas?.filter(
-    (b) => !admins?.some((a) => a.profile_id === b.id)
+    (b) => !admins?.some((a) => a.profile_id === b.id) && b.congregation_id === congregation?.id
   );
 
   return (
