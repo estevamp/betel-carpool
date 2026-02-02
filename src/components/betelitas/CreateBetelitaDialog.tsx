@@ -13,23 +13,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -76,7 +62,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
     try {
       // Create a placeholder user_id (this betelita won't be able to login until invited)
       const placeholderUserId = crypto.randomUUID();
-      
+
       const { error } = await supabase.from("profiles").insert({
         user_id: placeholderUserId,
         full_name: data.fullName,
@@ -113,7 +99,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
   const handleSendInvite = async (data: FormData) => {
     setSubmitAction("invite");
     setIsSubmitting(true);
-    
+
     const success = await sendInvite({
       email: data.email,
       fullName: data.fullName,
@@ -127,7 +113,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
       form.reset();
       setOpen(false);
     }
-    
+
     setIsSubmitting(false);
     setSubmitAction(null);
   };
@@ -146,10 +132,10 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
       // Generate the invitation link using Supabase's magic link format
       const baseUrl = window.location.origin;
       const inviteUrl = `${baseUrl}/auth?email=${encodeURIComponent(data.email)}&type=invite`;
-      
+
       // Copy to clipboard
       await navigator.clipboard.writeText(inviteUrl);
-      
+
       toast({
         title: "Link copiado!",
         description: "O link de convite foi copiado para a área de transferência.",
@@ -173,15 +159,13 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
             Novo Betelita
           </DialogTitle>
-          <DialogDescription>
-            Adicione um novo membro à lista ou envie um convite por email.
-          </DialogDescription>
+          <DialogDescription>Adicione um novo membro à lista ou envie um convite por email.</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -209,9 +193,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                   <FormControl>
                     <Input type="email" placeholder="joao@email.com" {...field} className="text-sm h-8" />
                   </FormControl>
-                  <FormDescription className="text-xs">
-                    Obrigatório apenas para enviar convite
-                  </FormDescription>
+                  <FormDescription className="text-xs">Obrigatório apenas para enviar convite</FormDescription>
                   <FormMessage className="text-xs" />
                 </FormItem>
               )}
@@ -247,15 +229,10 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-2">
                     <div className="space-y-0">
                       <FormLabel className="text-xs">Motorista</FormLabel>
-                      <FormDescription className="text-xs">
-                        Pode criar viagens
-                      </FormDescription>
+                      <FormDescription className="text-xs">Pode criar viagens</FormDescription>
                     </div>
                     <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                   </FormItem>
                 )}
@@ -268,15 +245,10 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-2">
                     <div className="space-y-0">
                       <FormLabel className="text-xs">Isento</FormLabel>
-                      <FormDescription className="text-xs">
-                        Não paga transporte
-                      </FormDescription>
+                      <FormDescription className="text-xs">Não paga transporte</FormDescription>
                     </div>
                     <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                   </FormItem>
                 )}
@@ -284,13 +256,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
             </div>
 
             <DialogFooter className="flex-col sm:flex-row gap-1 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-                disabled={isSubmitting}
-                size="sm"
-              >
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting} size="sm">
                 Cancelar
               </Button>
               <Button
