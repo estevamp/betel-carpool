@@ -51,7 +51,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setProfile(profileData as Profile | null);
+      // If profile doesn't exist, create it (for OAuth users)
+      if (!profileData) {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData.user) {
+          const fullName = userData.user.user_metadata?.full_name ||
+                          userData.user.user_metadata?.name ||
+                          userData.user.email?.split('@')[0] ||
+                          'Usuário';
+          
+          const { data: newProfile, error: createError } = await supabase
+            .from("profiles")
+            .insert({
+              user_id: userId,
+              full_name: fullName,
+              email: userData.user.email,
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error("Error creating profile:", createError);
+            return;
+          }
+
+          setProfile(newProfile as Profile);
+        }
+      } else {
+        setProfile(profileData as Profile | null);
+      }
 
       // Check if user is admin
       const { data: roleData } = await supabase

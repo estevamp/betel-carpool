@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Car, Mail, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,25 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (user && !authLoading) {
+      const from = (location.state as any)?.from?.pathname || "/";
+      navigate(from, { replace: true });
+    }
+  }, [user, authLoading, navigate, location]);
+
+  // Reset loading state when auth loading completes
+  useEffect(() => {
+    if (!authLoading && isLoading) {
+      setIsLoading(false);
+    }
+  }, [authLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
