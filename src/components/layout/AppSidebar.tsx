@@ -50,12 +50,14 @@ const secondaryNavItems = [{
   icon: HelpCircle,
   label: "Perguntas Frequentes",
   path: "/faq",
-  adminOnly: false
+  adminOnly: false,
+  superAdminOnly: false
 }, {
   icon: Settings,
   label: "Configurações",
   path: "/configuracoes",
-  adminOnly: false
+  adminOnly: false,
+  superAdminOnly: true
 }];
 interface AppSidebarProps {
   mobile?: boolean;
@@ -123,7 +125,9 @@ export function AppSidebar({
             Suporte
           </p>
           <div className="space-y-1">
-            {secondaryNavItems.map(item => <NavItem key={item.path} item={item} />)}
+            {secondaryNavItems
+              .filter(item => !item.superAdminOnly || isSuperAdmin)
+              .map(item => <NavItem key={item.path} item={item} />)}
           </div>
         </div>
       </ScrollArea>

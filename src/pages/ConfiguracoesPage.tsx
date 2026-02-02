@@ -8,11 +8,27 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
 export default function ConfiguracoesPage() {
   const queryClient = useQueryClient();
   const {
     isAdmin
   } = useAuth();
+  const { isSuperAdmin } = useIsSuperAdmin();
+  
+  // Se não for super-admin, mostrar mensagem de acesso negado
+  if (!isSuperAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <Shield className="h-16 w-16 text-muted-foreground" />
+        <h2 className="text-2xl font-bold">Acesso Restrito</h2>
+        <p className="text-muted-foreground text-center max-w-md">
+          Esta página está temporariamente disponível apenas para super-administradores.
+        </p>
+      </div>
+    );
+  }
+  
   const [congregationName, setCongregationName] = useState("");
   const {
     data: settings,
