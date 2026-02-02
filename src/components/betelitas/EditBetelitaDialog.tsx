@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail, Copy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -40,8 +40,6 @@ export function EditBetelitaDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { sendInvite, isInviting } = useInviteUser();
-
-  const [formData, setFormData] = useState({
     full_name: "",
     email: "",
     sex: "" as "Homem" | "Mulher" | "",
@@ -158,6 +156,38 @@ export function EditBetelitaDialog({
 
     if (success) {
       onOpenChange(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!formData.email) {
+      toast({
+        title: "Email obrigatório",
+        description: "Para gerar o link de convite, é necessário informar o email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Generate the invitation link using Supabase's magic link format
+      const baseUrl = window.location.origin;
+      const inviteUrl = `${baseUrl}/auth?email=${encodeURIComponent(formData.email)}&type=invite`;
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(inviteUrl);
+      
+      toast({
+        title: "Link copiado!",
+        description: "O link de convite foi copiado para a área de transferência.",
+      });
+    } catch (error) {
+      console.error("Error copying link:", error);
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar o link. Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -308,6 +338,17 @@ export function EditBetelitaDialog({
                 <Mail className="h-4 w-4" />
               )}
               Enviar Convite
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={updateMutation.isPending || isInviting}
+              onClick={handleCopyLink}
+              className="gap-2"
+              title="Copiar link do convite"
+            >
+              <Copy className="h-4 w-4" />
+              Copiar link
             </Button>
           </DialogFooter>
         </form>

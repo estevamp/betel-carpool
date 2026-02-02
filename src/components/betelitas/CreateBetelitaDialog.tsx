@@ -164,6 +164,10 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
     }
   };
 
+  const handleCopyLinkClick = () => {
+    form.handleSubmit(handleCopyLink)();
+  };
+
   const email = form.watch("email");
 
   return (
@@ -302,32 +306,30 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                 )}
                 Salvar
               </Button>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  disabled={isSubmitting || !email}
-                  onClick={form.handleSubmit(handleSendInvite)}
-                  className="gap-2"
-                >
-                  {(isSubmitting && submitAction === "invite") || isInviting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Mail className="h-4 w-4" />
-                  )}
-                  Enviar Convite
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!email}
-                  onClick={form.handleSubmit(handleCopyLink)}
-                  className="gap-2"
-                  title="Copiar link do convite"
-                >
-                  <Copy className="h-4 w-4" />
-                  Copiar link
-                </Button>
-              </div>
+              <Button
+                type="button"
+                disabled={isSubmitting || !email}
+                onClick={form.handleSubmit(handleSendInvite)}
+                className="gap-2"
+              >
+                {(isSubmitting && submitAction === "invite") || isInviting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Mail className="h-4 w-4" />
+                )}
+                Enviar Convite
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={false}
+                onClick={handleCopyLinkClick}
+                className="gap-2"
+                title="Copiar link do convite"
+              >
+                <Copy className="h-4 w-4" />
+                Copiar link
+              </Button>
             </DialogFooter>
           </form>
         </Form>
