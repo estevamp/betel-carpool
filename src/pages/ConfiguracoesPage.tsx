@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { Settings, Wallet, Bell, Shield, Database } from "lucide-react";
+import { Settings, Wallet, Bell, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function ConfiguracoesPage() {
   const queryClient = useQueryClient();
-  const { isSuperAdmin, profile } = useAuth();
-  const [congregationName, setCongregationName] = useState("");
+  const { isSuperAdmin } = useAuth();
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["settings"],
@@ -22,28 +20,6 @@ export default function ConfiguracoesPage() {
       return data;
     },
   });
-
-  // Fetch congregation name from congregations table
-  const { data: congregation } = useQuery({
-    queryKey: ["congregation", profile?.congregation_id],
-    queryFn: async () => {
-      if (!profile?.congregation_id) return null;
-      const { data, error } = await supabase
-        .from("congregations")
-        .select("name")
-        .eq("id", profile.congregation_id)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!profile?.congregation_id,
-  });
-
-  useEffect(() => {
-    if (congregation?.name) {
-      setCongregationName(congregation.name);
-    }
-  }, [congregation]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -101,21 +77,6 @@ export default function ConfiguracoesPage() {
           </div>
         </div>
       </div>
-
-      {/* Display Congregation Name (Read-only) */}
-      {congregationName && (
-        <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <Shield className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-foreground">Congregação</h2>
-              <p className="text-sm text-muted-foreground">{congregationName}</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Super Admin Only */}
       {isSuperAdmin && (
