@@ -40,6 +40,8 @@ export function EditBetelitaDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { sendInvite, isInviting } = useInviteUser();
+
+  const [formData, setFormData] = useState({
     full_name: "",
     email: "",
     sex: "" as "Homem" | "Mulher" | "",
