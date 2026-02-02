@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Mail, Save, UserPlus } from "lucide-react";
+import { Loader2, Mail, Save, UserPlus, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -130,6 +130,38 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
     
     setIsSubmitting(false);
     setSubmitAction(null);
+  };
+
+  const handleCopyLink = async (data: FormData) => {
+    if (!data.email) {
+      toast({
+        title: "Email obrigatório",
+        description: "Para gerar o link de convite, é necessário informar o email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Generate the invitation link using Supabase's magic link format
+      const baseUrl = window.location.origin;
+      const inviteUrl = `${baseUrl}/auth?email=${encodeURIComponent(data.email)}&type=invite`;
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(inviteUrl);
+      
+      toast({
+        title: "Link copiado!",
+        description: "O link de convite foi copiado para a área de transferência.",
+      });
+    } catch (error) {
+      console.error("Error copying link:", error);
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar o link. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const email = form.watch("email");
@@ -270,19 +302,32 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                 )}
                 Salvar
               </Button>
-              <Button
-                type="button"
-                disabled={isSubmitting || !email}
-                onClick={form.handleSubmit(handleSendInvite)}
-                className="gap-2"
-              >
-                {(isSubmitting && submitAction === "invite") || isInviting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Mail className="h-4 w-4" />
-                )}
-                Enviar Convite
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  disabled={isSubmitting || !email}
+                  onClick={form.handleSubmit(handleSendInvite)}
+                  className="gap-2"
+                >
+                  {(isSubmitting && submitAction === "invite") || isInviting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="h-4 w-4" />
+                  )}
+                  Enviar Convite
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!email}
+                  onClick={form.handleSubmit(handleCopyLink)}
+                  className="gap-2"
+                  title="Copiar link do convite"
+                >
+                  <Copy className="h-4 w-4" />
+                  Copiar link
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>
