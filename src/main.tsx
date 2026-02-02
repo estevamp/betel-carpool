@@ -1,10 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { CongregationProvider } from "@/contexts/CongregationContext";
 
 createRoot(document.getElementById("root")!).render(
-  <CongregationProvider>
-    <App />
-  </CongregationProvider>
+  <App />
 );
