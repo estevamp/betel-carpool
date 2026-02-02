@@ -23,7 +23,9 @@ export function useBetelitas(options?: { congregationId?: string }) {
   const { isSuperAdmin } = useIsSuperAdmin();
   const { selectedCongregationId } = useSelectedCongregation();
 
-  const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : options?.congregationId;
+  // Prioritize explicitly passed congregationId over context selectedCongregationId
+  // This allows administrative pages to fetch betelitas from specific congregations
+  const effectiveCongregationId = options?.congregationId ?? (isSuperAdmin ? selectedCongregationId : undefined);
 
   return useQuery({
     queryKey: ["betelitas", effectiveCongregationId],

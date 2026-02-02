@@ -38,8 +38,9 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
   };
 
   // Filtrar betelitas que já não são administradores desta congregação
+  // O hook useBetelitas já filtra por congregation_id, então só precisamos excluir os que já são admins
   const availableBetelitas = betelitas?.filter(
-    (b) => !admins?.some((a) => a.profile_id === b.id) && b.congregation_id === congregation?.id
+    (b) => !admins?.some((a) => a.profile_id === b.id)
   );
 
   return (
