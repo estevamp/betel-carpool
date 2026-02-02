@@ -1,18 +1,7 @@
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import {
-  Car,
-  Clock,
-  Users,
-  MapPin,
-  Calendar,
-  MoreVertical,
-  AlertTriangle,
-  Building2,
-  UserPlus,
-  X,
-} from "lucide-react";
+import { Car, Clock, Users, MapPin, Calendar, MoreVertical, AlertTriangle, Building2, UserPlus, X } from "lucide-react";
 
 // Special UUID for Visitante profile
 const VISITANTE_PROFILE_ID = "00000000-0000-0000-0000-000000000001";
@@ -33,13 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
@@ -92,33 +75,29 @@ export function TripCard({
   const [selectedTripType, setSelectedTripType] = useState<TripType>("Ida e Volta");
   const [selectedPassengerId, setSelectedPassengerId] = useState<string>("");
   const [selectedReservePassengerId, setSelectedReservePassengerId] = useState<string>("");
-  
+
   const availableSeats = (trip.max_passengers ?? 4) - trip.passengers.length;
   const isFull = availableSeats <= 0;
   const isDriver = trip.driver_id === currentUserId;
-  const isPassenger = trip.passengers.some(p => p.passenger_id === currentUserId);
-  
+  const isPassenger = trip.passengers.some((p) => p.passenger_id === currentUserId);
+
   const departureDate = new Date(trip.departure_at);
   const formattedDate = format(departureDate, "dd/MM/yyyy", { locale: ptBR });
   const formattedTime = format(departureDate, "HH:mm");
   const returnTime = trip.return_at ? format(new Date(trip.return_at), "HH:mm") : null;
 
   // Filter out profiles that are already passengers or the driver
-  const existingPassengerIds = trip.passengers.map(p => p.passenger_id);
-  const availableProfiles = profiles?.filter(
-    p => p.id !== trip.driver_id && !existingPassengerIds.includes(p.id)
-  ) ?? [];
+  const existingPassengerIds = trip.passengers.map((p) => p.passenger_id);
+  const availableProfiles =
+    profiles?.filter((p) => p.id !== trip.driver_id && !existingPassengerIds.includes(p.id)) ?? [];
 
   // For reserve dialog, include all profiles except the driver and existing passengers
-  const reserveAvailableProfiles = profiles?.filter(
-    p => p.id !== trip.driver_id && !existingPassengerIds.includes(p.id)
-  ) ?? [];
+  const reserveAvailableProfiles =
+    profiles?.filter((p) => p.id !== trip.driver_id && !existingPassengerIds.includes(p.id)) ?? [];
 
   const handleReserve = () => {
     // If "Visitante" is selected, use the special Visitante profile ID
-    const passengerId = selectedReservePassengerId === "visitante"
-      ? VISITANTE_PROFILE_ID
-      : selectedReservePassengerId;
+    const passengerId = selectedReservePassengerId === "visitante" ? VISITANTE_PROFILE_ID : selectedReservePassengerId;
     onReserveSeat({ tripId: trip.id, tripType: selectedTripType, passengerId });
     setReserveDialogOpen(false);
     setSelectedReservePassengerId("");
@@ -138,22 +117,20 @@ export function TripCard({
       variants={itemVariants}
       className={cn(
         "bg-card rounded-xl border shadow-card overflow-hidden transition-all hover:shadow-md",
-        trip.is_urgent && "border-warning/50"
+        trip.is_urgent && "border-warning/50",
       )}
     >
       {/* Status Bar */}
       <div
         className={cn(
           "px-4 py-2 flex items-center justify-between text-sm font-medium",
-          isFull
-            ? "bg-muted text-muted-foreground"
-            : "bg-success/10 text-success"
+          isFull ? "bg-muted text-muted-foreground" : "bg-success/10 text-success",
         )}
       >
         <span>
           {isFull
             ? "COMPLETO"
-            : `HÁ ${availableSeats} VAGA${availableSeats > 1 ? "S" : ""} DISPONÍVEL${availableSeats > 1 ? "IS" : ""}`}
+            : `HÁ ${availableSeats} VAGA${availableSeats > 1 ? "S" : ""} DISPONÍVE${availableSeats > 1 ? "IS" : "L"}`}
         </span>
         <div className="flex items-center gap-2">
           {trip.is_urgent && (
@@ -179,9 +156,7 @@ export function TripCard({
               <Car className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground text-lg">
-                {trip.driver.full_name}
-              </h3>
+              <h3 className="font-semibold text-foreground text-lg">{trip.driver.full_name}</h3>
               <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
@@ -204,13 +179,8 @@ export function TripCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-popover">
-                <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
-                  Editar viagem
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  className="text-destructive"
-                  onClick={() => onDeleteTrip(trip.id)}
-                >
+                <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>Editar viagem</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive" onClick={() => onDeleteTrip(trip.id)}>
                   Cancelar viagem
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -234,7 +204,9 @@ export function TripCard({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Users className="h-4 w-4" />
-              <span>Passageiros ({trip.passengers.length}/{trip.max_passengers ?? 4})</span>
+              <span>
+                Passageiros ({trip.passengers.length}/{trip.max_passengers ?? 4})
+              </span>
             </div>
             {isDriver && !isFull && (
               <Dialog open={addPassengerDialogOpen} onOpenChange={setAddPassengerDialogOpen}>
@@ -247,9 +219,7 @@ export function TripCard({
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Adicionar Passageiro</DialogTitle>
-                    <DialogDescription>
-                      Selecione um passageiro para adicionar à viagem.
-                    </DialogDescription>
+                    <DialogDescription>Selecione um passageiro para adicionar à viagem.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="grid gap-2">
@@ -260,7 +230,9 @@ export function TripCard({
                         </SelectTrigger>
                         <SelectContent className="bg-popover">
                           {availableProfiles.length === 0 ? (
-                            <SelectItem value="none" disabled>Nenhum disponível</SelectItem>
+                            <SelectItem value="none" disabled>
+                              Nenhum disponível
+                            </SelectItem>
                           ) : (
                             availableProfiles.map((profile) => (
                               <SelectItem key={profile.id} value={profile.id}>
@@ -273,22 +245,28 @@ export function TripCard({
                     </div>
                     <div className="grid gap-2">
                       <Label>Tipo de Viagem</Label>
-                      <RadioGroup 
-                        value={selectedTripType} 
+                      <RadioGroup
+                        value={selectedTripType}
                         onValueChange={(v) => setSelectedTripType(v as TripType)}
                         className="flex gap-4"
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="Ida e Volta" id="add-ida-volta" />
-                          <Label htmlFor="add-ida-volta" className="font-normal">Ida e Volta</Label>
+                          <Label htmlFor="add-ida-volta" className="font-normal">
+                            Ida e Volta
+                          </Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="Apenas Ida" id="add-ida" />
-                          <Label htmlFor="add-ida" className="font-normal">Ida</Label>
+                          <Label htmlFor="add-ida" className="font-normal">
+                            Ida
+                          </Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="Apenas Volta" id="add-volta" />
-                          <Label htmlFor="add-volta" className="font-normal">Volta</Label>
+                          <Label htmlFor="add-volta" className="font-normal">
+                            Volta
+                          </Label>
                         </div>
                       </RadioGroup>
                     </div>
@@ -297,10 +275,7 @@ export function TripCard({
                     <Button variant="outline" onClick={() => setAddPassengerDialogOpen(false)}>
                       Cancelar
                     </Button>
-                    <Button 
-                      onClick={handleAddPassenger}
-                      disabled={isReserving || !selectedPassengerId}
-                    >
+                    <Button onClick={handleAddPassenger} disabled={isReserving || !selectedPassengerId}>
                       {isReserving ? "Adicionando..." : "Adicionar"}
                     </Button>
                   </DialogFooter>
@@ -314,14 +289,12 @@ export function TripCard({
                 key={passenger.id}
                 className={cn(
                   "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm",
-                  "bg-muted text-muted-foreground group"
+                  "bg-muted text-muted-foreground group",
                 )}
               >
                 <span className="font-medium">{passenger.profile.full_name}</span>
                 {passenger.trip_type !== "Ida e Volta" && (
-                  <span className="text-xs opacity-70">
-                    ({passenger.trip_type === "Apenas Ida" ? "Ida" : "Volta"})
-                  </span>
+                  <span className="text-xs opacity-70">({passenger.trip_type === "Apenas Ida" ? "Ida" : "Volta"})</span>
                 )}
                 {onRemovePassenger && (
                   <button
@@ -358,7 +331,7 @@ export function TripCard({
         {/* Actions */}
         <div className="mt-4 pt-4 border-t border-border">
           {isPassenger ? (
-            <Button 
+            <Button
               variant="outline"
               className="w-full sm:w-auto"
               onClick={() => onCancelReservation(trip.id)}
@@ -376,9 +349,7 @@ export function TripCard({
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Reservar Vaga</DialogTitle>
-                  <DialogDescription>
-                    Selecione para quem você está reservando e o tipo de viagem.
-                  </DialogDescription>
+                  <DialogDescription>Selecione para quem você está reservando e o tipo de viagem.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="grid gap-2">
@@ -406,25 +377,34 @@ export function TripCard({
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="Ida e Volta" id="reserve-ida-volta" />
-                        <Label htmlFor="reserve-ida-volta" className="font-normal">Ida e Volta</Label>
+                        <Label htmlFor="reserve-ida-volta" className="font-normal">
+                          Ida e Volta
+                        </Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="Apenas Ida" id="reserve-ida" />
-                        <Label htmlFor="reserve-ida" className="font-normal">Apenas Ida</Label>
+                        <Label htmlFor="reserve-ida" className="font-normal">
+                          Apenas Ida
+                        </Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="Apenas Volta" id="reserve-volta" />
-                        <Label htmlFor="reserve-volta" className="font-normal">Apenas Volta</Label>
+                        <Label htmlFor="reserve-volta" className="font-normal">
+                          Apenas Volta
+                        </Label>
                       </div>
                     </RadioGroup>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => {
-                    setReserveDialogOpen(false);
-                    setSelectedReservePassengerId("");
-                    setSelectedTripType("Ida e Volta");
-                  }}>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setReserveDialogOpen(false);
+                      setSelectedReservePassengerId("");
+                      setSelectedTripType("Ida e Volta");
+                    }}
+                  >
                     Cancelar
                   </Button>
                   <Button
