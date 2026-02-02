@@ -13,6 +13,7 @@ interface InviteRequest {
   sex?: "Homem" | "Mulher";
   isDriver?: boolean;
   isExempt?: boolean;
+  congregationId?: string | null;
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -59,7 +60,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // Parse request body
-    const { email, fullName, sex, isDriver, isExempt }: InviteRequest = await req.json();
+    const { email, fullName, sex, isDriver, isExempt, congregationId }: InviteRequest = await req.json();
 
     if (!email || !fullName) {
       throw new Error("Email e nome são obrigatórios");
@@ -94,6 +95,7 @@ serve(async (req: Request): Promise<Response> => {
           sex: sex || null,
           is_driver: isDriver || false,
           is_exempt: isExempt || false,
+          congregation_id: congregationId || null,
         },
         redirectTo: `${req.headers.get("origin")}/`,
       });
@@ -112,6 +114,7 @@ serve(async (req: Request): Promise<Response> => {
           sex: sex || null,
           is_driver: isDriver || false,
           is_exempt: isExempt || false,
+          congregation_id: congregationId || null,
         },
       });
 
@@ -126,6 +129,7 @@ serve(async (req: Request): Promise<Response> => {
           sex: sex || null,
           is_driver: isDriver || false,
           is_exempt: isExempt || false,
+          congregation_id: congregationId || null,
         },
         redirectTo: `${req.headers.get("origin")}/`,
       });
@@ -147,6 +151,7 @@ serve(async (req: Request): Promise<Response> => {
         sex: sex || null,
         is_driver: isDriver || false,
         is_exempt: isExempt || false,
+        congregation_id: congregationId || null,
       },
       {
         onConflict: "user_id",

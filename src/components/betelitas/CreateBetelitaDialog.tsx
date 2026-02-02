@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useInviteUser } from "@/hooks/useInviteUser";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
 
 const formSchema = z.object({
   fullName: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
@@ -57,6 +58,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { sendInvite, isInviting } = useInviteUser();
+  const { selectedCongregationId } = useSelectedCongregation();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -82,6 +84,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
         sex: data.sex || null,
         is_driver: data.isDriver,
         is_exempt: data.isExempt,
+        congregation_id: selectedCongregationId,
       });
 
       if (error) throw error;
@@ -117,6 +120,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
       sex: data.sex,
       isDriver: data.isDriver,
       isExempt: data.isExempt,
+      congregationId: selectedCongregationId,
     });
 
     if (success) {

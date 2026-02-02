@@ -9,6 +9,7 @@ interface InviteUserParams {
   sex?: "Homem" | "Mulher";
   isDriver?: boolean;
   isExempt?: boolean;
+  congregationId?: string | null;
 }
 
 export function useInviteUser() {
@@ -35,6 +36,7 @@ export function useInviteUser() {
           sex: params.sex,
           isDriver: params.isDriver,
           isExempt: params.isExempt,
+          congregationId: params.congregationId,
         },
       });
 
