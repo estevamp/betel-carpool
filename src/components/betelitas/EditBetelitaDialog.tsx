@@ -197,14 +197,14 @@ export function EditBetelitaDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Editar Betelita</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="full_name">Nome completo</Label>
+        <form onSubmit={handleSubmit} className="space-y-2">
+          <div className="space-y-1">
+            <Label htmlFor="full_name" className="text-xs">Nome completo</Label>
             <Input
               id="full_name"
               value={formData.full_name}
@@ -212,11 +212,12 @@ export function EditBetelitaDialog({
                 setFormData({ ...formData, full_name: e.target.value })
               }
               required
+              className="text-sm h-8"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+          <div className="space-y-1">
+            <Label htmlFor="email" className="text-xs">Email</Label>
             <Input
               id="email"
               type="email"
@@ -224,18 +225,19 @@ export function EditBetelitaDialog({
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
+              className="text-sm h-8"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="sex">Sexo</Label>
+          <div className="space-y-1">
+            <Label htmlFor="sex" className="text-xs">Sexo</Label>
             <Select
               value={formData.sex}
               onValueChange={(value: "Homem" | "Mulher") =>
                 setFormData({ ...formData, sex: value })
               }
             >
-              <SelectTrigger>
+              <SelectTrigger className="text-sm h-8">
                 <SelectValue placeholder="Selecione o sexo" />
               </SelectTrigger>
               <SelectContent>
@@ -245,19 +247,20 @@ export function EditBetelitaDialog({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="pix_key">Chave PIX</Label>
+          <div className="space-y-1">
+            <Label htmlFor="pix_key" className="text-xs">Chave PIX</Label>
             <Input
               id="pix_key"
               value={formData.pix_key}
               onChange={(e) =>
                 setFormData({ ...formData, pix_key: e.target.value })
               }
+              className="text-sm h-8"
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <Label htmlFor="is_driver">Motorista</Label>
+          <div className="flex items-center justify-between py-1">
+            <Label htmlFor="is_driver" className="text-xs">Motorista</Label>
             <Switch
               id="is_driver"
               checked={formData.is_driver}
@@ -267,8 +270,8 @@ export function EditBetelitaDialog({
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <Label htmlFor="is_exempt">Isento de pagamento</Label>
+          <div className="flex items-center justify-between py-1">
+            <Label htmlFor="is_exempt" className="text-xs">Isento de pagamento</Label>
             <Switch
               id="is_exempt"
               checked={formData.is_exempt}
@@ -278,8 +281,8 @@ export function EditBetelitaDialog({
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <Label htmlFor="is_married">Casado(a)</Label>
+          <div className="flex items-center justify-between py-1">
+            <Label htmlFor="is_married" className="text-xs">Casado(a)</Label>
             <Switch
               id="is_married"
               checked={formData.is_married}
@@ -294,15 +297,15 @@ export function EditBetelitaDialog({
           </div>
 
           {formData.is_married && (
-            <div className="space-y-2">
-              <Label htmlFor="spouse_id">Cônjuge</Label>
+            <div className="space-y-1">
+              <Label htmlFor="spouse_id" className="text-xs">Cônjuge</Label>
               <Select
                 value={formData.spouse_id}
                 onValueChange={(value) =>
                   setFormData({ ...formData, spouse_id: value })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="text-sm h-8">
                   <SelectValue placeholder="Selecione o cônjuge" />
                 </SelectTrigger>
                 <SelectContent>
@@ -316,28 +319,33 @@ export function EditBetelitaDialog({
             </div>
           )}
 
-          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-1 pt-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={updateMutation.isPending || isInviting}
+              size="sm"
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={updateMutation.isPending || isInviting}>
+            <Button 
+              type="submit" 
+              disabled={updateMutation.isPending || isInviting}
+              size="sm"
+            >
               {updateMutation.isPending ? "Salvando..." : "Salvar"}
             </Button>
             <Button
               type="button"
               disabled={updateMutation.isPending || isInviting || !formData.email}
               onClick={handleSendInvite}
-              className="gap-2"
+              size="sm"
             >
               {isInviting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <Mail className="h-4 w-4" />
+                <Mail className="h-3 w-3" />
               )}
               Enviar Convite
             </Button>
@@ -346,10 +354,10 @@ export function EditBetelitaDialog({
               variant="outline"
               disabled={updateMutation.isPending || isInviting}
               onClick={handleCopyLink}
-              className="gap-2"
+              size="sm"
               title="Copiar link do convite"
             >
-              <Copy className="h-4 w-4" />
+              <Copy className="h-3 w-3" />
               Copiar link
             </Button>
           </DialogFooter>

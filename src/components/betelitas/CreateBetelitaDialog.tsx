@@ -173,7 +173,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[550px]">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
@@ -185,17 +185,17 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
         </DialogHeader>
 
         <Form {...form}>
-          <form className="space-y-4">
+          <form className="space-y-2">
             <FormField
               control={form.control}
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome Completo *</FormLabel>
+                  <FormLabel className="text-xs">Nome Completo *</FormLabel>
                   <FormControl>
-                    <Input placeholder="João da Silva" {...field} />
+                    <Input placeholder="João da Silva" {...field} className="text-sm h-8" />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-xs" />
                 </FormItem>
               )}
             />
@@ -205,14 +205,14 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel className="text-xs">Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="joao@email.com" {...field} />
+                    <Input type="email" placeholder="joao@email.com" {...field} className="text-sm h-8" />
                   </FormControl>
                   <FormDescription className="text-xs">
                     Obrigatório apenas para enviar convite
                   </FormDescription>
-                  <FormMessage />
+                  <FormMessage className="text-xs" />
                 </FormItem>
               )}
             />
@@ -222,10 +222,10 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
               name="sex"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sexo</FormLabel>
+                  <FormLabel className="text-xs">Sexo</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="text-sm h-8">
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
                     </FormControl>
@@ -234,19 +234,19 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                       <SelectItem value="Mulher">Mulher</SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormMessage />
+                  <FormMessage className="text-xs" />
                 </FormItem>
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2">
               <FormField
                 control={form.control}
                 name="isDriver"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-sm">Motorista</FormLabel>
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-2">
+                    <div className="space-y-0">
+                      <FormLabel className="text-xs">Motorista</FormLabel>
                       <FormDescription className="text-xs">
                         Pode criar viagens
                       </FormDescription>
@@ -265,9 +265,9 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                 control={form.control}
                 name="isExempt"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-sm">Isento</FormLabel>
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-2">
+                    <div className="space-y-0">
+                      <FormLabel className="text-xs">Isento</FormLabel>
                       <FormDescription className="text-xs">
                         Não paga transporte
                       </FormDescription>
@@ -283,12 +283,13 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
               />
             </div>
 
-            <DialogFooter className="flex-col sm:flex-row gap-2">
+            <DialogFooter className="flex-col sm:flex-row gap-1 pt-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setOpen(false)}
                 disabled={isSubmitting}
+                size="sm"
               >
                 Cancelar
               </Button>
@@ -297,12 +298,12 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                 variant="secondary"
                 disabled={isSubmitting}
                 onClick={form.handleSubmit(handleSaveOnly)}
-                className="gap-2"
+                size="sm"
               >
                 {isSubmitting && submitAction === "save" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Save className="h-4 w-4" />
+                  <Save className="h-3 w-3" />
                 )}
                 Salvar
               </Button>
@@ -310,12 +311,12 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                 type="button"
                 disabled={isSubmitting || !email}
                 onClick={form.handleSubmit(handleSendInvite)}
-                className="gap-2"
+                size="sm"
               >
                 {(isSubmitting && submitAction === "invite") || isInviting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Mail className="h-4 w-4" />
+                  <Mail className="h-3 w-3" />
                 )}
                 Enviar Convite
               </Button>
@@ -324,10 +325,10 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                 variant="outline"
                 disabled={false}
                 onClick={handleCopyLinkClick}
-                className="gap-2"
+                size="sm"
                 title="Copiar link do convite"
               >
-                <Copy className="h-4 w-4" />
+                <Copy className="h-3 w-3" />
                 Copiar link
               </Button>
             </DialogFooter>
