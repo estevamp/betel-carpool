@@ -84,15 +84,22 @@ export default function AuthPage() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
+      const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
       });
-      if (error) {
+      
+      // If redirected, don't reset loading state - user is being redirected
+      if (result.redirected) {
+        return;
+      }
+      
+      if (result.error) {
         toast({
           variant: "destructive",
           title: "Erro ao entrar com Google",
-          description: error.message,
+          description: result.error.message,
         });
+        setIsLoading(false);
       }
     } catch (error) {
       console.error("Google auth error:", error);
@@ -101,7 +108,6 @@ export default function AuthPage() {
         title: "Erro",
         description: "Ocorreu um erro ao entrar com Google.",
       });
-    } finally {
       setIsLoading(false);
     }
   };
