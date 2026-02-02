@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useCongregations } from '@/hooks/useCongregations';
 import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,17 +14,10 @@ export const CongregationProvider = ({ children }: { children: ReactNode }) => {
   const [selectedCongregationId, setSelectedCongregationId] = useState<string | null>(null);
   const { isSuperAdmin } = useIsSuperAdmin();
   const { congregations, isLoading } = useCongregations();
-  const hasInitialized = useRef(false);
 
   // Auto-select default congregation for super-admin if none is selected
   useEffect(() => {
-    if (hasInitialized.current || isSuperAdmin === undefined || isLoading || !congregations || congregations.length === 0) {
-      return;
-    }
-
-    hasInitialized.current = true;
-
-    if (isSuperAdmin) {
+    if (isSuperAdmin && !isLoading && congregations && congregations.length > 0 && !selectedCongregationId) {
       // Try to load the default congregation from settings
       const loadDefaultCongregation = async () => {
         try {
@@ -49,7 +42,7 @@ export const CongregationProvider = ({ children }: { children: ReactNode }) => {
 
       loadDefaultCongregation();
     }
-  }, [isSuperAdmin, isLoading, congregations]);
+  }, [isSuperAdmin, isLoading, congregations, selectedCongregationId]);
 
   return (
     <CongregationContext.Provider value={{ selectedCongregationId, setSelectedCongregationId }}>
