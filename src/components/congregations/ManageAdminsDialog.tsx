@@ -19,7 +19,7 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
   const [selectedProfileId, setSelectedProfileId] = useState<string>('');
   const { admins, isLoading, addAdmin, removeAdmin } = useCongregationAdmins(congregation?.id);
   // Buscar apenas betelitas da congregação selecionada
-  const { data: betelitas } = useBetelitas({ congregationId: congregation?.id });
+  const { data: betelitas, isLoading: isLoadingBetelitas } = useBetelitas({ congregationId: congregation?.id });
 
   const handleAddAdmin = async () => {
     if (!selectedProfileId || !congregation) return;
@@ -57,21 +57,37 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
           <div className="space-y-2">
             <Label>Adicionar Administrador</Label>
             <div className="flex gap-2">
-              <Select value={selectedProfileId} onValueChange={setSelectedProfileId}>
+              <Select
+                value={selectedProfileId}
+                onValueChange={setSelectedProfileId}
+                disabled={isLoadingBetelitas}
+              >
                 <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Selecione um betelita" />
+                  <SelectValue placeholder={
+                    isLoadingBetelitas
+                      ? "Carregando..."
+                      : availableBetelitas && availableBetelitas.length > 0
+                        ? "Selecione um betelita"
+                        : "Nenhum betelita disponível"
+                  } />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableBetelitas?.map((betelita) => (
-                    <SelectItem key={betelita.id} value={betelita.id}>
-                      {betelita.full_name}
-                    </SelectItem>
-                  ))}
+                  {availableBetelitas && availableBetelitas.length > 0 ? (
+                    availableBetelitas.map((betelita) => (
+                      <SelectItem key={betelita.id} value={betelita.id}>
+                        {betelita.full_name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-2 text-sm text-muted-foreground">
+                      Nenhum betelita disponível nesta congregação
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
               <Button
                 onClick={handleAddAdmin}
-                disabled={!selectedProfileId || addAdmin.isPending}
+                disabled={!selectedProfileId || addAdmin.isPending || isLoadingBetelitas}
               >
                 <UserPlus className="mr-2 h-4 w-4" />
                 Adicionar
