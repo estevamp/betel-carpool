@@ -197,7 +197,7 @@ export function EditBetelitaDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle>Editar Betelita</DialogTitle>
         </DialogHeader>
