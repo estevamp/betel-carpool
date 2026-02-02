@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Car, Filter, Calendar } from "lucide-react";
+import { Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTrips } from "@/hooks/useTrips";
@@ -22,8 +22,6 @@ const containerVariants = {
 
 export default function ViagensPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [showFilters, setShowFilters] = useState(false);
   const { profile } = useAuth();
   const { data: profiles } = useProfiles();
   const {
@@ -49,15 +47,6 @@ export default function ViagensPage() {
     const tripDate = new Date(trip.departure_at);
     if (tripDate < today) {
       return false;
-    }
-
-    // Apply date filter if selected
-    if (selectedDate) {
-      const selected = new Date(selectedDate);
-      selected.setHours(0, 0, 0, 0);
-      if (tripDate.toDateString() !== selected.toDateString()) {
-        return false;
-      }
     }
 
     // Apply search filter
@@ -97,38 +86,6 @@ export default function ViagensPage() {
           />
           <Car className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         </div>
-        <Button 
-          variant="outline" 
-          className="gap-2"
-          onClick={() => {
-            // Simple date picker toggle - you can enhance this with a calendar component
-            const dateStr = selectedDate?.toISOString().split('T')[0];
-            const newDate = prompt("Selecione a data (YYYY-MM-DD):", dateStr || "");
-            if (newDate) {
-              setSelectedDate(new Date(newDate));
-            }
-          }}
-        >
-          <Calendar className="h-4 w-4" />
-          {selectedDate ? selectedDate.toLocaleDateString('pt-BR') : "Selecionar Data"}
-        </Button>
-        <Button 
-          variant={showFilters ? "default" : "outline"} 
-          className="gap-2"
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          <Filter className="h-4 w-4" />
-          Filtros
-        </Button>
-        {selectedDate && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelectedDate(undefined)}
-          >
-            Limpar data
-          </Button>
-        )}
       </div>
 
       {/* Loading State */}
