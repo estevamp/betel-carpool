@@ -16,7 +16,7 @@ export const CongregationSelector = ({ value, onChange }: CongregationSelectorPr
   return (
     <Select value={value || undefined} onValueChange={onChange}>
       <SelectTrigger className="w-[250px]">
-        <SelectValue placeholder="Selecione uma congregação" />
+        <SelectValue />
       </SelectTrigger>
       <SelectContent>
         {congregations?.map((congregation) => (

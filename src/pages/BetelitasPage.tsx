@@ -62,8 +62,26 @@ export default function BetelitasPage() {
         .eq("id", person.id);
 
       if (error) throw error;
+      
+      return person.id;
+    },
+    onMutate: async (person) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["betelitas"] });
+
+      // Snapshot the previous value
+      const previousBetelitas = queryClient.getQueryData(["betelitas"]);
+
+      // Optimistically update to remove the betelita
+      queryClient.setQueryData(["betelitas"], (old: Betelita[] | undefined) => {
+        return old?.filter((b) => b.id !== person.id) ?? [];
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousBetelitas };
     },
     onSuccess: () => {
+      // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ["betelitas"] });
       toast({
         title: "Betelita excluído",
@@ -71,7 +89,11 @@ export default function BetelitasPage() {
       });
       setDeletePerson(null);
     },
-    onError: (error) => {
+    onError: (error, person, context) => {
+      // Rollback to the previous value on error
+      if (context?.previousBetelitas) {
+        queryClient.setQueryData(["betelitas"], context.previousBetelitas);
+      }
       toast({
         title: "Erro ao excluir",
         description: error.message,

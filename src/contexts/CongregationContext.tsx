@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useCongregations } from '@/hooks/useCongregations';
+import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
 
 interface CongregationContextType {
   selectedCongregationId: string | null;
@@ -9,6 +11,15 @@ const CongregationContext = createContext<CongregationContextType | undefined>(u
 
 export const CongregationProvider = ({ children }: { children: ReactNode }) => {
   const [selectedCongregationId, setSelectedCongregationId] = useState<string | null>(null);
+  const { isSuperAdmin } = useIsSuperAdmin();
+  const { congregations, isLoading } = useCongregations();
+
+  // Auto-select first congregation for super-admin if none is selected
+  useEffect(() => {
+    if (isSuperAdmin && !isLoading && congregations && congregations.length > 0 && !selectedCongregationId) {
+      setSelectedCongregationId(congregations[0].id);
+    }
+  }, [isSuperAdmin, isLoading, congregations, selectedCongregationId]);
 
   return (
     <CongregationContext.Provider value={{ selectedCongregationId, setSelectedCongregationId }}>
