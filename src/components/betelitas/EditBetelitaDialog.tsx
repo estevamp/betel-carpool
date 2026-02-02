@@ -1,24 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Mail, Copy } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useInviteUser } from "@/hooks/useInviteUser";
@@ -31,12 +19,7 @@ interface EditBetelitaDialogProps {
   allBetelitas: Betelita[];
 }
 
-export function EditBetelitaDialog({
-  person,
-  open,
-  onOpenChange,
-  allBetelitas,
-}: EditBetelitaDialogProps) {
+export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }: EditBetelitaDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { sendInvite, isInviting } = useInviteUser();
@@ -70,9 +53,9 @@ export function EditBetelitaDialog({
   // Filter available spouses: opposite sex, not married (or current spouse), not self
   const availableSpouses = useMemo(() => {
     if (!person || !formData.sex) return [];
-    
+
     const oppositeSex = formData.sex === "Homem" ? "Mulher" : "Homem";
-    
+
     return allBetelitas.filter((b) => {
       // Exclude self
       if (b.id === person.id) return false;
@@ -111,18 +94,12 @@ export function EditBetelitaDialog({
       // Handle bidirectional sync
       // If there was a previous spouse and it changed, clear the old spouse's link
       if (previousSpouseId && previousSpouseId !== newSpouseId) {
-        await supabase
-          .from("profiles")
-          .update({ spouse_id: null, is_married: false })
-          .eq("id", previousSpouseId);
+        await supabase.from("profiles").update({ spouse_id: null, is_married: false }).eq("id", previousSpouseId);
       }
 
       // If there's a new spouse, update their profile to link back
       if (newSpouseId) {
-        await supabase
-          .from("profiles")
-          .update({ spouse_id: person.id, is_married: true })
-          .eq("id", newSpouseId);
+        await supabase.from("profiles").update({ spouse_id: person.id, is_married: true }).eq("id", newSpouseId);
       }
     },
     onSuccess: () => {
@@ -175,10 +152,10 @@ export function EditBetelitaDialog({
       // Generate the invitation link using Supabase's magic link format
       const baseUrl = window.location.origin;
       const inviteUrl = `${baseUrl}/auth?email=${encodeURIComponent(formData.email)}&type=invite`;
-      
+
       // Copy to clipboard
       await navigator.clipboard.writeText(inviteUrl);
-      
+
       toast({
         title: "Link copiado!",
         description: "O link de convite foi copiado para a área de transferência.",
@@ -197,45 +174,45 @@ export function EditBetelitaDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Editar Betelita</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-2">
           <div className="space-y-1">
-            <Label htmlFor="full_name" className="text-xs">Nome completo</Label>
+            <Label htmlFor="full_name" className="text-xs">
+              Nome completo
+            </Label>
             <Input
               id="full_name"
               value={formData.full_name}
-              onChange={(e) =>
-                setFormData({ ...formData, full_name: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
               required
               className="text-sm h-8"
             />
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="email" className="text-xs">Email</Label>
+            <Label htmlFor="email" className="text-xs">
+              Email
+            </Label>
             <Input
               id="email"
               type="email"
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="text-sm h-8"
             />
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="sex" className="text-xs">Sexo</Label>
+            <Label htmlFor="sex" className="text-xs">
+              Sexo
+            </Label>
             <Select
               value={formData.sex}
-              onValueChange={(value: "Homem" | "Mulher") =>
-                setFormData({ ...formData, sex: value })
-              }
+              onValueChange={(value: "Homem" | "Mulher") => setFormData({ ...formData, sex: value })}
             >
               <SelectTrigger className="text-sm h-8">
                 <SelectValue placeholder="Selecione o sexo" />
@@ -248,41 +225,43 @@ export function EditBetelitaDialog({
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="pix_key" className="text-xs">Chave PIX</Label>
+            <Label htmlFor="pix_key" className="text-xs">
+              Chave PIX
+            </Label>
             <Input
               id="pix_key"
               value={formData.pix_key}
-              onChange={(e) =>
-                setFormData({ ...formData, pix_key: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, pix_key: e.target.value })}
               className="text-sm h-8"
             />
           </div>
 
           <div className="flex items-center justify-between py-1">
-            <Label htmlFor="is_driver" className="text-xs">Motorista</Label>
+            <Label htmlFor="is_driver" className="text-xs">
+              Motorista
+            </Label>
             <Switch
               id="is_driver"
               checked={formData.is_driver}
-              onCheckedChange={(checked) =>
-                setFormData({ ...formData, is_driver: checked })
-              }
+              onCheckedChange={(checked) => setFormData({ ...formData, is_driver: checked })}
             />
           </div>
 
           <div className="flex items-center justify-between py-1">
-            <Label htmlFor="is_exempt" className="text-xs">Isento de pagamento</Label>
+            <Label htmlFor="is_exempt" className="text-xs">
+              Isento de pagamento
+            </Label>
             <Switch
               id="is_exempt"
               checked={formData.is_exempt}
-              onCheckedChange={(checked) =>
-                setFormData({ ...formData, is_exempt: checked })
-              }
+              onCheckedChange={(checked) => setFormData({ ...formData, is_exempt: checked })}
             />
           </div>
 
           <div className="flex items-center justify-between py-1">
-            <Label htmlFor="is_married" className="text-xs">Casado(a)</Label>
+            <Label htmlFor="is_married" className="text-xs">
+              Casado(a)
+            </Label>
             <Switch
               id="is_married"
               checked={formData.is_married}
@@ -298,12 +277,12 @@ export function EditBetelitaDialog({
 
           {formData.is_married && (
             <div className="space-y-1">
-              <Label htmlFor="spouse_id" className="text-xs">Cônjuge</Label>
+              <Label htmlFor="spouse_id" className="text-xs">
+                Cônjuge
+              </Label>
               <Select
                 value={formData.spouse_id}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, spouse_id: value })
-                }
+                onValueChange={(value) => setFormData({ ...formData, spouse_id: value })}
               >
                 <SelectTrigger className="text-sm h-8">
                   <SelectValue placeholder="Selecione o cônjuge" />
@@ -329,11 +308,7 @@ export function EditBetelitaDialog({
             >
               Cancelar
             </Button>
-            <Button 
-              type="submit" 
-              disabled={updateMutation.isPending || isInviting}
-              size="sm"
-            >
+            <Button type="submit" disabled={updateMutation.isPending || isInviting} size="sm">
               {updateMutation.isPending ? "Salvando..." : "Salvar"}
             </Button>
             <Button
@@ -342,11 +317,7 @@ export function EditBetelitaDialog({
               onClick={handleSendInvite}
               size="sm"
             >
-              {isInviting ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Mail className="h-3 w-3" />
-              )}
+              {isInviting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
               Enviar Convite
             </Button>
             <Button
