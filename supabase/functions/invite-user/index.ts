@@ -74,113 +74,70 @@ serve(async (req: Request): Promise<Response> => {
       },
     });
 
-    let inviteData;
-    let isResend = false;
+    // Check if an auth user already exists with this email
+    // If they signed up via Google/Apple before being invited, we should link their profile
+    let existingAuthUserId: string | null = null;
+    
+    // Paginate through auth.users to find existing user
+    let page = 1;
+    const perPage = 1000;
+    
+    while (!existingAuthUserId) {
+      const { data: usersPage, error: listError } = await adminClient.auth.admin.listUsers({
+        page,
+        perPage,
+      });
+      
+      if (listError || !usersPage?.users?.length) {
+        break;
+      }
+      
+      const existingUser = usersPage.users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+      if (existingUser) {
+        existingAuthUserId = existingUser.id;
+        break;
+      }
+      
+      if (usersPage.users.length < perPage) {
+        break;
+      }
+      page++;
+    }
 
-    // Try to invite the user first - if they already exist, Supabase will return an error
-    const { data: newInviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: {
+    // Create or update profile
+    // The profile will be linked to the auth user when they sign in
+    const { data: existingProfile } = await adminClient
+      .from("profiles")
+      .select("id, user_id")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (existingProfile) {
+      // Update existing profile - link to auth user if we found one and profile isn't already linked
+      const updateData: any = {
         full_name: fullName,
         sex: sex || null,
         is_driver: isDriver || false,
         is_exempt: isExempt || false,
         congregation_id: congregationId || null,
-      },
-      redirectTo: `${req.headers.get("origin")}/`,
-    });
-
-    if (inviteError) {
-      // Check if the error is because user already exists
-      const isUserExistsError = inviteError.message?.toLowerCase().includes("already") || 
-                                 inviteError.message?.toLowerCase().includes("exists") ||
-                                 inviteError.code === "email_exists" ||
-                                 inviteError.message?.toLowerCase().includes("já");
+      };
       
-      if (isUserExistsError) {
-        // User already exists - find them and update their metadata
-        isResend = true;
-        
-        // Get all users and find by email (paginated search)
-        let existingAuthUser = null;
-        let page = 1;
-        const perPage = 1000;
-        
-        while (!existingAuthUser) {
-          const { data: usersPage, error: listError } = await adminClient.auth.admin.listUsers({
-            page,
-            perPage,
-          });
-          
-          if (listError || !usersPage?.users?.length) {
-            break;
-          }
-          
-          existingAuthUser = usersPage.users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
-          
-          if (usersPage.users.length < perPage) {
-            break; // No more pages
-          }
-          page++;
-        }
-
-        if (existingAuthUser) {
-          // Update user metadata
-          const { error: updateError } = await adminClient.auth.admin.updateUserById(existingAuthUser.id, {
-            user_metadata: {
-              full_name: fullName,
-              sex: sex || null,
-              is_driver: isDriver || false,
-              is_exempt: isExempt || false,
-              congregation_id: congregationId || null,
-            },
-          });
-
-          if (updateError) {
-            console.error("Error updating user metadata:", updateError);
-          }
-
-          inviteData = { user: existingAuthUser };
-        } else {
-          // Could not find the user - this shouldn't happen, but handle gracefully
-          console.error("User exists error but could not find user:", email);
-          throw new Error(`Usuário com email ${email} já existe mas não foi encontrado para atualização.`);
-        }
-      } else {
-        // Some other error
-        console.error("Invite error:", inviteError);
-        throw new Error(`Erro ao enviar convite: ${inviteError.message}`);
+      // If auth user exists and profile isn't linked, link them now
+      if (existingAuthUserId && !existingProfile.user_id) {
+        updateData.user_id = existingAuthUserId;
       }
-    } else {
-      inviteData = newInviteData;
-    }
 
-    // Create or update profile for the invited user WITHOUT user_id
-    // The user_id will be linked when the user accepts the invite and logs in
-    // First, check if profile already exists by email
-    const { data: existingProfile } = await adminClient
-      .from("profiles")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
-
-    if (existingProfile) {
-      // Update existing profile
       const { error: profileError } = await adminClient
         .from("profiles")
-        .update({
-          full_name: fullName,
-          sex: sex || null,
-          is_driver: isDriver || false,
-          is_exempt: isExempt || false,
-          congregation_id: congregationId || null,
-        })
+        .update(updateData)
         .eq("id", existingProfile.id);
 
       if (profileError) {
         console.error("Profile update error:", profileError);
       }
     } else {
-      // Create new profile without user_id (will be linked on first login)
+      // Create new profile
+      // Link to existing auth user if found, otherwise leave user_id null (will be linked on first login)
       const { error: profileError } = await adminClient
         .from("profiles")
         .insert({
@@ -190,21 +147,31 @@ serve(async (req: Request): Promise<Response> => {
           is_driver: isDriver || false,
           is_exempt: isExempt || false,
           congregation_id: congregationId || null,
-          user_id: null, // Explicitly set to null - will be linked on first login
+          user_id: existingAuthUserId || null,
         });
 
       if (profileError) {
         console.error("Profile creation error:", profileError);
-        // Don't fail completely - user was invited, profile can be created on first login
+        throw new Error(`Erro ao criar perfil: ${profileError.message}`);
       }
     }
+
+    // We no longer use inviteUserByEmail to avoid creating duplicate auth.users entries
+    // Users will sign in via Google, Apple, or other methods
+    // The profile will be linked when they sign in via AuthContext
+    
+    const isUpdate = !!existingProfile;
+    const wasLinked = existingAuthUserId && (!existingProfile?.user_id || existingProfile.user_id !== existingAuthUserId);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: isResend ? `Convite reenviado para ${email}` : `Convite enviado para ${email}`,
-        userId: inviteData.user.id,
-        isResend,
+        message: isUpdate 
+          ? `Perfil de ${email} atualizado com sucesso` 
+          : `Perfil criado para ${email}. O usuário pode entrar com Google ou Apple.`,
+        profileId: existingProfile?.id || null,
+        wasLinked,
+        existingAuthUserId,
       }),
       {
         status: 200,
