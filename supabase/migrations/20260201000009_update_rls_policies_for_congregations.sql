@@ -22,6 +22,8 @@ CREATE POLICY "Profiles are viewable by authenticated users"
         OR congregation_id = public.get_current_congregation_id()
         -- OR users can see profiles without congregation (like Visitante)
         OR congregation_id IS NULL
+        -- OR authenticated users can see profiles that are unlinked but match their email
+        OR (user_id IS NULL AND email = auth.email())
     );
 
 CREATE POLICY "Users can update their own profile"
