@@ -15,11 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { Trip } from "@/hooks/useTrips";
 
@@ -39,13 +35,7 @@ interface EditTripDialogProps {
   isUpdating?: boolean;
 }
 
-export function EditTripDialog({
-  trip,
-  open,
-  onOpenChange,
-  onUpdateTrip,
-  isUpdating,
-}: EditTripDialogProps) {
+export function EditTripDialog({ trip, open, onOpenChange, onUpdateTrip, isUpdating }: EditTripDialogProps) {
   const departureDate = new Date(trip.departure_at);
   const returnDate = trip.return_at ? new Date(trip.return_at) : null;
 
@@ -61,7 +51,7 @@ export function EditTripDialog({
   useEffect(() => {
     const depDate = new Date(trip.departure_at);
     const retDate = trip.return_at ? new Date(trip.return_at) : null;
-    
+
     setDate(depDate);
     setDepartureTime(format(depDate, "HH:mm"));
     setReturnTime(retDate ? format(retDate, "HH:mm") : "");
@@ -102,9 +92,7 @@ export function EditTripDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Editar Viagem</DialogTitle>
-          <DialogDescription>
-            Atualize os detalhes da viagem.
-          </DialogDescription>
+          <DialogDescription>Atualize os detalhes da viagem.</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
@@ -115,22 +103,14 @@ export function EditTripDialog({
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className={cn(
-                    "justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
+                  className={cn("justify-start text-left font-normal", !date && "text-muted-foreground")}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, "dd/MM/yyyy") : "Selecione uma data"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0 bg-popover" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                />
+                <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
               </PopoverContent>
             </Popover>
           </div>
@@ -207,7 +187,7 @@ export function EditTripDialog({
             <Label htmlFor="edit-notes">Observações</Label>
             <Textarea
               id="edit-notes"
-              placeholder="Ex: Saindo do portão principal..."
+              placeholder="Ex: Saida da portaria 2..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
