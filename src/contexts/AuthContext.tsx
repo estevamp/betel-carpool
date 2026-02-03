@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
           
+          console.log(`[DEBUG] Searching for unlinked profile with email: ${userEmail}`);
           // Try to find an existing profile by email that is NOT yet linked to a user
           const { data: unlinkedProfile, error: unlinkedError } = await supabase
             .from("profiles")
@@ -74,6 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (unlinkedError) {
             console.error("Error finding unlinked profile:", unlinkedError);
           }
+
+          console.log(`[DEBUG] Unlinked profile search result: ${JSON.stringify(unlinkedProfile)}`);
 
           if (unlinkedProfile) {
             // Link the unlinked profile to this user
@@ -89,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               return;
             }
             setProfile(updatedProfile as Profile);
+            console.log(`[DEBUG] Profile linked: ${updatedProfile.full_name}, User ID: ${updatedProfile.user_id}`);
           } else {
             // No existing profile found for this email, or it's already linked to another user
             console.error("Profile not found for email or already linked. Please contact an administrator.");
@@ -99,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         setProfile(profileData as Profile | null);
+        console.log(`[DEBUG] Existing profile loaded: ${profileData.full_name}, User ID: ${profileData.user_id}`);
       }
 
       // Check if user is admin or super admin
