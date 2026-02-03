@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
 
 interface Profile {
   id: string;
@@ -38,6 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const { selectedCongregationId } = useSelectedCongregation();
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -115,6 +118,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                               userData.user.user_metadata?.name ||
                               userData.user.email?.split('@')[0] ||
                               'Usuário';
+
+              let defaultCongregationId: string | null = null;
+              if (isSuperAdmin) {
+                defaultCongregationId = selectedCongregationId;
+              } else if (profile?.congregation_id) {
+                defaultCongregationId = profile.congregation_id;
+              }
               
               const { data: newProfile, error: createError } = await supabase
                 .from("profiles")
@@ -125,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   sex: userData.user.user_metadata?.sex || null,
                   is_driver: userData.user.user_metadata?.is_driver || false,
                   is_exempt: userData.user.user_metadata?.is_exempt || false,
-                  congregation_id: userData.user.user_metadata?.congregation_id || null,
+                  congregation_id: defaultCongregationId,
                 })
                 .select()
                 .single();
