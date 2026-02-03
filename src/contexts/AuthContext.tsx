@@ -97,62 +97,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } else {
               setProfile(profileToLink as Profile);
             }
-          } else if (!existingProfiles || existingProfiles.length === 0) {
-            // No existing profile found with this email
-            // Check one more time if a profile was created in the meantime (race condition)
-            const { data: doubleCheck } = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("user_id", userId)
-              .maybeSingle();
-            
-            if (doubleCheck) {
-              // Profile was created by another process, use it
-              setProfile(doubleCheck as Profile);
-            } else {
-              // Create new profile only if it still doesn't exist
-              const fullName = userData.user.user_metadata?.full_name ||
-                              userData.user.user_metadata?.name ||
-                              userData.user.email?.split('@')[0] ||
-                              'Usuário';
-
-              // Don't specify congregation_id - let the database default handle it
-              const { data: newProfile, error: createError } = await supabase
-                .from("profiles")
-                .insert({
-                  user_id: userId,
-                  full_name: fullName,
-                  email: userData.user.email,
-                  sex: userData.user.user_metadata?.sex || null,
-                  is_driver: userData.user.user_metadata?.is_driver || false,
-                  is_exempt: userData.user.user_metadata?.is_exempt || false,
-                })
-                .select()
-                .single();
-
-              if (createError) {
-                // If error is duplicate key, fetch the existing profile
-                if (createError.code === '23505') {
-                  const { data: existingProfile } = await supabase
-                    .from("profiles")
-                    .select("*")
-                    .eq("user_id", userId)
-                    .single();
-                  
-                  if (existingProfile) {
-                    setProfile(existingProfile as Profile);
-                  }
-                } else {
-                  console.error("Error creating profile:", createError);
-                }
-                return;
-              }
-
-              setProfile(newProfile as Profile);
-            }
-          } else {
-            // Profile exists but is linked to a different user - this shouldn't happen normally
-            console.error("Profile exists with email but is linked to different user:", existingProfiles);
+          } else if (!profileToLink) {
+            // No existing profile found with this email, or it's linked to a different user
+            console.error("Profile not found for email or linked to another user. Please contact an administrator.");
+            setProfile(null);
+            setIsAdmin(false);
+            setIsSuperAdmin(false);
           }
         }
       } else {
