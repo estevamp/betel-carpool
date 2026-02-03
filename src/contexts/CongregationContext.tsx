@@ -17,14 +17,13 @@ export const CongregationProvider = ({ children }: { children: ReactNode }) => {
   const { profile, isAdmin } = useAuth();
   const { congregations, isLoading } = useCongregations();
 
-  // Auto-select congregation based on user role and update profile if needed
+  // Auto-select congregation based on user role
   useEffect(() => {
     if (isLoading || !profile || !congregations || congregations.length === 0) return;
 
-    // If super-admin and no congregation is selected, try to set a default
+    // For super-admin: if no congregation is selected, try to set a default
     if (isSuperAdmin && !selectedCongregationId) {
       const loadDefaultCongregation = async () => {
-        let defaultId: string | null = null;
         try {
           const { data } = await supabase
             .from('settings')
@@ -33,29 +32,18 @@ export const CongregationProvider = ({ children }: { children: ReactNode }) => {
             .maybeSingle();
 
           if (data?.value && congregations.some((c) => c.id === data.value)) {
-            defaultId = data.value;
+            setSelectedCongregationId(data.value);
           } else {
-            defaultId = congregations[0].id;
+            setSelectedCongregationId(congregations[0].id);
           }
         } catch (error) {
           console.error('Error loading default congregation:', error);
-          defaultId = congregations[0].id;
-        }
-
-        if (defaultId) {
-          setSelectedCongregationId(defaultId);
-          // Update super-admin's profile if congregation_id is null
-          if (!profile.congregation_id) {
-            await supabase
-              .from('profiles')
-              .update({ congregation_id: defaultId })
-              .eq('id', profile.id);
-          }
+          setSelectedCongregationId(congregations[0].id);
         }
       };
       loadDefaultCongregation();
     }
-    // For regular admin/user, ensure selectedCongregationId matches profile's congregation_id
+    // For regular admin/user: use their profile's congregation_id if it exists and is different from selected
     else if (!isSuperAdmin && profile.congregation_id && selectedCongregationId !== profile.congregation_id) {
       setSelectedCongregationId(profile.congregation_id);
     }

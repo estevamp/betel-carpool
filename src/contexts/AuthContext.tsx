@@ -149,7 +149,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
 
               setProfile(newProfile as Profile);
-              console.log(`[DEBUG] Profile criado: ${newProfile.full_name}, Congregação: ${newProfile.congregation_id}`);
             }
           } else {
             // Profile exists but is linked to a different user - this shouldn't happen normally
@@ -158,7 +157,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         setProfile(profileData as Profile | null);
-        console.log(`[DEBUG] Profile existente carregado: ${profileData.full_name}, Congregação: ${profileData.congregation_id}`);
       }
 
       // Check if user is admin or super admin
@@ -169,8 +167,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .in("role", ["admin", "super_admin"]);
 
       const roles = roleData || [];
-      setIsAdmin(roles.some(r => r.role === "admin" || r.role === "super_admin"));
-      setIsSuperAdmin(roles.some(r => r.role === "super_admin"));
+      const currentIsAdmin = roles.some(r => r.role === "admin" || r.role === "super_admin");
+      const currentIsSuperAdmin = roles.some(r => r.role === "super_admin");
+
+      setIsAdmin(currentIsAdmin);
+      setIsSuperAdmin(currentIsSuperAdmin);
+
+      // If super-admin's profile has null congregation_id, update it with the default
+      if (currentIsSuperAdmin && profileData && !profileData.congregation_id) {
+        const { data: defaultCongregation } = await supabase
+          .from('congregations')
+          .select('id')
+          .eq('name', 'Padrão')
+          .maybeSingle();
+
+        if (defaultCongregation) {
+          await supabase
+            .from('profiles')
+            .update({ congregation_id: defaultCongregation.id })
+            .eq('id', profileData.id);
+          setProfile({ ...profileData, congregation_id: defaultCongregation.id } as Profile);
+        }
+      }
+
     } catch (error) {
       console.error("Error in fetchProfile:", error);
     }
