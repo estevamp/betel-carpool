@@ -116,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                               userData.user.email?.split('@')[0] ||
                               'Usuário';
 
+              // Don't specify congregation_id - let the database default handle it
               const { data: newProfile, error: createError } = await supabase
                 .from("profiles")
                 .insert({
@@ -125,7 +126,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   sex: userData.user.user_metadata?.sex || null,
                   is_driver: userData.user.user_metadata?.is_driver || false,
                   is_exempt: userData.user.user_metadata?.is_exempt || false,
-                  congregation_id: userData.user.user_metadata?.congregation_id || null,
                 })
                 .select()
                 .single();
