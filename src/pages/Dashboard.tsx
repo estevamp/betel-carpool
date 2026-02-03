@@ -125,7 +125,7 @@ export default function Dashboard() {
   });
   const subtitle = congregationName
     ? `Transporte de Betelitas da Congregação: ${congregationName}`
-    : "Bem-vindo ao sistema de transporte de Betelitas";
+    : "Sistema de transporte de Betelitas";
   return (
     <motion.div className="space-y-8 max-w-4xl mx-auto" variants={containerVariants} initial="hidden" animate="visible">
       {/* Header */}
