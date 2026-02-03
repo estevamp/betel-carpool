@@ -126,23 +126,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsAdmin(currentIsAdmin);
       setIsSuperAdmin(currentIsSuperAdmin);
 
-      // If super-admin's profile has null congregation_id, update it with the default
-      if (currentIsSuperAdmin && profileData && !profileData.congregation_id) {
-        const { data: defaultCongregation } = await supabase
-          .from('congregations')
-          .select('id')
-          .eq('name', 'Padrão')
-          .maybeSingle();
-
-        if (defaultCongregation) {
-          await supabase
-            .from('profiles')
-            .update({ congregation_id: defaultCongregation.id })
-            .eq('id', profileData.id);
-          setProfile({ ...profileData, congregation_id: defaultCongregation.id } as Profile);
-        }
-      }
-
     } catch (error) {
       console.error("Error in fetchProfile:", error);
     }
