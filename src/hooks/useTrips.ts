@@ -64,12 +64,12 @@ export function useTrips() {
         .from("trips")
         .select(`
           *,
-          driver:profiles!trips_driver_id_fkey(id, full_name),
+          driver:profiles!trips_driver_id_fkey(id),
           passengers:trip_passengers(
             id,
             passenger_id,
             trip_type,
-            profile:profiles!trip_passengers_passenger_id_fkey(id, full_name)
+            profile:profiles!trip_passengers_passenger_id_fkey(id)
           )
         `)
         .eq("is_active", true)

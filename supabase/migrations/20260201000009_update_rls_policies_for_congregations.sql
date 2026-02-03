@@ -66,8 +66,7 @@ CREATE POLICY "Trips are viewable by congregation members"
     ON public.trips FOR SELECT
     TO authenticated
     USING (
-        public.is_super_admin()
-        OR congregation_id = public.get_current_congregation_id()
+        true
     );
 
 CREATE POLICY "Drivers can create trips"
