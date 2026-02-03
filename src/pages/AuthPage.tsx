@@ -283,7 +283,7 @@ export default function AuthPage() {
 
         {/* Footer */}
         <p className="text-center text-sm text-muted-foreground mt-6">
-          Não tem acesso? Entre em contato com o administrador da sua congregação.
+          Não tem acesso? Entre em contato com o coordenador de transportes da sua congregação.
         </p>
       </motion.div>
     </div>

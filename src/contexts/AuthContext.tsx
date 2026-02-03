@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           // Find profile that either has no user_id or has THIS user_id
-          const profileToLink = existingProfiles?.find(p => 
+          const profileToLink = existingProfiles?.find(p =>
             p.user_id === null || p.user_id === userId
           );
 
@@ -98,32 +98,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setProfile(profileToLink as Profile);
             }
           } else if (!existingProfiles || existingProfiles.length === 0) {
-            // No existing profile found with this email, create new one
-            const fullName = userData.user.user_metadata?.full_name ||
-                            userData.user.user_metadata?.name ||
-                            userData.user.email?.split('@')[0] ||
-                            'Usuário';
-            
-            const { data: newProfile, error: createError } = await supabase
+            // No existing profile found with this email
+            // Check one more time if a profile was created in the meantime (race condition)
+            const { data: doubleCheck } = await supabase
               .from("profiles")
-              .insert({
-                user_id: userId,
-                full_name: fullName,
-                email: userData.user.email,
-                sex: userData.user.user_metadata?.sex || null,
-                is_driver: userData.user.user_metadata?.is_driver || false,
-                is_exempt: userData.user.user_metadata?.is_exempt || false,
-                congregation_id: userData.user.user_metadata?.congregation_id || null,
-              })
-              .select()
-              .single();
+              .select("*")
+              .eq("user_id", userId)
+              .maybeSingle();
+            
+            if (doubleCheck) {
+              // Profile was created by another process, use it
+              setProfile(doubleCheck as Profile);
+            } else {
+              // Create new profile only if it still doesn't exist
+              const fullName = userData.user.user_metadata?.full_name ||
+                              userData.user.user_metadata?.name ||
+                              userData.user.email?.split('@')[0] ||
+                              'Usuário';
+              
+              const { data: newProfile, error: createError } = await supabase
+                .from("profiles")
+                .insert({
+                  user_id: userId,
+                  full_name: fullName,
+                  email: userData.user.email,
+                  sex: userData.user.user_metadata?.sex || null,
+                  is_driver: userData.user.user_metadata?.is_driver || false,
+                  is_exempt: userData.user.user_metadata?.is_exempt || false,
+                  congregation_id: userData.user.user_metadata?.congregation_id || null,
+                })
+                .select()
+                .single();
 
-            if (createError) {
-              console.error("Error creating profile:", createError);
-              return;
+              if (createError) {
+                // If error is duplicate key, fetch the existing profile
+                if (createError.code === '23505') {
+                  const { data: existingProfile } = await supabase
+                    .from("profiles")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .single();
+                  
+                  if (existingProfile) {
+                    setProfile(existingProfile as Profile);
+                  }
+                } else {
+                  console.error("Error creating profile:", createError);
+                }
+                return;
+              }
+
+              setProfile(newProfile as Profile);
             }
-
-            setProfile(newProfile as Profile);
           } else {
             // Profile exists but is linked to a different user - this shouldn't happen normally
             console.error("Profile exists with email but is linked to different user:", existingProfiles);

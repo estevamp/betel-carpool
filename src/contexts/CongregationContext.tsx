@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useCongregations } from '@/hooks/useCongregations';
 import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CongregationContextType {
@@ -13,12 +14,15 @@ const CongregationContext = createContext<CongregationContextType | undefined>(u
 export const CongregationProvider = ({ children }: { children: ReactNode }) => {
   const [selectedCongregationId, setSelectedCongregationId] = useState<string | null>(null);
   const { isSuperAdmin } = useIsSuperAdmin();
+  const { profile, isAdmin } = useAuth();
   const { congregations, isLoading } = useCongregations();
 
-  // Auto-select default congregation for super-admin if none is selected
+  // Auto-select congregation based on user role
   useEffect(() => {
-    if (isSuperAdmin && !isLoading && congregations && congregations.length > 0 && !selectedCongregationId) {
-      // Try to load the default congregation from settings
+    if (isLoading || selectedCongregationId) return;
+
+    // For super-admin: select from CongregationSelector or default
+    if (isSuperAdmin && congregations && congregations.length > 0) {
       const loadDefaultCongregation = async () => {
         try {
           const { data } = await supabase
@@ -42,7 +46,11 @@ export const CongregationProvider = ({ children }: { children: ReactNode }) => {
 
       loadDefaultCongregation();
     }
-  }, [isSuperAdmin, isLoading, congregations, selectedCongregationId]);
+    // For regular admin or user: use their profile's congregation_id
+    else if (profile?.congregation_id) {
+      setSelectedCongregationId(profile.congregation_id);
+    }
+  }, [isSuperAdmin, isAdmin, profile, isLoading, congregations, selectedCongregationId]);
 
   return (
     <CongregationContext.Provider value={{ selectedCongregationId, setSelectedCongregationId }}>
