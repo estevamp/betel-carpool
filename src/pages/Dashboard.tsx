@@ -124,7 +124,7 @@ export default function Dashboard() {
     },
   });
   const subtitle = congregationName
-    ? `Sistema de Transporte de Betelitas - ${congregationName}`
+    ? `Transporte de Betelitas da Congregação: ${congregationName}`
     : "Bem-vindo ao sistema de transporte de Betelitas";
   return (
     <motion.div className="space-y-8 max-w-4xl mx-auto" variants={containerVariants} initial="hidden" animate="visible">
@@ -188,7 +188,7 @@ export default function Dashboard() {
                 const availableSeats = maxPassengers - passengerCount;
                 const departureTime = format(parseISO(trip.departure_at), "HH:mm");
                 return (
-                  <div key={trip.id} className="flex items-center gap-4 px-5 py-4 hover:bg-muted/50 transition-colors">
+                  <Link key={trip.id} to={`/viagens/${trip.id}`} className="flex items-center gap-4 px-5 py-4 hover:bg-muted/50 transition-colors">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                       <Car className="h-6 w-6 text-primary" />
                     </div>
@@ -210,7 +210,7 @@ export default function Dashboard() {
                     >
                       {availableSeats > 0 ? `${availableSeats} vaga${availableSeats > 1 ? "s" : ""}` : "Completo"}
                     </span>
-                  </div>
+                  </Link>
                 );
               })
             ) : (
