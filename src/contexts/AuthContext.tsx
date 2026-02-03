@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // If profile doesn't exist, try to find and link existing profile by email
+      // If profile doesn't exist for the current userId, try to find and link an existing profile by email
       if (!profileData) {
         const { data: userData } = await supabase.auth.getUser();
         if (userData.user) {
@@ -63,53 +63,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
           
-          console.log(`[DEBUG] Searching for unlinked profile with email: ${userEmail}`);
           console.log(`[DEBUG] Current auth.uid(): ${userId}`);
-          
-          // First, let's check if ANY profile exists with this email (regardless of user_id)
-          const { data: anyProfile, error: anyProfileError } = await supabase
+          console.log(`[DEBUG] Searching for profile by email: ${userEmail}`);
+
+          // Try to find any profile by email (regardless of user_id)
+          const { data: emailProfile, error: emailProfileError } = await supabase
             .from("profiles")
             .select("*")
             .eq("email", userEmail)
             .maybeSingle();
-          
-          console.log(`[DEBUG] Any profile with this email: ${JSON.stringify(anyProfile)}`);
-          if (anyProfileError) {
-            console.error("[DEBUG] Error finding any profile:", anyProfileError);
+
+          if (emailProfileError) {
+            console.error("[DEBUG] Error finding profile by email:", emailProfileError);
           }
-          
-          // Try to find an existing profile by email that is NOT yet linked to a user
-          const { data: unlinkedProfile, error: unlinkedError } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("email", userEmail)
-            .is("user_id", null)
-            .maybeSingle();
+          console.log(`[DEBUG] Profile found by email: ${JSON.stringify(emailProfile)}`);
 
-          if (unlinkedError) {
-            console.error("Error finding unlinked profile:", unlinkedError);
-          }
+          if (emailProfile) {
+            // If found, and it's either unlinked or linked to a different user, link it to the current user
+            if (!emailProfile.user_id || emailProfile.user_id !== userId) {
+              const { data: updatedProfile, error: updateError } = await supabase
+                .from("profiles")
+                .update({ user_id: userId })
+                .eq("id", emailProfile.id)
+                .select()
+                .single();
 
-          console.log(`[DEBUG] Unlinked profile search result: ${JSON.stringify(unlinkedProfile)}`);
-
-          if (unlinkedProfile) {
-            // Link the unlinked profile to this user
-            const { data: updatedProfile, error: updateError } = await supabase
-              .from("profiles")
-              .update({ user_id: userId })
-              .eq("id", unlinkedProfile.id)
-              .select()
-              .single();
-
-            if (updateError) {
-              console.error("Error linking profile to user:", updateError);
-              return;
+              if (updateError) {
+                console.error("Error linking profile to user:", updateError);
+                return;
+              }
+              setProfile(updatedProfile as Profile);
+              console.log(`[DEBUG] Profile re-linked/linked: ${updatedProfile.full_name}, User ID: ${updatedProfile.user_id}`);
+            } else {
+              // Profile found by email and already linked to the current user (shouldn't happen if profileData was null)
+              setProfile(emailProfile as Profile);
+              console.log(`[DEBUG] Profile found by email and already linked to current user: ${emailProfile.full_name}, User ID: ${emailProfile.user_id}`);
             }
-            setProfile(updatedProfile as Profile);
-            console.log(`[DEBUG] Profile linked: ${updatedProfile.full_name}, User ID: ${updatedProfile.user_id}`);
           } else {
-            // No existing profile found for this email, or it's already linked to another user
-            console.error("Profile not found for email or already linked. Please contact an administrator.");
+            // No profile found by email, this user needs an admin to create a profile for them
+            console.error("No existing profile found for this email. Please contact an administrator to create your profile.");
             setProfile(null);
             setIsAdmin(false);
             setIsSuperAdmin(false);
@@ -117,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         setProfile(profileData as Profile | null);
-        console.log(`[DEBUG] Existing profile loaded: ${profileData.full_name}, User ID: ${profileData.user_id}`);
+        console.log(`[DEBUG] Existing profile loaded for current user: ${profileData.full_name}, User ID: ${profileData.user_id}`);
       }
 
       // Check if user is admin or super admin
