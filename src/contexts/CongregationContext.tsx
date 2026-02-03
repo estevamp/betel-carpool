@@ -17,13 +17,14 @@ export const CongregationProvider = ({ children }: { children: ReactNode }) => {
   const { profile, isAdmin } = useAuth();
   const { congregations, isLoading } = useCongregations();
 
-  // Auto-select congregation based on user role
+  // Auto-select congregation based on user role and update profile if needed
   useEffect(() => {
-    if (isLoading || selectedCongregationId) return;
+    if (isLoading || !profile || !congregations || congregations.length === 0) return;
 
-    // For super-admin: select from CongregationSelector or default
-    if (isSuperAdmin && congregations && congregations.length > 0) {
+    // If super-admin and no congregation is selected, try to set a default
+    if (isSuperAdmin && !selectedCongregationId) {
       const loadDefaultCongregation = async () => {
+        let defaultId: string | null = null;
         try {
           const { data } = await supabase
             .from('settings')
@@ -32,25 +33,33 @@ export const CongregationProvider = ({ children }: { children: ReactNode }) => {
             .maybeSingle();
 
           if (data?.value && congregations.some((c) => c.id === data.value)) {
-            setSelectedCongregationId(data.value);
+            defaultId = data.value;
           } else {
-            // Fall back to first congregation if no default is set
-            setSelectedCongregationId(congregations[0].id);
+            defaultId = congregations[0].id;
           }
         } catch (error) {
           console.error('Error loading default congregation:', error);
-          // Fall back to first congregation on error
-          setSelectedCongregationId(congregations[0].id);
+          defaultId = congregations[0].id;
+        }
+
+        if (defaultId) {
+          setSelectedCongregationId(defaultId);
+          // Update super-admin's profile if congregation_id is null
+          if (!profile.congregation_id) {
+            await supabase
+              .from('profiles')
+              .update({ congregation_id: defaultId })
+              .eq('id', profile.id);
+          }
         }
       };
-
       loadDefaultCongregation();
     }
-    // For regular admin or user: use their profile's congregation_id
-    else if (profile?.congregation_id) {
+    // For regular admin/user, ensure selectedCongregationId matches profile's congregation_id
+    else if (!isSuperAdmin && profile.congregation_id && selectedCongregationId !== profile.congregation_id) {
       setSelectedCongregationId(profile.congregation_id);
     }
-  }, [isSuperAdmin, isAdmin, profile, isLoading, congregations, selectedCongregationId]);
+  }, [isSuperAdmin, isLoading, profile, congregations, selectedCongregationId, setSelectedCongregationId]);
 
   return (
     <CongregationContext.Provider value={{ selectedCongregationId, setSelectedCongregationId }}>
