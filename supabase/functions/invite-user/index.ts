@@ -66,6 +66,8 @@ serve(async (req: Request): Promise<Response> => {
       throw new Error("Email e nome são obrigatórios");
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Create admin client with service role
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -74,11 +76,75 @@ serve(async (req: Request): Promise<Response> => {
       },
     });
 
-    // Check if an auth user already exists with this email
-    // If they signed up via Google/Apple before being invited, we should link their profile
+    // Check if profile already exists with this email
+    const { data: existingProfile } = await adminClient
+      .from("profiles")
+      .select("id, user_id, email")
+      .ilike("email", normalizedEmail)
+      .maybeSingle();
+
+    if (existingProfile) {
+      // Profile already exists - just update it, don't create duplicate
+      const { error: updateError } = await adminClient
+        .from("profiles")
+        .update({
+          full_name: fullName,
+          sex: sex || null,
+          is_driver: isDriver || false,
+          is_exempt: isExempt || false,
+          congregation_id: congregationId || null,
+        })
+        .eq("id", existingProfile.id);
+
+      if (updateError) {
+        console.error("Profile update error:", updateError);
+        throw new Error(`Erro ao atualizar perfil: ${updateError.message}`);
+      }
+
+      // Check if auth user exists for this profile
+      let authUserExists = false;
+      if (existingProfile.user_id) {
+        const { data: authUser } = await adminClient.auth.admin.getUserById(existingProfile.user_id);
+        authUserExists = !!authUser?.user;
+      }
+
+      // If no auth user linked, try to send invite
+      if (!authUserExists) {
+        // Try to invite - this will fail gracefully if user already exists in auth
+        const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(normalizedEmail, {
+          data: {
+            full_name: fullName,
+            sex: sex || null,
+            is_driver: isDriver || false,
+            is_exempt: isExempt || false,
+            congregation_id: congregationId || null,
+          },
+          redirectTo: `${req.headers.get("origin")}/`,
+        });
+
+        if (inviteError && !inviteError.message?.toLowerCase().includes("already")) {
+          console.error("Invite error:", inviteError);
+          // Don't throw - profile was updated successfully
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Perfil de ${email} atualizado com sucesso`,
+          profileId: existingProfile.id,
+          isUpdate: true,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
+      );
+    }
+
+    // No existing profile - create new one
+    // First, check if auth user already exists (e.g., signed up via Google before being invited)
     let existingAuthUserId: string | null = null;
-    
-    // Paginate through auth.users to find existing user
     let page = 1;
     const perPage = 1000;
     
@@ -92,7 +158,10 @@ serve(async (req: Request): Promise<Response> => {
         break;
       }
       
-      const existingUser = usersPage.users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+      const existingUser = usersPage.users.find((u: any) => 
+        u.email?.toLowerCase() === normalizedEmail
+      );
+      
       if (existingUser) {
         existingAuthUserId = existingUser.id;
         break;
@@ -104,74 +173,76 @@ serve(async (req: Request): Promise<Response> => {
       page++;
     }
 
-    // Create or update profile
-    // The profile will be linked to the auth user when they sign in
-    const { data: existingProfile } = await adminClient
+    // Create new profile linked to existing auth user if found
+    const { data: newProfile, error: profileError } = await adminClient
       .from("profiles")
-      .select("id, user_id")
-      .eq("email", email)
-      .maybeSingle();
-
-    if (existingProfile) {
-      // Update existing profile - link to auth user if we found one and profile isn't already linked
-      const updateData: any = {
+      .insert({
         full_name: fullName,
+        email: normalizedEmail,
         sex: sex || null,
         is_driver: isDriver || false,
         is_exempt: isExempt || false,
         congregation_id: congregationId || null,
-      };
-      
-      // If auth user exists and profile isn't linked, link them now
-      if (existingAuthUserId && !existingProfile.user_id) {
-        updateData.user_id = existingAuthUserId;
-      }
+        user_id: existingAuthUserId || null,
+      })
+      .select()
+      .single();
 
-      const { error: profileError } = await adminClient
-        .from("profiles")
-        .update(updateData)
-        .eq("id", existingProfile.id);
+    if (profileError) {
+      console.error("Profile creation error:", profileError);
+      throw new Error(`Erro ao criar perfil: ${profileError.message}`);
+    }
 
-      if (profileError) {
-        console.error("Profile update error:", profileError);
-      }
-    } else {
-      // Create new profile
-      // Link to existing auth user if found, otherwise leave user_id null (will be linked on first login)
-      const { error: profileError } = await adminClient
-        .from("profiles")
-        .insert({
+    // If no existing auth user, send invite
+    if (!existingAuthUserId) {
+      const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(normalizedEmail, {
+        data: {
           full_name: fullName,
-          email: email,
           sex: sex || null,
           is_driver: isDriver || false,
           is_exempt: isExempt || false,
           congregation_id: congregationId || null,
-          user_id: existingAuthUserId || null,
-        });
+        },
+        redirectTo: `${req.headers.get("origin")}/`,
+      });
 
-      if (profileError) {
-        console.error("Profile creation error:", profileError);
-        throw new Error(`Erro ao criar perfil: ${profileError.message}`);
+      if (inviteError) {
+        console.error("Invite error:", inviteError);
+        // Profile was created, but invite failed - don't throw, just log
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: `Perfil criado para ${email}, mas o convite por email falhou. O usuário pode entrar com Google ou Apple.`,
+            profileId: newProfile.id,
+            inviteError: inviteError.message,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          },
+        );
       }
-    }
 
-    // We no longer use inviteUserByEmail to avoid creating duplicate auth.users entries
-    // Users will sign in via Google, Apple, or other methods
-    // The profile will be linked when they sign in via AuthContext
-    
-    const isUpdate = !!existingProfile;
-    const wasLinked = existingAuthUserId && (!existingProfile?.user_id || existingProfile.user_id !== existingAuthUserId);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Convite enviado para ${email}`,
+          profileId: newProfile.id,
+          userId: inviteData.user.id,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
+      );
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: isUpdate 
-          ? `Perfil de ${email} atualizado com sucesso` 
-          : `Perfil criado para ${email}. O usuário pode entrar com Google ou Apple.`,
-        profileId: existingProfile?.id || null,
-        wasLinked,
-        existingAuthUserId,
+        message: `Perfil criado e vinculado ao usuário existente ${email}`,
+        profileId: newProfile.id,
+        userId: existingAuthUserId,
       }),
       {
         status: 200,

@@ -56,37 +56,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!profileData) {
         const { data: userData } = await supabase.auth.getUser();
         if (userData.user) {
-          const userEmail = userData.user.email;
+          const userEmail = userData.user.email?.toLowerCase();
           
-          // Try to find existing profile with this email but no user_id (invited betelita)
-          const { data: existingProfile, error: existingError } = await supabase
+          if (!userEmail) {
+            console.error("User has no email");
+            return;
+          }
+          
+          // First, check if there's already a profile with this email (regardless of user_id)
+          const { data: existingProfiles, error: existingError } = await supabase
             .from("profiles")
             .select("*")
-            .eq("email", userEmail)
-            .is("user_id", null)
-            .maybeSingle();
+            .ilike("email", userEmail);
 
           if (existingError) {
             console.error("Error finding existing profile:", existingError);
           }
 
-          if (existingProfile) {
-            // Link existing profile to this user
-            const { data: updatedProfile, error: updateError } = await supabase
-              .from("profiles")
-              .update({ user_id: userId })
-              .eq("id", existingProfile.id)
-              .select()
-              .single();
+          // Find profile that either has no user_id or has THIS user_id
+          const profileToLink = existingProfiles?.find(p => 
+            p.user_id === null || p.user_id === userId
+          );
 
-            if (updateError) {
-              console.error("Error linking profile to user:", updateError);
-              return;
+          if (profileToLink) {
+            // Link existing profile to this user if not already linked
+            if (profileToLink.user_id !== userId) {
+              const { data: updatedProfile, error: updateError } = await supabase
+                .from("profiles")
+                .update({ user_id: userId })
+                .eq("id", profileToLink.id)
+                .select()
+                .single();
+
+              if (updateError) {
+                console.error("Error linking profile to user:", updateError);
+                return;
+              }
+
+              setProfile(updatedProfile as Profile);
+            } else {
+              setProfile(profileToLink as Profile);
             }
-
-            setProfile(updatedProfile as Profile);
-          } else {
-            // No existing profile found, create new one
+          } else if (!existingProfiles || existingProfiles.length === 0) {
+            // No existing profile found with this email, create new one
             const fullName = userData.user.user_metadata?.full_name ||
                             userData.user.user_metadata?.name ||
                             userData.user.email?.split('@')[0] ||
@@ -112,6 +124,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             setProfile(newProfile as Profile);
+          } else {
+            // Profile exists but is linked to a different user - this shouldn't happen normally
+            console.error("Profile exists with email but is linked to different user:", existingProfiles);
           }
         }
       } else {
