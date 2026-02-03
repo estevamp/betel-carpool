@@ -13,7 +13,7 @@ export const useIsSuperAdmin = () => {
         .select('role')
         .eq('user_id', user.id)
         .eq('role', 'super_admin')
-        .single();
+        .maybeSingle();
       
       if (error) return false;
       return !!data;
