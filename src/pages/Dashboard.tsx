@@ -19,6 +19,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, isToday, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
+import { useCongregations } from "@/hooks/useCongregations";
 const quickAccessItems = [
   {
     icon: Car,
@@ -88,18 +90,22 @@ const itemVariants = {
 export default function Dashboard() {
   const { profile } = useAuth();
   const firstName = profile?.full_name?.split(" ")[0] || "Usuário";
-  const { data: congregationName } = useQuery({
-    queryKey: ["settings", "congregation_name"],
-    queryFn: async () => {
-      const { data } = await supabase.from("settings").select("value").eq("key", "congregation_name").maybeSingle();
-      return data?.value || null;
-    },
-  });
+  const { isSuperAdmin } = useAuth();
+  const { selectedCongregationId } = useSelectedCongregation();
+  const { congregations } = useCongregations();
+
+  const currentCongregation = isSuperAdmin
+    ? congregations?.find((c) => c.id === selectedCongregationId)
+    : congregations?.find((c) => c.id === profile?.congregation_id);
+
+  const congregationName = currentCongregation?.name;
 
   // Fetch today's trips
   const { data: todayTrips = [] } = useQuery({
-    queryKey: ["trips", "today"],
+    queryKey: ["trips", "today", selectedCongregationId], // Add selectedCongregationId to queryKey
     queryFn: async () => {
+      if (!selectedCongregationId) return []; // Don't fetch if no congregation is selected
+
       const { data, error } = await supabase
         .from("trips")
         .select(
@@ -110,6 +116,7 @@ export default function Dashboard() {
         `,
         )
         .eq("is_active", true)
+        .eq("congregation_id", selectedCongregationId) // Filter by congregation_id
         .order("departure_at", {
           ascending: true,
         });
@@ -123,6 +130,7 @@ export default function Dashboard() {
       });
     },
   });
+
   const subtitle = congregationName
     ? `Transporte de Betelitas da Congregação: ${congregationName}`
     : "Sistema de transporte de Betelitas";
