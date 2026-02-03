@@ -63,43 +63,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
           
-          // First, check if there's already a profile with this email (regardless of user_id)
-          const { data: existingProfiles, error: existingError } = await supabase
+          // Try to find an existing profile by email that is NOT yet linked to a user
+          const { data: unlinkedProfile, error: unlinkedError } = await supabase
             .from("profiles")
             .select("*")
-            .ilike("email", userEmail);
+            .eq("email", userEmail)
+            .is("user_id", null)
+            .maybeSingle();
 
-          if (existingError) {
-            console.error("Error finding existing profile:", existingError);
+          if (unlinkedError) {
+            console.error("Error finding unlinked profile:", unlinkedError);
           }
 
-          // Find profile that either has no user_id or has THIS user_id
-          const profileToLink = existingProfiles?.find(p =>
-            p.user_id === null || p.user_id === userId
-          );
+          if (unlinkedProfile) {
+            // Link the unlinked profile to this user
+            const { data: updatedProfile, error: updateError } = await supabase
+              .from("profiles")
+              .update({ user_id: userId })
+              .eq("id", unlinkedProfile.id)
+              .select()
+              .single();
 
-          if (profileToLink) {
-            // Link existing profile to this user if not already linked
-            if (profileToLink.user_id !== userId) {
-              const { data: updatedProfile, error: updateError } = await supabase
-                .from("profiles")
-                .update({ user_id: userId })
-                .eq("id", profileToLink.id)
-                .select()
-                .single();
-
-              if (updateError) {
-                console.error("Error linking profile to user:", updateError);
-                return;
-              }
-
-              setProfile(updatedProfile as Profile);
-            } else {
-              setProfile(profileToLink as Profile);
+            if (updateError) {
+              console.error("Error linking profile to user:", updateError);
+              return;
             }
-          } else if (!profileToLink) {
-            // No existing profile found with this email, or it's linked to a different user
-            console.error("Profile not found for email or linked to another user. Please contact an administrator.");
+            setProfile(updatedProfile as Profile);
+          } else {
+            // No existing profile found for this email, or it's already linked to another user
+            console.error("Profile not found for email or already linked. Please contact an administrator.");
             setProfile(null);
             setIsAdmin(false);
             setIsSuperAdmin(false);
