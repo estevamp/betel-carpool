@@ -64,6 +64,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           
           console.log(`[DEBUG] Searching for unlinked profile with email: ${userEmail}`);
+          console.log(`[DEBUG] Current auth.uid(): ${userId}`);
+          
+          // First, let's check if ANY profile exists with this email (regardless of user_id)
+          const { data: anyProfile, error: anyProfileError } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("email", userEmail)
+            .maybeSingle();
+          
+          console.log(`[DEBUG] Any profile with this email: ${JSON.stringify(anyProfile)}`);
+          if (anyProfileError) {
+            console.error("[DEBUG] Error finding any profile:", anyProfileError);
+          }
+          
           // Try to find an existing profile by email that is NOT yet linked to a user
           const { data: unlinkedProfile, error: unlinkedError } = await supabase
             .from("profiles")

@@ -19,6 +19,7 @@ import ConfiguracoesPage from "./pages/ConfiguracoesPage";
 import ProfilePage from "./pages/ProfilePage";
 import AuthPage from "./pages/AuthPage";
 import CongregationsPage from "./pages/CongregationsPage";
+import DebugProfilesPage from "./pages/DebugProfilesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
                 <Route path="/configuracoes" element={<ConfiguracoesPage />} />
                 <Route path="/perfil" element={<ProfilePage />} />
                 <Route path="/congregacoes" element={<CongregationsPage />} />
+                <Route path="/debug-profiles" element={<DebugProfilesPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
