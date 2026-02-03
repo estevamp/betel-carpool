@@ -74,57 +74,83 @@ serve(async (req: Request): Promise<Response> => {
       },
     });
 
-    // Check if auth user already exists
-    const { data: existingAuthUsers, error: listError } = await adminClient.auth.admin.listUsers();
-
-    if (listError) {
-      console.error("Error listing users:", listError);
-    }
-
-    const existingAuthUser = existingAuthUsers?.users?.find((u: any) => u.email === email);
-
     let inviteData;
     let isResend = false;
 
-    if (existingAuthUser) {
-      // User already exists - just update metadata and profile, don't create a new auth user
-      isResend = true;
+    // Try to invite the user first - if they already exist, Supabase will return an error
+    const { data: newInviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
+      data: {
+        full_name: fullName,
+        sex: sex || null,
+        is_driver: isDriver || false,
+        is_exempt: isExempt || false,
+        congregation_id: congregationId || null,
+      },
+      redirectTo: `${req.headers.get("origin")}/`,
+    });
+
+    if (inviteError) {
+      // Check if the error is because user already exists
+      const isUserExistsError = inviteError.message?.toLowerCase().includes("already") || 
+                                 inviteError.message?.toLowerCase().includes("exists") ||
+                                 inviteError.code === "email_exists" ||
+                                 inviteError.message?.toLowerCase().includes("já");
       
-      // Update user metadata
-      const { error: updateError } = await adminClient.auth.admin.updateUserById(existingAuthUser.id, {
-        user_metadata: {
-          full_name: fullName,
-          sex: sex || null,
-          is_driver: isDriver || false,
-          is_exempt: isExempt || false,
-          congregation_id: congregationId || null,
-        },
-      });
+      if (isUserExistsError) {
+        // User already exists - find them and update their metadata
+        isResend = true;
+        
+        // Get all users and find by email (paginated search)
+        let existingAuthUser = null;
+        let page = 1;
+        const perPage = 1000;
+        
+        while (!existingAuthUser) {
+          const { data: usersPage, error: listError } = await adminClient.auth.admin.listUsers({
+            page,
+            perPage,
+          });
+          
+          if (listError || !usersPage?.users?.length) {
+            break;
+          }
+          
+          existingAuthUser = usersPage.users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+          
+          if (usersPage.users.length < perPage) {
+            break; // No more pages
+          }
+          page++;
+        }
 
-      if (updateError) {
-        console.error("Error updating user metadata:", updateError);
-        throw new Error(`Erro ao atualizar metadados: ${updateError.message}`);
-      }
+        if (existingAuthUser) {
+          // Update user metadata
+          const { error: updateError } = await adminClient.auth.admin.updateUserById(existingAuthUser.id, {
+            user_metadata: {
+              full_name: fullName,
+              sex: sex || null,
+              is_driver: isDriver || false,
+              is_exempt: isExempt || false,
+              congregation_id: congregationId || null,
+            },
+          });
 
-      inviteData = { user: existingAuthUser };
-    } else {
-      // New user - send invite
-      const { data: newInviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-        data: {
-          full_name: fullName,
-          sex: sex || null,
-          is_driver: isDriver || false,
-          is_exempt: isExempt || false,
-          congregation_id: congregationId || null,
-        },
-        redirectTo: `${req.headers.get("origin")}/`,
-      });
+          if (updateError) {
+            console.error("Error updating user metadata:", updateError);
+          }
 
-      if (inviteError) {
+          inviteData = { user: existingAuthUser };
+        } else {
+          // Could not find the user - this shouldn't happen, but handle gracefully
+          console.error("User exists error but could not find user:", email);
+          throw new Error(`Usuário com email ${email} já existe mas não foi encontrado para atualização.`);
+        }
+      } else {
+        // Some other error
         console.error("Invite error:", inviteError);
         throw new Error(`Erro ao enviar convite: ${inviteError.message}`);
       }
-
+    } else {
       inviteData = newInviteData;
     }
 
