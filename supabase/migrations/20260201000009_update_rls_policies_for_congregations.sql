@@ -55,6 +55,15 @@ CREATE POLICY "Admins can update congregation profiles"
     );
 
 -- ============================================
+-- USER ROLES POLICIES
+-- ============================================
+DROP POLICY IF EXISTS "User roles are viewable by authenticated users" ON public.user_roles;
+CREATE POLICY "User roles are viewable by authenticated users"
+    ON public.user_roles FOR SELECT
+    TO authenticated
+    USING (user_id = auth.uid());
+
+-- ============================================
 -- TRIPS POLICIES
 -- ============================================
 DROP POLICY IF EXISTS "Trips are viewable by authenticated users" ON public.trips;
@@ -62,6 +71,7 @@ DROP POLICY IF EXISTS "Drivers can create trips" ON public.trips;
 DROP POLICY IF EXISTS "Drivers can update their own trips" ON public.trips;
 DROP POLICY IF EXISTS "Drivers can delete their own trips" ON public.trips;
 
+DROP POLICY IF EXISTS "Trips are viewable by congregation members" ON public.trips;
 CREATE POLICY "Trips are viewable by congregation members"
     ON public.trips FOR SELECT
     TO authenticated

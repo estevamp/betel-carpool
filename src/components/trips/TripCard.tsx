@@ -292,7 +292,7 @@ export function TripCard({
                   "bg-muted text-muted-foreground group",
                 )}
               >
-                <span className="font-medium">{passenger.profile.full_name}</span>
+                <span className="font-medium">{passenger.profile?.full_name || "Passageiro"}</span>
                 {passenger.trip_type !== "Ida e Volta" && (
                   <span className="text-xs opacity-70">({passenger.trip_type === "Apenas Ida" ? "Ida" : "Volta"})</span>
                 )}

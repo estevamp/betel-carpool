@@ -50,11 +50,15 @@ export default function ViagensPage() {
     }
 
     // Apply search filter
+    const searchLower = searchTerm.toLowerCase();
+    const driverName = trip.driver?.full_name || "";
+    
     return (
-      trip.driver.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      trip.passengers.some((p) =>
-        p.profile.full_name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      driverName.toLowerCase().includes(searchLower) ||
+      trip.passengers.some((p) => {
+        const passengerName = p.profile?.full_name || "";
+        return passengerName.toLowerCase().includes(searchLower);
+      })
     );
   });
 
