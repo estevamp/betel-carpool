@@ -149,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
 
               setProfile(newProfile as Profile);
+              console.log(`[DEBUG] Profile criado: ${newProfile.full_name}, Congregação: ${newProfile.congregation_id}`);
             }
           } else {
             // Profile exists but is linked to a different user - this shouldn't happen normally
@@ -157,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         setProfile(profileData as Profile | null);
+        console.log(`[DEBUG] Profile existente carregado: ${profileData.full_name}, Congregação: ${profileData.congregation_id}`);
       }
 
       // Check if user is admin or super admin
