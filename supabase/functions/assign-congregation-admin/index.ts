@@ -2,6 +2,16 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.10.0";
 
 serve(async (req) => {
+  // This is needed for CORS support
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey",
+      },
+    });
+  }
+
   const { profile_id, congregation_id } = await req.json();
 
   const supabaseClient = createClient(
