@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useInviteUser } from "@/hooks/useInviteUser";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
+import { useBetelitas, type Betelita } from "@/hooks/useBetelitas";
 
 const formSchema = z.object({
   fullName: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
@@ -29,6 +30,8 @@ const formSchema = z.object({
   sex: z.enum(["Homem", "Mulher"]).optional(),
   isDriver: z.boolean().default(false),
   isExempt: z.boolean().default(false),
+  isMarried: z.boolean().default(false),
+  spouseId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -45,6 +48,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
   const queryClient = useQueryClient();
   const { sendInvite, isInviting } = useInviteUser();
   const { selectedCongregationId } = useSelectedCongregation();
+  const { data: allBetelitas = [] } = useBetelitas();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -53,8 +57,28 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
       email: "",
       isDriver: false,
       isExempt: false,
+      isMarried: false,
+      spouseId: "",
     },
   });
+
+  const watchedSex = form.watch("sex");
+  const watchedIsMarried = form.watch("isMarried");
+
+  // Filter available spouses: opposite sex, not married, not self
+  const availableSpouses = useMemo(() => {
+    if (!watchedSex) return [];
+
+    const oppositeSex = watchedSex === "Homem" ? "Mulher" : "Homem";
+
+    return allBetelitas.filter((b: Betelita) => {
+      // Must be opposite sex
+      if (b.sex !== oppositeSex) return false;
+      // Must be single
+      if (b.is_married) return false;
+      return true;
+    });
+  }, [allBetelitas, watchedSex]);
 
   const handleSaveOnly = async (data: FormData) => {
     setSubmitAction("save");
@@ -63,17 +87,29 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
       // Create a placeholder user_id (this betelita won't be able to login until invited)
       const placeholderUserId = crypto.randomUUID();
 
-      const { error } = await supabase.from("profiles").insert({
+      const newSpouseId = data.isMarried && data.spouseId ? data.spouseId : null;
+
+      const { data: newProfile, error } = await supabase.from("profiles").insert({
         user_id: placeholderUserId,
         full_name: data.fullName,
         email: data.email || null,
         sex: data.sex || null,
         is_driver: data.isDriver,
         is_exempt: data.isExempt,
+        is_married: data.isMarried,
+        spouse_id: newSpouseId,
         congregation_id: selectedCongregationId,
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      // If there's a spouse, update their profile to link back (bidirectional)
+      if (newSpouseId && newProfile) {
+        await supabase.from("profiles").update({ 
+          spouse_id: newProfile.id, 
+          is_married: true 
+        }).eq("id", newSpouseId);
+      }
 
       toast({
         title: "Betelita salvo!",
@@ -254,6 +290,63 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="isMarried"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-2">
+                  <div className="space-y-0">
+                    <FormLabel className="text-xs">Casado(a)</FormLabel>
+                    <FormDescription className="text-xs">Vincular cônjuge</FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch 
+                      checked={field.value} 
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        if (!checked) {
+                          form.setValue("spouseId", "");
+                        }
+                      }} 
+                      disabled={!watchedSex}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {watchedIsMarried && watchedSex && (
+              <FormField
+                control={form.control}
+                name="spouseId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Cônjuge</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="text-sm h-8">
+                          <SelectValue placeholder="Selecione o cônjuge..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {availableSpouses.map((spouse) => (
+                          <SelectItem key={spouse.id} value={spouse.id}>
+                            {spouse.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {availableSpouses.length === 0 && (
+                      <FormDescription className="text-xs text-muted-foreground">
+                        Nenhum cônjuge disponível (sexo oposto e solteiro)
+                      </FormDescription>
+                    )}
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <DialogFooter className="flex-col sm:flex-row gap-1 pt-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting} size="sm">
