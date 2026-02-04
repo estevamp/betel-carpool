@@ -12,17 +12,28 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // Extract and validate auth token
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+      status: 401,
+    });
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+
   const { profile_id, congregation_id } = await req.json();
 
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-    { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
+    { global: { headers: { Authorization: authHeader } } }
   );
 
-  // Check if the user is a super_admin
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  if (!user) {
+  // Check if the user is a super_admin - pass token explicitly for Lovable Cloud
+  const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+  if (authError || !user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       headers: { "Content-Type": "application/json", ...corsHeaders },
       status: 401,
