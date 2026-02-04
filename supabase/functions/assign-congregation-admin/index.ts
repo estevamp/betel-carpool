@@ -1,15 +1,15 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.10.0";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
 serve(async (req) => {
   // This is needed for CORS support
   if (req.method === "OPTIONS") {
-    return new Response("ok", {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey",
-      },
-    });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   const { profile_id, congregation_id } = await req.json();
@@ -24,7 +24,7 @@ serve(async (req) => {
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
       status: 401,
     });
   }
@@ -38,7 +38,7 @@ serve(async (req) => {
 
   if (roleError || !roleData) {
     return new Response(JSON.stringify({ error: "Forbidden: Not a super admin" }), {
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
       status: 403,
     });
   }
@@ -52,7 +52,7 @@ serve(async (req) => {
 
   if (profileError) {
     return new Response(JSON.stringify({ error: "Perfil não encontrado" }), {
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
       status: 404,
     });
   }
@@ -61,7 +61,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       error: `O usuário ${profileData.full_name || profileData.email || ''} ainda não aceitou o convite. Apenas usuários que já aceitaram o convite podem ser designados como administradores.`
     }), {
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
       status: 400,
     });
   }
@@ -74,7 +74,7 @@ serve(async (req) => {
 
   if (insertRoleError && insertRoleError.code !== "23505") { // 23505 is unique_violation
     return new Response(JSON.stringify({ error: insertRoleError.message }), {
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
       status: 400,
     });
   }
@@ -88,13 +88,13 @@ serve(async (req) => {
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), {
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
       status: 400,
     });
   }
 
   return new Response(JSON.stringify(data), {
-    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    headers: { "Content-Type": "application/json", ...corsHeaders },
     status: 201,
   });
 });
