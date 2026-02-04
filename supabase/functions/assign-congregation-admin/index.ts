@@ -73,23 +73,20 @@ serve(async (req) => {
   if (profileData?.user_id) {
     const { error: insertRoleError } = await supabaseClient
       .from("user_roles")
-      .insert({ user_id: profileData.user_id, role: "admin" })
-      .select();
+      .insert({ user_id: profileData.user_id, role: "admin" });
 
-    if (insertRoleError && insertRoleError.code !== "23505") { // 23505 is unique_violation
-      return new Response(JSON.stringify({ error: insertRoleError.message }), {
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-        status: 400,
-      });
+    // If role assignment fails (e.g., unique violation, or FK violation due to stale user_id),
+    // log it but don't block the main task of assigning congregation admin role.
+    // The role can be granted later upon login.
+    if (insertRoleError) {
+      console.warn(`Ignoring error while trying to assign 'admin' role to user ${profileData.user_id}: ${insertRoleError.message}`);
     }
   }
 
   // Assign the profile as a congregation administrator
-  const { data, error } = await supabaseClient
+  const { error } = await supabaseClient
     .from("congregation_administrators")
-    .insert({ profile_id, congregation_id })
-    .select()
-    .single();
+    .insert({ profile_id, congregation_id });
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), {
@@ -98,7 +95,8 @@ serve(async (req) => {
     });
   }
 
-  return new Response(JSON.stringify(data), {
+  // Return a simple success message as we are not selecting the data anymore.
+  return new Response(JSON.stringify({ success: true }), {
     headers: { "Content-Type": "application/json", ...corsHeaders },
     status: 201,
   });
