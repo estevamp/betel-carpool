@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useInviteUser } from "@/hooks/useInviteUser";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
+import { useCongregations } from "@/hooks/useCongregations";
 import { useBetelitas, type Betelita } from "@/hooks/useBetelitas";
 
 const formSchema = z.object({
@@ -49,6 +50,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
   const { sendInvite, isInviting } = useInviteUser();
   const { selectedCongregationId } = useSelectedCongregation();
   const { data: allBetelitas = [] } = useBetelitas();
+  const { congregations } = useCongregations();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -165,12 +167,13 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
     }
 
     try {
-      // Generate the invitation link using Supabase's magic link format
+      const congregationName = congregations?.find(c => c.id === selectedCongregationId)?.name || '';
       const baseUrl = window.location.origin;
       const inviteUrl = `${baseUrl}/auth?email=${encodeURIComponent(data.email)}&type=invite`;
+      const inviteText = `Esse é o seu convite para de cadastrar no sistema de transportes da congregação ${congregationName}.\n\n${inviteUrl}`;
 
       // Copy to clipboard
-      await navigator.clipboard.writeText(inviteUrl);
+      await navigator.clipboard.writeText(inviteText);
 
       toast({
         title: "Link copiado!",

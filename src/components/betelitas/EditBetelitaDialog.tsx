@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useInviteUser } from "@/hooks/useInviteUser";
 import type { Betelita } from "@/hooks/useBetelitas";
+import { useCongregations } from "@/hooks/useCongregations";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
 
 interface EditBetelitaDialogProps {
   person: Betelita | null;
@@ -23,6 +25,8 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { sendInvite, isInviting } = useInviteUser();
+  const { congregations } = useCongregations();
+  const { selectedCongregationId } = useSelectedCongregation();
 
   const [formData, setFormData] = useState({
     full_name: "",
@@ -149,12 +153,13 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
     }
 
     try {
-      // Generate the invitation link using Supabase's magic link format
+      const congregationName = congregations?.find(c => c.id === selectedCongregationId)?.name || '';
       const baseUrl = window.location.origin;
       const inviteUrl = `${baseUrl}/auth?email=${encodeURIComponent(formData.email)}&type=invite`;
+      const inviteText = `Esse é o seu convite para de cadastrar no sistema de transportes da congregação ${congregationName}.\n\n${inviteUrl}`;
 
       // Copy to clipboard
-      await navigator.clipboard.writeText(inviteUrl);
+      await navigator.clipboard.writeText(inviteText);
 
       toast({
         title: "Link copiado!",
