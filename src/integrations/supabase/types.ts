@@ -617,8 +617,15 @@ export type Database = {
         Args: { _congregation_id: string }
         Returns: boolean
       }
+      can_view_trip: { Args: { trip_id: string }; Returns: boolean }
+      get_auth_user_email: { Args: never; Returns: string }
       get_current_congregation_id: { Args: never; Returns: string }
       get_current_profile_id: { Args: never; Returns: string }
+      get_current_user_email: { Args: never; Returns: string }
+      get_profile_id_from_user_id: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
