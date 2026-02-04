@@ -68,26 +68,20 @@ serve(async (req) => {
     });
   }
 
-  if (!profileData?.user_id) {
-    return new Response(JSON.stringify({
-      error: `O usuário ${profileData.full_name || profileData.email || ''} ainda não aceitou o convite. Apenas usuários que já aceitaram o convite podem ser designados como administradores.`
-    }), {
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-      status: 400,
-    });
-  }
+  // Add 'admin' role to the user if they have a user_id (already accepted invite)
+  // If no user_id, we still allow congregation admin assignment - they'll get the role when they login
+  if (profileData?.user_id) {
+    const { error: insertRoleError } = await supabaseClient
+      .from("user_roles")
+      .insert({ user_id: profileData.user_id, role: "admin" })
+      .select();
 
-  // Add 'admin' role to the user if not already present
-  const { error: insertRoleError } = await supabaseClient
-    .from("user_roles")
-    .insert({ user_id: profileData.user_id, role: "admin" })
-    .select();
-
-  if (insertRoleError && insertRoleError.code !== "23505") { // 23505 is unique_violation
-    return new Response(JSON.stringify({ error: insertRoleError.message }), {
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-      status: 400,
-    });
+    if (insertRoleError && insertRoleError.code !== "23505") { // 23505 is unique_violation
+      return new Response(JSON.stringify({ error: insertRoleError.message }), {
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+        status: 400,
+      });
+    }
   }
 
   // Assign the profile as a congregation administrator
