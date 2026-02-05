@@ -14,6 +14,7 @@ export interface Betelita {
   spouse_name: string | null;
   is_admin: boolean;
   congregation_id: string | null;
+  user_id: string | null;
 }
 
 import { useIsSuperAdmin } from "./useIsSuperAdmin";
@@ -78,6 +79,7 @@ export function useBetelitas(options?: { congregationId?: string }) {
             ? profileNameMap.get(profile.spouse_id) ?? null
             : null,
           is_admin: userId ? adminUserIds.has(userId) : false,
+          user_id: userId ?? null,
         };
       });
     },
