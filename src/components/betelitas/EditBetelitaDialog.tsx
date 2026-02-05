@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Mail, Copy } from "lucide-react";
+import { Loader2, Mail, Copy, CheckCircle2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -181,7 +181,14 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Editar Betelita</DialogTitle>
+          <DialogTitle className="flex items-center gap-1.5">
+            Editar Betelita
+            {person.user_id && (
+              <span title="Vinculado ao sistema">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              </span>
+            )}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-2">

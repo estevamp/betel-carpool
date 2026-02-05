@@ -5,7 +5,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Car, Mail, Shield, CreditCard, Heart } from "lucide-react";
+import { Car, Mail, Shield, CreditCard, Heart, CheckCircle2 } from "lucide-react";
 import type { Betelita } from "@/hooks/useBetelitas";
 
 interface ViewBetelitaDialogProps {
@@ -46,7 +46,14 @@ export function ViewBetelitaDialog({
                 .toUpperCase()}
             </div>
             <div>
-              <h3 className="text-lg font-semibold">{person.full_name}</h3>
+              <h3 className="text-lg font-semibold flex items-center gap-1.5">
+                {person.full_name}
+                {person.user_id && (
+                  <span title="Vinculado ao sistema">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  </span>
+                )}
+              </h3>
               <p className="text-sm text-muted-foreground">
                 {person.sex ?? "Sexo não informado"}
               </p>
