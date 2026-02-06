@@ -34,21 +34,27 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         <Card className="max-w-md w-full">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <AlertCircle className="h-12 w-12 text-red-500" />
+              <AlertCircle className="h-12 w-12 text-amber-500" />
             </div>
-            <CardTitle className="text-2xl">Acesso Negado</CardTitle>
+            <CardTitle className="text-2xl">Acesso Restrito</CardTitle>
             <CardDescription className="text-base mt-2">
               Você não está vinculado a nenhuma congregação
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground text-center">
-              Para acessar o sistema, você precisa ser convidado por um administrador.
-            </p>
-            <p className="text-sm text-muted-foreground text-center font-medium">
-              Contate o coordenador de transportes da sua congregação para que ele envie um convite para você.
-            </p>
-            <div className="pt-4">
+            <div className="bg-muted p-4 rounded-lg space-y-3">
+              <p className="text-sm text-foreground text-center">
+                Para acessar o sistema, você precisa receber um convite de um administrador.
+              </p>
+              <p className="text-sm text-foreground text-center font-semibold">
+                Entre em contato com o coordenador de transportes da sua congregação e solicite que ele envie um convite para o seu e-mail.
+              </p>
+            </div>
+            <div className="text-xs text-muted-foreground text-center space-y-1">
+              <p>Após receber o convite, você poderá acessar o sistema normalmente.</p>
+              <p className="font-medium">E-mail cadastrado: {user.email}</p>
+            </div>
+            <div className="pt-2">
               <Button
                 onClick={signOut}
                 variant="outline"
