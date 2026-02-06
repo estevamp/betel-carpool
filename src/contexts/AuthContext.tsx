@@ -49,6 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (profileError) {
         console.error("Error fetching profile:", profileError);
+        setProfile(null);
+        setIsAdmin(false);
+        setIsSuperAdmin(false);
         return;
       }
 
@@ -60,6 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (!userEmail) {
             console.error("User has no email");
+            setProfile(null);
+            setIsAdmin(false);
+            setIsSuperAdmin(false);
             return;
           }
           
@@ -90,6 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
               if (updateError) {
                 console.error("Error linking profile to user:", updateError);
+                setProfile(null);
+                setIsAdmin(false);
+                setIsSuperAdmin(false);
                 return;
               }
               setProfile(updatedProfile as Profile);
@@ -106,6 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setIsAdmin(false);
             setIsSuperAdmin(false);
           }
+        } else {
+          setProfile(null);
+          setIsAdmin(false);
+          setIsSuperAdmin(false);
         }
       } else {
         setProfile(profileData as Profile | null);
@@ -128,6 +141,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     } catch (error) {
       console.error("Error in fetchProfile:", error);
+      setProfile(null);
+      setIsAdmin(false);
+      setIsSuperAdmin(false);
     }
   };
 
