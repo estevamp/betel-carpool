@@ -160,6 +160,9 @@ CREATE POLICY "Users can manage their own ride requests"
             public.is_super_admin()
             OR congregation_id = public.get_current_congregation_id()
         )
+    )
+    WITH CHECK (
+        (profile_id = public.get_current_profile_id() OR public.has_role(auth.uid(), 'admin'))
     );
 
 -- ============================================
