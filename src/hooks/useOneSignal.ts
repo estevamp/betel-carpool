@@ -10,6 +10,10 @@ export function useOneSignal() {
 
   useEffect(() => {
     const initializeOneSignal = async () => {
+      if (window.location.hostname !== 'betel-carpool.lovable.app') {
+        console.log('OneSignal disabled in non-production environment');
+        return;
+      }
       try {
         // Initialize OneSignal
         await oneSignalService.initialize();

@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,6 +12,21 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, profile, isLoading, signOut } = useAuth();
   const location = useLocation();
+  const [showRestrictedAccess, setShowRestrictedAccess] = useState(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (!isLoading && user && (!profile || !profile.congregation_id)) {
+      // Espera um pouco para garantir que o perfil teve chance de carregar
+      timer = setTimeout(() => {
+        setShowRestrictedAccess(true);
+      }, 1500);
+    } else {
+      setShowRestrictedAccess(false);
+    }
+    return () => clearTimeout(timer);
+  }, [isLoading, user, profile]);
+
 
   if (isLoading) {
     return (
@@ -27,8 +43,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Check if user doesn't have a profile at all (not invited) or is not linked to a congregation
-  if (user && (!profile || !profile.congregation_id)) {
+  if (showRestrictedAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
@@ -69,5 +84,18 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  return <>{children}</>;
+  // Renderiza o conteúdo protegido se o usuário tiver um perfil e congregação
+  if (profile && profile.congregation_id) {
+    return <>{children}</>;
+  }
+
+  // Renderiza um loader enquanto espera a verificação final
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-10 w-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+        <p className="text-muted-foreground">Verificando perfil...</p>
+      </div>
+    </div>
+  );
 }

@@ -138,40 +138,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Set up auth state listener BEFORE checking session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    let isMounted = true;
+    let retryTimeout: NodeJS.Timeout;
 
-        if (session?.user) {
-          // Fetch profile and wait for it to complete before setting isLoading to false
-          await fetchProfile(session.user.id);
-          console.log('[AuthContext] User authenticated, profile loaded');
-          setIsLoading(false);
-        } else {
-          setProfile(null);
-          setIsAdmin(false);
-          setIsSuperAdmin(false);
-          setIsLoading(false);
+    const fetchProfileWithRetry = async (userId: string, attempt = 1) => {
+      try {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (!isMounted) return;
+
+        if (profileError) {
+          console.error(`[Attempt ${attempt}] Error fetching profile:`, profileError);
+          if (profileError.code === '42P17' && attempt < 3) {
+            console.log(`Retrying profile fetch in 2 seconds...`);
+            retryTimeout = setTimeout(() => fetchProfileWithRetry(userId, attempt + 1), 2000);
+          }
+          return;
         }
-      }
-    );
 
-    // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+        setProfile(profileData as Profile | null);
+
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .in("role", ["admin", "super_admin"]);
+
+        const roles = roleData || [];
+        const currentIsAdmin = roles.some(r => r.role === "admin" || r.role === "super_admin");
+        const currentIsSuperAdmin = roles.some(r => r.role === "super_admin");
+
+        setIsAdmin(currentIsAdmin);
+        setIsSuperAdmin(currentIsSuperAdmin);
+
+      } catch (error) {
+        console.error("Unhandled error in fetchProfileWithRetry:", error);
+      }
+    };
+
+    const handleAuthStateChange = async (event: string, session: Session | null) => {
+      if (!isMounted) return;
+
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        await fetchProfile(session.user.id);
-        console.log('[AuthContext] Initial session loaded, profile loaded');
+        await fetchProfileWithRetry(session.user.id);
+        console.log('[AuthContext] User authenticated, profile loaded');
+      } else {
+        setProfile(null);
+        setIsAdmin(false);
+        setIsSuperAdmin(false);
       }
-
       setIsLoading(false);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (isMounted) {
+        handleAuthStateChange('INITIAL_SESSION', session);
+      }
     });
 
     return () => {
+      isMounted = false;
+      clearTimeout(retryTimeout);
       subscription.unsubscribe();
     };
   }, []);
