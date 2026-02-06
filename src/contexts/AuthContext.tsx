@@ -154,40 +154,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let mounted = true;
+
     // Set up auth state listener BEFORE checking session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('[AuthContext] Auth state changed:', event, 'User:', session?.user?.email);
+        
+        if (!mounted) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
           // Fetch profile and wait for it to complete before setting isLoading to false
+          console.log('[AuthContext] Fetching profile for user:', session.user.email);
           await fetchProfile(session.user.id);
-          console.log('[AuthContext] User authenticated, profile loaded');
-          setIsLoading(false);
+          console.log('[AuthContext] Profile fetch completed');
+          
+          if (mounted) {
+            setIsLoading(false);
+            console.log('[AuthContext] isLoading set to false');
+          }
         } else {
+          console.log('[AuthContext] No session, clearing profile');
           setProfile(null);
           setIsAdmin(false);
           setIsSuperAdmin(false);
-          setIsLoading(false);
+          if (mounted) {
+            setIsLoading(false);
+          }
         }
       }
     );
 
     // Check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log('[AuthContext] Initial session check:', session?.user?.email);
+      
+      if (!mounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
+        console.log('[AuthContext] Fetching initial profile for user:', session.user.email);
         await fetchProfile(session.user.id);
-        console.log('[AuthContext] Initial session loaded, profile loaded');
+        console.log('[AuthContext] Initial profile fetch completed');
       }
 
-      setIsLoading(false);
+      if (mounted) {
+        setIsLoading(false);
+        console.log('[AuthContext] Initial isLoading set to false');
+      }
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);

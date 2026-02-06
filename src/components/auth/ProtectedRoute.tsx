@@ -12,7 +12,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, profile, isLoading, signOut } = useAuth();
   const location = useLocation();
 
+  console.log('[ProtectedRoute] Render - isLoading:', isLoading, 'user:', user?.email, 'profile:', profile?.full_name, 'congregation_id:', profile?.congregation_id);
+
   if (isLoading) {
+    console.log('[ProtectedRoute] Showing loading screen');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
