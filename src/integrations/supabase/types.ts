@@ -617,6 +617,7 @@ export type Database = {
         Args: { _congregation_id: string }
         Returns: boolean
       }
+      can_user_signup: { Args: { user_email: string }; Returns: boolean }
       can_view_trip: { Args: { trip_id: string }; Returns: boolean }
       get_auth_user_email: { Args: never; Returns: string }
       get_current_congregation_id: { Args: never; Returns: string }
