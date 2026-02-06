@@ -22,7 +22,7 @@ export function useOneSignal() {
           if (profile) {
             await oneSignalService.addTags({
               congregation_id: profile.congregation_id || 'unknown',
-              user_role: profile.role || 'betelita',
+              user_role: 'betelita',
               full_name: profile.full_name || 'Unknown',
             });
           }

@@ -146,7 +146,7 @@ class OneSignalService {
       }
 
       const response = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/send-push-notification`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push-notification`,
         {
           method: 'POST',
           headers: {
@@ -191,7 +191,7 @@ class OneSignalService {
       }
 
       const response = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/send-push-notification`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push-notification`,
         {
           method: 'POST',
           headers: {
