@@ -41,14 +41,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log('[fetchProfile] Starting fetch for userId:', userId);
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", userId)
         .maybeSingle();
 
+      console.log('[fetchProfile] Profile query result:', { profileData, profileError });
+
       if (profileError) {
-        console.error("Error fetching profile:", profileError);
+        console.error("[fetchProfile] Error fetching profile:", profileError);
         setProfile(null);
         setIsAdmin(false);
         setIsSuperAdmin(false);
@@ -126,11 +129,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Check if user is admin or super admin
-      const { data: roleData } = await supabase
+      console.log('[fetchProfile] Checking roles for userId:', userId);
+      const { data: roleData, error: roleError } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
         .in("role", ["admin", "super_admin"]);
+
+      console.log('[fetchProfile] Role query result:', { roleData, roleError });
 
       const roles = roleData || [];
       const currentIsAdmin = roles.some(r => r.role === "admin" || r.role === "super_admin");
@@ -138,9 +144,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setIsAdmin(currentIsAdmin);
       setIsSuperAdmin(currentIsSuperAdmin);
+      
+      console.log('[fetchProfile] Completed successfully');
 
     } catch (error) {
-      console.error("Error in fetchProfile:", error);
+      console.error("[fetchProfile] Error in fetchProfile:", error);
       setProfile(null);
       setIsAdmin(false);
       setIsSuperAdmin(false);
