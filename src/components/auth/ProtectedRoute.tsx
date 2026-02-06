@@ -18,14 +18,19 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     let timer: NodeJS.Timeout;
     if (!isLoading && !profile?.congregation_id) {
       // Espera um pouco para garantir que o perfil teve chance de carregar
+      console.log(`[DEBUG] Profile check - isLoading: ${isLoading}, profile exists: ${!!profile}, congregation_id: ${profile?.congregation_id}`);
       timer = setTimeout(() => {
+        // Re-check the profile state at the time the timeout fires
+        console.log(`[DEBUG] Timeout fired - showing restricted access. Profile congregation_id: ${profile?.congregation_id}`);
         setShowRestrictedAccess(true);
-        console.log(`[DEBUG] Set restricted Profile.CongregationId: ${profile?.congregation_id}`);
       }, 1500);
     } else {
+      console.log(`[DEBUG] Access granted - isLoading: ${isLoading}, profile exists: ${!!profile}, congregation_id: ${profile?.congregation_id}`);
       setShowRestrictedAccess(false);
     }
-    return () => clearTimeout(timer);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [isLoading, user, profile]);
 
   if (isLoading) {
