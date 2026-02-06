@@ -1,12 +1,10 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Home, Car, Users, Plane, Search, AlertTriangle, Wallet, HelpCircle, Settings, LogOut, X, User, Building2, Bell } from "lucide-react";
+import { Home, Car, Users, Plane, Search, AlertTriangle, Wallet, HelpCircle, Settings, LogOut, X, User, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOneSignal } from "@/hooks/useOneSignal";
-import { toast } from "sonner";
 const mainNavItems = [{
   icon: Home,
   label: "Início",
@@ -88,23 +86,6 @@ export function AppSidebar({
     await signOut();
     navigate("/auth");
   };
-  const {
-    requestPermission,
-    isSubscribed
-  } = useOneSignal();
-  const handleNotificationClick = async () => {
-    const subscribed = await isSubscribed();
-    if (subscribed) {
-      toast.info("Você já está inscrito para receber notificações.");
-      return;
-    }
-    const permissionGranted = await requestPermission();
-    if (permissionGranted) {
-      toast.success("Inscrição para notificações realizada com sucesso!");
-    } else {
-      toast.warning("Você precisa permitir as notificações nas configurações do seu navegador.");
-    }
-  };
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
   };
@@ -173,13 +154,7 @@ export function AppSidebar({
               {profile?.email || ""}
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleNotificationClick} className="shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent">
-            <Bell className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={handleNotificationClick} className="shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent" aria-label="Notificações">
-            <Bell className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={handleSignOut} className="shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent" aria-label="Sair">
+          <Button variant="ghost" size="icon" onClick={handleSignOut} className="shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
