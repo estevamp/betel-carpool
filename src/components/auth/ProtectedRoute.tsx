@@ -16,18 +16,22 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (!isLoading && !profile?.congregation_id) {
-      // Espera um pouco para garantir que o perfil teve chance de carregar
-      console.log(`[DEBUG] Profile check - isLoading: ${isLoading}, profile exists: ${!!profile}, congregation_id: ${profile?.congregation_id}`);
+    
+    // Show restricted access if:
+    // 1. Not loading anymore
+    // 2. User is authenticated
+    // 3. Profile exists but has no congregation_id
+    if (!isLoading && user && profile && !profile.congregation_id) {
+      console.log(`[ProtectedRoute] Profile without congregation detected - showing restricted access`);
+      console.log(`[ProtectedRoute] Profile: ${profile.full_name}, Email: ${profile.email}, Congregation ID: ${profile.congregation_id}`);
       timer = setTimeout(() => {
-        // Re-check the profile state at the time the timeout fires
-        console.log(`[DEBUG] Timeout fired - showing restricted access. Profile congregation_id: ${profile?.congregation_id}`);
         setShowRestrictedAccess(true);
-      }, 1500);
+      }, 500);
     } else {
-      console.log(`[DEBUG] Access granted - isLoading: ${isLoading}, profile exists: ${!!profile}, congregation_id: ${profile?.congregation_id}`);
+      console.log(`[ProtectedRoute] Access check - isLoading: ${isLoading}, user: ${!!user}, profile: ${!!profile}, congregation_id: ${profile?.congregation_id}`);
       setShowRestrictedAccess(false);
     }
+    
     return () => {
       if (timer) clearTimeout(timer);
     };
@@ -84,17 +88,30 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // Renderiza o conteúdo protegido se o usuário tiver um perfil e congregação
-  if (profile && profile.congregation_id) {
+  // If no profile found, show loading (shouldn't happen as isLoading would be false)
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-muted-foreground">Verificando perfil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Renderiza o conteúdo protegido se o usuário tiver um perfil com congregação
+  if (profile.congregation_id) {
     return <>{children}</>;
   }
 
-  // Renderiza um loader enquanto espera a verificação final
+  // If we reach here, profile exists but no congregation_id
+  // The useEffect will trigger showRestrictedAccess
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
         <div className="h-10 w-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-        <p className="text-muted-foreground">Verificando perfil...</p>
+        <p className="text-muted-foreground">Verificando acesso...</p>
       </div>
     </div>
   );
