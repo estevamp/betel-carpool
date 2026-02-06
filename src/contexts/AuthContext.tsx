@@ -177,8 +177,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           // Fetch profile and wait for it to complete before setting isLoading to false
           console.log('[AuthContext] Fetching profile for user:', session.user.email);
-          await fetchProfile(session.user.id);
-          console.log('[AuthContext] Profile fetch completed');
+          try {
+            await fetchProfile(session.user.id);
+            console.log('[AuthContext] Profile fetch completed');
+          } catch (error) {
+            console.error('[AuthContext] Error calling fetchProfile:', error);
+          }
           
           if (mounted) {
             setIsLoading(false);
@@ -207,8 +211,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (session?.user) {
         console.log('[AuthContext] Fetching initial profile for user:', session.user.email);
-        await fetchProfile(session.user.id);
-        console.log('[AuthContext] Initial profile fetch completed');
+        try {
+          await fetchProfile(session.user.id);
+          console.log('[AuthContext] Initial profile fetch completed');
+        } catch (error) {
+          console.error('[AuthContext] Error calling initial fetchProfile:', error);
+        }
       }
 
       if (mounted) {
