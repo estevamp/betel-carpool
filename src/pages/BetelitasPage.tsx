@@ -55,20 +55,23 @@ export default function BetelitasPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (person: Betelita) => {
-      // If the person has a spouse, clear their spouse's link first
-      if (person.spouse_id) {
-        await supabase
-          .from("profiles")
-          .update({ spouse_id: null, is_married: false })
-          .eq("id", person.spouse_id);
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
 
-      const { error } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", person.id);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-profile`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ profileId: person.id }),
+        }
+      );
 
-      if (error) throw error;
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || "Erro ao excluir");
       
       return person.id;
     },
