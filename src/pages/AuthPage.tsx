@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { lovable } from "@/integrations/lovable";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function AuthPage() {
   const [email, setEmail] = useState("");
@@ -71,6 +72,8 @@ export default function AuthPage() {
   const handleSocialSignIn = async (provider: "google" | "apple") => {
     setIsLoading(true);
     try {
+      // First, we need to get the user's email to check if they have a profile
+      // Since OAuth doesn't give us the email before redirect, we'll handle validation after auth
       const result = await lovable.auth.signInWithOAuth(provider, {
         redirect_uri: `${window.location.origin}/auth`,
       });

@@ -146,7 +146,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           // Use setTimeout to avoid potential deadlocks
-          setTimeout(() => fetchProfile(session.user.id), 0);
+          setTimeout(async () => {
+            await fetchProfile(session.user.id);
+            
+            // After fetching profile, check if user has congregation_id
+            // This will be handled by ProtectedRoute, but we log here for debugging
+            console.log('[AuthContext] User authenticated, profile will be validated by ProtectedRoute');
+          }, 0);
         } else {
           setProfile(null);
           setIsAdmin(false);

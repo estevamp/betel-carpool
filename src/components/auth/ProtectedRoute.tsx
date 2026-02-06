@@ -27,7 +27,43 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Check if user has a profile and congregation_id
+  // Check if user doesn't have a profile at all (not invited)
+  if (user && !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <AlertCircle className="h-12 w-12 text-red-500" />
+            </div>
+            <CardTitle className="text-2xl">Acesso Negado</CardTitle>
+            <CardDescription className="text-base mt-2">
+              Você não tem um perfil no sistema
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Para acessar o sistema, você precisa ser convidado por um administrador.
+            </p>
+            <p className="text-sm text-muted-foreground text-center font-medium">
+              Entre em contato com o coordenador de transportes da sua congregação para que ele crie um convite para você.
+            </p>
+            <div className="pt-4">
+              <Button
+                onClick={signOut}
+                variant="outline"
+                className="w-full"
+              >
+                Sair
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Check if user has a profile but no congregation_id
   if (user && profile && !profile.congregation_id) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -43,10 +79,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground text-center">
-              Para acessar o sistema, você precisa ser convidado pelo coordenador de transportes da sua congregação.
+              Para acessar o sistema, você precisa ser vinculado a uma congregação.
             </p>
             <p className="text-sm text-muted-foreground text-center font-medium">
-              Entre em contato com o coordenador de transportes da sua congregação para que ele envie um convite para você.
+              Entre em contato com o coordenador de transportes da sua congregação para que ele complete seu cadastro.
             </p>
             <div className="pt-4">
               <Button
