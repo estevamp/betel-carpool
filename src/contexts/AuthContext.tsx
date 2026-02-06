@@ -162,8 +162,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         console.log(`[AuthContext] Profile fetched:`, profileData);
-        setProfile(profileData as Profile | null);
 
+        // If profile doesn't exist for the current userId, try to find and link an existing profile by email
+        if (!profileData) {
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData.user) {
+            const userEmail = userData.user.email?.toLowerCase();
+            
+            if (!userEmail) {
+              console.error("User has no email");
+              setProfile(null);
+              setIsAdmin(false);
+              setIsSuperAdmin(false);
+              setIsLoading(false);
+              return;
+            }
+            
+            console.log(`[DEBUG] Current auth.uid(): ${userId}`);
+            console.log(`[DEBUG] Searching for profile by email: ${userEmail}`);
+
+            // Try to find any profile by email (regardless of user_id)
+            const { data: emailProfile, error: emailProfileError } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("email", userEmail)
+              .maybeSingle();
+
+            if (emailProfileError) {
+              console.error("[DEBUG] Error finding profile by email:", emailProfileError);
+            }
+            console.log(`[DEBUG] Profile found by email:`, emailProfile);
+
+            if (emailProfile) {
+              // If found, and it's either unlinked or linked to a different user, link it to the current user
+              if (!emailProfile.user_id || emailProfile.user_id !== userId) {
+                const { data: updatedProfile, error: updateError } = await supabase
+                  .from("profiles")
+                  .update({ user_id: userId })
+                  .eq("id", emailProfile.id)
+                  .select()
+                  .single();
+
+                if (updateError) {
+                  console.error("Error linking profile to user:", updateError);
+                  setProfile(null);
+                  setIsAdmin(false);
+                  setIsSuperAdmin(false);
+                  setIsLoading(false);
+                  return;
+                }
+                setProfile(updatedProfile as Profile);
+                console.log(`[DEBUG] Profile re-linked/linked: ${updatedProfile.full_name}, User ID: ${updatedProfile.user_id}, Congregation ID: ${updatedProfile.congregation_id}`);
+              } else {
+                // Profile found by email and already linked to the current user
+                setProfile(emailProfile as Profile);
+                console.log(`[DEBUG] Profile found by email and already linked to current user: ${emailProfile.full_name}, User ID: ${emailProfile.user_id}, Congregation ID: ${emailProfile.congregation_id}`);
+              }
+            } else {
+              // No profile found by email, this user needs an admin to create a profile for them
+              console.error("No existing profile found for this email. Please contact an administrator to create your profile.");
+              setProfile(null);
+              setIsAdmin(false);
+              setIsSuperAdmin(false);
+              setIsLoading(false);
+              return;
+            }
+          }
+        } else {
+          setProfile(profileData as Profile);
+          console.log(`[DEBUG] Existing profile loaded for current user: ${profileData.full_name}, User ID: ${profileData.user_id}, Congregation ID: ${profileData.congregation_id}`);
+        }
+
+        // Check if user is admin or super admin
         const { data: roleData } = await supabase
           .from("user_roles")
           .select("role")
