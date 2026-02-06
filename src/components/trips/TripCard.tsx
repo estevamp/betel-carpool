@@ -106,7 +106,8 @@ export function TripCard({
 
   const handleAddPassenger = () => {
     if (!selectedPassengerId) return;
-    onReserveSeat({ tripId: trip.id, tripType: selectedTripType, passengerId: selectedPassengerId });
+    const passengerId = selectedPassengerId === "visitante" ? VISITANTE_PROFILE_ID : selectedPassengerId;
+    onReserveSeat({ tripId: trip.id, tripType: selectedTripType, passengerId });
     setAddPassengerDialogOpen(false);
     setSelectedPassengerId("");
     setSelectedTripType("Ida e Volta");
@@ -229,17 +230,12 @@ export function TripCard({
                           <SelectValue placeholder="Selecione um passageiro" />
                         </SelectTrigger>
                         <SelectContent className="bg-popover">
-                          {availableProfiles.length === 0 ? (
-                            <SelectItem value="none" disabled>
-                              Nenhum disponível
+                          {availableProfiles.map((profile) => (
+                            <SelectItem key={profile.id} value={profile.id}>
+                              {profile.full_name}
                             </SelectItem>
-                          ) : (
-                            availableProfiles.map((profile) => (
-                              <SelectItem key={profile.id} value={profile.id}>
-                                {profile.full_name}
-                              </SelectItem>
-                            ))
-                          )}
+                          ))}
+                          <SelectItem value="visitante">Visitante</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
