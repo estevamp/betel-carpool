@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CongregationProvider } from "@/contexts/CongregationContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { useOneSignal } from "@/hooks/useOneSignal";
 import Dashboard from "./pages/Dashboard";
 import ViagensPage from "./pages/ViagensPage";
 import BetelitasPage from "./pages/BetelitasPage";
@@ -24,6 +25,39 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const AppContent = () => {
+  // Initialize OneSignal for push notifications
+  useOneSignal();
+
+  return (
+    <Routes>
+      <Route path="/auth" element={<AuthPage />} />
+      <Route
+        element={
+          <ProtectedRoute>
+            <AppLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/viagens" element={<ViagensPage />} />
+        <Route path="/viagens/:tripId" element={<ViagensPage />} />
+        <Route path="/betelitas" element={<BetelitasPage />} />
+        <Route path="/ausencia" element={<AusenciaPage />} />
+        <Route path="/procura-vagas" element={<ProcuraVagasPage />} />
+        <Route path="/desocupacao" element={<DesocupacaoPage />} />
+        <Route path="/financeiro" element={<FinanceiroPage />} />
+        <Route path="/faq" element={<FAQPage />} />
+        <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+        <Route path="/perfil" element={<ProfilePage />} />
+        <Route path="/congregacoes" element={<CongregationsPage />} />
+        <Route path="/debug-profiles" element={<DebugProfilesPage />} />
+      </Route>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -32,31 +66,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <CongregationProvider>
-            <Routes>
-              <Route path="/auth" element={<AuthPage />} />
-              <Route
-                element={
-                  <ProtectedRoute>
-                    <AppLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/viagens" element={<ViagensPage />} />
-                <Route path="/viagens/:tripId" element={<ViagensPage />} />
-                <Route path="/betelitas" element={<BetelitasPage />} />
-                <Route path="/ausencia" element={<AusenciaPage />} />
-                <Route path="/procura-vagas" element={<ProcuraVagasPage />} />
-                <Route path="/desocupacao" element={<DesocupacaoPage />} />
-                <Route path="/financeiro" element={<FinanceiroPage />} />
-                <Route path="/faq" element={<FAQPage />} />
-                <Route path="/configuracoes" element={<ConfiguracoesPage />} />
-                <Route path="/perfil" element={<ProfilePage />} />
-                <Route path="/congregacoes" element={<CongregationsPage />} />
-                <Route path="/debug-profiles" element={<DebugProfilesPage />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AppContent />
           </CongregationProvider>
         </AuthProvider>
       </BrowserRouter>

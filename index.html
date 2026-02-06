@@ -20,21 +20,21 @@
     <link rel="icon" type="image/png" href="https://storage.googleapis.com/gpt-engineer-file-uploads/Gwsdf3IJhkcXUCYxQn1MSqB2XXG3/uploads/1769973976340-apple-touch-icon.png">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     
+    <!-- OneSignal Web Push SDK -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "cb24512d-c95a-4533-a08b-259a5e289e0e",
+          safari_web_id: "web.onesignal.auto.0534d2b4-18a9-4e11-8788-4e680cd265b6",
+          notifyButton: {
+            enable: true,
+          },
+        });
+      });
+    </script>
     
-    
-    
-    
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   <meta property="og:title" content="Carpool Betel">
   <meta name="twitter:title" content="Carpool Betel">
   <meta property="og:description" content="Sistema de Transporte de Betelitas">

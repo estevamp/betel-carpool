@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { oneSignalService } from "@/services/oneSignalService";
 
 export interface EvacuationPassenger {
   id: string;
@@ -151,6 +152,30 @@ export function useEvacuation() {
       });
 
       if (error) throw error;
+
+      // Get car and passenger details for notification
+      const car = evacuationQuery.data?.find((c) => c.id === carId);
+      const { data: passengerProfile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", passengerId)
+        .single();
+
+      // Send push notification to the driver
+      if (car && passengerProfile) {
+        try {
+          await oneSignalService.notifyPassengerAdded(
+            car.driver_id,
+            passengerProfile.full_name,
+            car.destination || undefined
+          );
+        } catch (notificationError) {
+          console.error("Error sending push notification:", notificationError);
+          // Don't fail the mutation if notification fails
+        }
+      }
+
+      return { carId, passengerId };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["evacuation"] });
