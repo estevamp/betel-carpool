@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
@@ -32,13 +32,26 @@ export default function ProfilePage() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    full_name: profile?.full_name || "",
-    email: profile?.email || "",
-    sex: profile?.sex || "",
-    pix_key: profile?.pix_key || "",
-    is_driver: profile?.is_driver || false,
-    is_married: profile?.is_married || false,
+    full_name: "",
+    email: "",
+    sex: "",
+    pix_key: "",
+    is_driver: false,
+    is_married: false,
   });
+
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        full_name: profile.full_name || "",
+        email: profile.email || "",
+        sex: profile.sex || "",
+        pix_key: profile.pix_key || "",
+        is_driver: profile.is_driver || false,
+        is_married: profile.is_married || false,
+      });
+    }
+  }, [profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
