@@ -86,13 +86,9 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
     setSubmitAction("save");
     setIsSubmitting(true);
     try {
-      // Create a placeholder user_id (this betelita won't be able to login until invited)
-      const placeholderUserId = crypto.randomUUID();
-
       const newSpouseId = data.isMarried && data.spouseId ? data.spouseId : null;
 
       const { data: newProfile, error } = await supabase.from("profiles").insert({
-        user_id: placeholderUserId,
         full_name: data.fullName,
         email: data.email || null,
         sex: data.sex || null,
