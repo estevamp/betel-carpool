@@ -41,19 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
-      // Get user email
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        console.error("Could not get user data");
+      // Get user email from current session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.email) {
+        console.error("[fetchProfile] No session or email found");
         return;
       }
 
-      const userEmail = userData.user.email?.toLowerCase();
-      if (!userEmail) {
-        console.error("User has no email");
-        return;
-      }
-
+      const userEmail = session.user.email.toLowerCase();
       console.log(`[fetchProfile] Searching for profile by email: ${userEmail}`);
 
       // Search for profile by email (regardless of user_id)
@@ -139,22 +134,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
     let retryTimeout: NodeJS.Timeout;
 
-    const fetchProfileWithRetry = async (userId: string, attempt = 1) => {
+    const fetchProfileWithRetry = async (userId: string, userEmail: string, attempt = 1) => {
       try {
-        console.log(`[AuthContext] fetchProfileWithRetry called for userId: ${userId}, attempt: ${attempt}`);
+        console.log(`[AuthContext] fetchProfileWithRetry called for userId: ${userId}, email: ${userEmail}, attempt: ${attempt}`);
         
-        // Get user email first
-        const { data: userData } = await supabase.auth.getUser();
-        if (!userData.user) {
-          console.error("Could not get user data");
-          setProfile(null);
-          setIsAdmin(false);
-          setIsSuperAdmin(false);
-          setIsLoading(false);
-          return;
-        }
-
-        const userEmail = userData.user.email?.toLowerCase();
         if (!userEmail) {
           console.error("User has no email");
           setProfile(null);
@@ -182,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("[AuthContext] Error finding profile by email:", emailProfileError);
           if (emailProfileError.code === '42P17' && attempt < 3) {
             console.log(`Retrying profile fetch in 2 seconds...`);
-            retryTimeout = setTimeout(() => fetchProfileWithRetry(userId, attempt + 1), 2000);
+            retryTimeout = setTimeout(() => fetchProfileWithRetry(userId, userEmail, attempt + 1), 2000);
             return;
           }
           setProfile(null);
@@ -278,7 +261,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         // Fire profile fetch without awaiting - it will set isLoading(false) when done
         console.log('[AuthContext] User authenticated, profile fetch initiated');
-        fetchProfileWithRetry(session.user.id);
+        const userEmail = session.user.email?.toLowerCase() || '';
+        fetchProfileWithRetry(session.user.id, userEmail);
       } else {
         setProfile(null);
         setIsAdmin(false);
