@@ -16,7 +16,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (!isLoading && user && !profile?.congregation_id) {
+    if (!isLoading && !profile?.congregation_id) {
       // Espera um pouco para garantir que o perfil teve chance de carregar
       timer = setTimeout(() => {
         setShowRestrictedAccess(true);
@@ -26,7 +26,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
     return () => clearTimeout(timer);
   }, [isLoading, user, profile]);
-
 
   if (isLoading) {
     return (
@@ -52,9 +51,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
               <AlertCircle className="h-12 w-12 text-amber-500" />
             </div>
             <CardTitle className="text-2xl">Acesso Restrito</CardTitle>
-            <CardDescription className="text-base mt-2">
-              Você não está vinculado a nenhuma congregação
-            </CardDescription>
+            <CardDescription className="text-base mt-2">Você não está vinculado a nenhuma congregação</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-muted p-4 rounded-lg space-y-3">
@@ -62,7 +59,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
                 Para acessar o sistema, você precisa receber um convite de um administrador.
               </p>
               <p className="text-sm text-foreground text-center font-semibold">
-                Entre em contato com o coordenador de transportes da sua congregação e solicite que ele envie um convite para o seu e-mail.
+                Entre em contato com o coordenador de transportes da sua congregação e solicite que ele envie um convite
+                para o seu e-mail.
               </p>
             </div>
             <div className="text-xs text-muted-foreground text-center space-y-1">
@@ -70,11 +68,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
               <p className="font-medium">E-mail cadastrado: {user.email}</p>
             </div>
             <div className="pt-2">
-              <Button
-                onClick={signOut}
-                variant="outline"
-                className="w-full"
-              >
+              <Button onClick={signOut} variant="outline" className="w-full">
                 Sair
               </Button>
             </div>
