@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const ONESIGNAL_APP_ID = "cb24512d-c95a-4533-a08b-259a5e289e0e";
-const ONESIGNAL_REST_API_KEY = "os_v2_app_zmsfclojljcthielewnf4ke6b2ua6pacgb2uhlfqyn7uaeecng7jp3c7hw4lpw63ztxaxlrvovcbqdftxkeagf4dk257vzpgukdhqly";
+const ONESIGNAL_REST_API_KEY = Deno.env.get("ONESIGNAL_REST_API_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

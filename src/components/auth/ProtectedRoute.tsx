@@ -16,7 +16,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (!isLoading && user && (!profile || !profile.congregation_id)) {
+    if (!isLoading && user && !profile?.congregation_id) {
       // Espera um pouco para garantir que o perfil teve chance de carregar
       timer = setTimeout(() => {
         setShowRestrictedAccess(true);
