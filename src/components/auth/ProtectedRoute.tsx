@@ -20,6 +20,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       // Espera um pouco para garantir que o perfil teve chance de carregar
       timer = setTimeout(() => {
         setShowRestrictedAccess(true);
+        console.log(`[DEBUG] Set restricted Profile.CongregationId: ${profile?.congregation_id}`);
       }, 1500);
     } else {
       setShowRestrictedAccess(false);
