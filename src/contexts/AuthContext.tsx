@@ -143,19 +143,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const fetchProfileWithRetry = async (userId: string, attempt = 1) => {
       try {
+        console.log(`[AuthContext] fetchProfileWithRetry called for userId: ${userId}, attempt: ${attempt}`);
+        
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*")
           .eq("user_id", userId)
           .maybeSingle();
 
-        if (!isMounted) return;
+        if (!isMounted) {
+          console.log(`[AuthContext] Component unmounted, aborting profile fetch`);
+          return;
+        }
 
         if (profileError) {
           console.error(`[Attempt ${attempt}] Error fetching profile:`, profileError);
           if (profileError.code === '42P17' && attempt < 3) {
             console.log(`Retrying profile fetch in 2 seconds...`);
             retryTimeout = setTimeout(() => fetchProfileWithRetry(userId, attempt + 1), 2000);
+            return; // Don't set isLoading false yet, we're retrying
           }
           setIsLoading(false);
           return;
@@ -190,6 +196,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (emailProfileError) {
               console.error("[DEBUG] Error finding profile by email:", emailProfileError);
+              setProfile(null);
+              setIsAdmin(false);
+              setIsSuperAdmin(false);
+              setIsLoading(false);
+              return;
             }
             console.log(`[DEBUG] Profile found by email:`, emailProfile);
 
@@ -227,6 +238,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setIsLoading(false);
               return;
             }
+          } else {
+            console.error("Could not get user data");
+            setProfile(null);
+            setIsAdmin(false);
+            setIsSuperAdmin(false);
+            setIsLoading(false);
+            return;
           }
         } else {
           setProfile(profileData as Profile);
@@ -247,11 +265,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAdmin(currentIsAdmin);
         setIsSuperAdmin(currentIsSuperAdmin);
         
+        console.log(`[AuthContext] Profile loading complete, setting isLoading to false`);
         // Only set loading to false after profile is fully loaded
         setIsLoading(false);
 
       } catch (error) {
         console.error("Unhandled error in fetchProfileWithRetry:", error);
+        setProfile(null);
+        setIsAdmin(false);
+        setIsSuperAdmin(false);
         setIsLoading(false);
       }
     };
