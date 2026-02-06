@@ -141,7 +141,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
     let retryTimeout: NodeJS.Timeout;
 
-<<<<<<< HEAD
     const fetchProfileWithRetry = async (userId: string, attempt = 1) => {
       try {
         const { data: profileData, error: profileError } = await supabase
@@ -184,43 +183,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleAuthStateChange = async (event: string, session: Session | null) => {
       if (!isMounted) return;
 
-=======
-        if (session?.user) {
-          // Use setTimeout to avoid potential deadlocks
-          setTimeout(async () => {
-            await fetchProfile(session.user.id);
-            
-            // After fetching profile, check if user has congregation_id
-            // This will be handled by ProtectedRoute, but we log here for debugging
-            console.log('[AuthContext] User authenticated, profile will be validated by ProtectedRoute');
-          }, 0);
-        } else {
-          setProfile(null);
-          setIsAdmin(false);
-          setIsSuperAdmin(false);
-        }
-
-        setIsLoading(false);
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
->>>>>>> 6439ff94bc92040412e0d6cb5379ed5e6f23fd57
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-<<<<<<< HEAD
-        await fetchProfileWithRetry(session.user.id);
-        console.log('[AuthContext] User authenticated, profile loaded');
+        // Dispara a busca do perfil de forma assíncrona
+        fetchProfileWithRetry(session.user.id);
+        console.log('[AuthContext] User authenticated, profile fetch initiated');
       } else {
         setProfile(null);
         setIsAdmin(false);
         setIsSuperAdmin(false);
-=======
-        fetchProfile(session.user.id);
->>>>>>> 6439ff94bc92040412e0d6cb5379ed5e6f23fd57
       }
       setIsLoading(false);
     };
