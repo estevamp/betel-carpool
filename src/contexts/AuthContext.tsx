@@ -95,6 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (updateError) {
           console.error("[fetchProfile] Error linking profile to user:", updateError);
+          // Set profile anyway so user can see restricted access message if needed
+          setProfile(emailProfile as Profile);
           return;
         }
 
@@ -133,13 +135,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
     let retryTimeout: NodeJS.Timeout;
+    let safetyTimeout: NodeJS.Timeout;
 
     const fetchProfileWithRetry = async (userId: string, userEmail: string, attempt = 1) => {
       try {
         console.log(`[AuthContext] fetchProfileWithRetry called for userId: ${userId}, email: ${userEmail}, attempt: ${attempt}`);
         
         if (!userEmail) {
-          console.error("User has no email");
+          console.error("[AuthContext] User has no email");
           setProfile(null);
           setIsAdmin(false);
           setIsSuperAdmin(false);
@@ -163,11 +166,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (emailProfileError) {
           console.error("[AuthContext] Error finding profile by email:", emailProfileError);
+          console.error("[AuthContext] Error details:", JSON.stringify(emailProfileError));
           if (emailProfileError.code === '42P17' && attempt < 3) {
-            console.log(`Retrying profile fetch in 2 seconds...`);
+            console.log(`[AuthContext] Retrying profile fetch in 2 seconds (attempt ${attempt}/3)...`);
             retryTimeout = setTimeout(() => fetchProfileWithRetry(userId, userEmail, attempt + 1), 2000);
             return;
           }
+          // Always set loading to false, even on error
+          console.log("[AuthContext] Setting isLoading to false after error");
           setProfile(null);
           setIsAdmin(false);
           setIsSuperAdmin(false);
@@ -211,7 +217,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           if (updateError) {
             console.error("[AuthContext] Error linking profile to user:", updateError);
-            setProfile(null);
+            console.error("[AuthContext] Update error details:", JSON.stringify(updateError));
+            // Set the profile anyway so user doesn't get stuck
+            setProfile(emailProfile as Profile);
             setIsAdmin(false);
             setIsSuperAdmin(false);
             setIsLoading(false);
@@ -244,7 +252,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
 
       } catch (error) {
-        console.error("Unhandled error in fetchProfileWithRetry:", error);
+        console.error("[AuthContext] Unhandled error in fetchProfileWithRetry:", error);
+        console.error("[AuthContext] Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+        // Always set loading to false on any error
         setProfile(null);
         setIsAdmin(false);
         setIsSuperAdmin(false);
@@ -262,6 +272,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Fire profile fetch without awaiting - it will set isLoading(false) when done
         console.log('[AuthContext] User authenticated, profile fetch initiated');
         const userEmail = session.user.email?.toLowerCase() || '';
+        
+        // Safety timeout: if profile fetch takes more than 15 seconds, force loading to false
+        // This prevents the iOS issue where the app gets stuck on "Verificando Perfil"
+        safetyTimeout = setTimeout(() => {
+          if (isMounted && isLoading) {
+            console.warn('[AuthContext] Safety timeout triggered - forcing isLoading to false after 15s');
+            setIsLoading(false);
+          }
+        }, 15000);
+        
         fetchProfileWithRetry(session.user.id, userEmail);
       } else {
         setProfile(null);
@@ -282,6 +302,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       isMounted = false;
       clearTimeout(retryTimeout);
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, []);

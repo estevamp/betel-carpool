@@ -71,6 +71,8 @@ export default function AuthPage() {
 
   const handleSocialSignIn = async (provider: "google" | "apple") => {
     setIsLoading(true);
+    console.log(`[AuthPage] Starting ${provider} sign in...`);
+    
     try {
       // First, we need to get the user's email to check if they have a profile
       // Since OAuth doesn't give us the email before redirect, we'll handle validation after auth
@@ -78,12 +80,16 @@ export default function AuthPage() {
         redirect_uri: `${window.location.origin}/auth`,
       });
       
+      console.log(`[AuthPage] OAuth result:`, { redirected: result.redirected, hasError: !!result.error });
+      
       // If redirected, don't reset loading state - user is being redirected
       if (result.redirected) {
+        console.log(`[AuthPage] User being redirected to ${provider} login...`);
         return;
       }
       
       if (result.error) {
+        console.error(`[AuthPage] OAuth error:`, result.error);
         toast({
           variant: "destructive",
           title: `Erro ao entrar com ${provider === "google" ? "Google" : "Apple"}`,
@@ -92,13 +98,16 @@ export default function AuthPage() {
         setIsLoading(false);
       } else {
         // Success - the auth state change will trigger navigation
+        console.log(`[AuthPage] OAuth success, waiting for auth state change...`);
         toast({
           title: "Bem-vindo!",
           description: "Login realizado com sucesso.",
         });
+        // Don't set isLoading to false here - let AuthContext handle it
       }
     } catch (error) {
-      console.error(`${provider} auth error:`, error);
+      console.error(`[AuthPage] ${provider} auth error:`, error);
+      console.error(`[AuthPage] Error details:`, error instanceof Error ? error.stack : 'No stack trace');
       toast({
         variant: "destructive",
         title: "Erro",

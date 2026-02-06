@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,9 +13,34 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, profile, isLoading, signOut } = useAuth();
   const location = useLocation();
   const [showRestrictedAccess, setShowRestrictedAccess] = useState(false);
+  const [forceShowNoProfile, setForceShowNoProfile] = useState(false);
+  const loadingStartTime = useRef<number | null>(null);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
+    let safetyTimer: NodeJS.Timeout;
+    
+    // Track when loading starts
+    if (isLoading && !loadingStartTime.current) {
+      loadingStartTime.current = Date.now();
+      console.log(`[ProtectedRoute] Loading started at ${new Date().toISOString()}`);
+    }
+    
+    // Reset loading start time when loading completes
+    if (!isLoading && loadingStartTime.current) {
+      const duration = Date.now() - loadingStartTime.current;
+      console.log(`[ProtectedRoute] Loading completed after ${duration}ms`);
+      loadingStartTime.current = null;
+    }
+    
+    // Safety mechanism: if stuck on "Verificando perfil..." for more than 10 seconds
+    if (!isLoading && user && !profile && !forceShowNoProfile) {
+      console.log(`[ProtectedRoute] User authenticated but no profile - starting safety timer`);
+      safetyTimer = setTimeout(() => {
+        console.warn(`[ProtectedRoute] Safety timer triggered - forcing no profile state after 10s`);
+        setForceShowNoProfile(true);
+      }, 10000);
+    }
     
     // Show restricted access if:
     // 1. Not loading anymore
@@ -34,8 +59,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     
     return () => {
       if (timer) clearTimeout(timer);
+      if (safetyTimer) clearTimeout(safetyTimer);
     };
-  }, [isLoading, user, profile]);
+  }, [isLoading, user, profile, forceShowNoProfile]);
 
   if (isLoading) {
     return (
@@ -76,6 +102,41 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
             <div className="text-xs text-muted-foreground text-center space-y-1">
               <p>Após receber o convite, você poderá acessar o sistema normalmente.</p>
               <p className="font-medium">E-mail cadastrado: {user.email}</p>
+            </div>
+            <div className="pt-2">
+              <Button onClick={signOut} variant="outline" className="w-full">
+                Sair
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // If no profile found after safety timeout, show error message
+  if (!profile && forceShowNoProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <AlertCircle className="h-12 w-12 text-amber-500" />
+            </div>
+            <CardTitle className="text-2xl">Perfil Não Encontrado</CardTitle>
+            <CardDescription className="text-base mt-2">Não foi possível carregar seu perfil</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-muted p-4 rounded-lg space-y-3">
+              <p className="text-sm text-foreground text-center">
+                Você precisa receber um convite de um administrador para acessar o sistema.
+              </p>
+              <p className="text-sm text-foreground text-center font-semibold">
+                Entre em contato com o coordenador de transportes da sua congregação.
+              </p>
+            </div>
+            <div className="text-xs text-muted-foreground text-center space-y-1">
+              <p className="font-medium">E-mail: {user?.email}</p>
             </div>
             <div className="pt-2">
               <Button onClick={signOut} variant="outline" className="w-full">
