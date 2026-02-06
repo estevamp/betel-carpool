@@ -285,9 +285,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        // Keep loading true while fetching profile
+        // Fire profile fetch without awaiting - it will set isLoading(false) when done
         console.log('[AuthContext] User authenticated, profile fetch initiated');
-        await fetchProfileWithRetry(session.user.id);
+        fetchProfileWithRetry(session.user.id);
       } else {
         setProfile(null);
         setIsAdmin(false);
