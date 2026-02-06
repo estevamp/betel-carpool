@@ -145,31 +145,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Use setTimeout to avoid potential deadlocks
-          setTimeout(async () => {
-            await fetchProfile(session.user.id);
-            
-            // After fetching profile, check if user has congregation_id
-            // This will be handled by ProtectedRoute, but we log here for debugging
-            console.log('[AuthContext] User authenticated, profile will be validated by ProtectedRoute');
-          }, 0);
+          // Fetch profile and wait for it to complete before setting isLoading to false
+          await fetchProfile(session.user.id);
+          console.log('[AuthContext] User authenticated, profile loaded');
+          setIsLoading(false);
         } else {
           setProfile(null);
           setIsAdmin(false);
           setIsSuperAdmin(false);
+          setIsLoading(false);
         }
-
-        setIsLoading(false);
       }
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        fetchProfile(session.user.id);
+        await fetchProfile(session.user.id);
+        console.log('[AuthContext] Initial session loaded, profile loaded');
       }
 
       setIsLoading(false);
