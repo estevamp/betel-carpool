@@ -47,6 +47,12 @@ const mainNavItems = [{
   adminOnly: true // Only super-admins can see this
 }];
 const secondaryNavItems = [{
+  icon: User,
+  label: "Perfil",
+  path: "/perfil",
+  adminOnly: false,
+  superAdminOnly: false
+}, {
   icon: HelpCircle,
   label: "Perguntas Frequentes",
   path: "/faq",
