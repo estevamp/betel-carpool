@@ -41,20 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
-      console.log('[fetchProfile] Starting fetch for userId:', userId);
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", userId)
         .maybeSingle();
 
-      console.log('[fetchProfile] Profile query result:', { profileData, profileError });
-
       if (profileError) {
-        console.error("[fetchProfile] Error fetching profile:", profileError);
-        setProfile(null);
-        setIsAdmin(false);
-        setIsSuperAdmin(false);
+        console.error("Error fetching profile:", profileError);
         return;
       }
 
@@ -66,9 +60,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (!userEmail) {
             console.error("User has no email");
-            setProfile(null);
-            setIsAdmin(false);
-            setIsSuperAdmin(false);
             return;
           }
           
@@ -99,9 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
               if (updateError) {
                 console.error("Error linking profile to user:", updateError);
-                setProfile(null);
-                setIsAdmin(false);
-                setIsSuperAdmin(false);
                 return;
               }
               setProfile(updatedProfile as Profile);
@@ -118,10 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setIsAdmin(false);
             setIsSuperAdmin(false);
           }
-        } else {
-          setProfile(null);
-          setIsAdmin(false);
-          setIsSuperAdmin(false);
         }
       } else {
         setProfile(profileData as Profile | null);
@@ -129,14 +113,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Check if user is admin or super admin
-      console.log('[fetchProfile] Checking roles for userId:', userId);
-      const { data: roleData, error: roleError } = await supabase
+      const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
         .in("role", ["admin", "super_admin"]);
-
-      console.log('[fetchProfile] Role query result:', { roleData, roleError });
 
       const roles = roleData || [];
       const currentIsAdmin = roles.some(r => r.role === "admin" || r.role === "super_admin");
@@ -144,14 +125,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setIsAdmin(currentIsAdmin);
       setIsSuperAdmin(currentIsSuperAdmin);
-      
-      console.log('[fetchProfile] Completed successfully');
 
     } catch (error) {
-      console.error("[fetchProfile] Error in fetchProfile:", error);
-      setProfile(null);
-      setIsAdmin(false);
-      setIsSuperAdmin(false);
+      console.error("Error in fetchProfile:", error);
     }
   };
 
@@ -162,71 +138,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    let mounted = true;
-
     // Set up auth state listener BEFORE checking session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('[AuthContext] Auth state changed:', event, 'User:', session?.user?.email);
-        
-        if (!mounted) return;
-        
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
           // Fetch profile and wait for it to complete before setting isLoading to false
-          console.log('[AuthContext] Fetching profile for user:', session.user.email);
-          try {
-            await fetchProfile(session.user.id);
-            console.log('[AuthContext] Profile fetch completed');
-          } catch (error) {
-            console.error('[AuthContext] Error calling fetchProfile:', error);
-          }
-          
-          if (mounted) {
-            setIsLoading(false);
-            console.log('[AuthContext] isLoading set to false');
-          }
+          await fetchProfile(session.user.id);
+          console.log('[AuthContext] User authenticated, profile loaded');
+          setIsLoading(false);
         } else {
-          console.log('[AuthContext] No session, clearing profile');
           setProfile(null);
           setIsAdmin(false);
           setIsSuperAdmin(false);
-          if (mounted) {
-            setIsLoading(false);
-          }
+          setIsLoading(false);
         }
       }
     );
 
     // Check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('[AuthContext] Initial session check:', session?.user?.email);
-      
-      if (!mounted) return;
-      
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        console.log('[AuthContext] Fetching initial profile for user:', session.user.email);
-        try {
-          await fetchProfile(session.user.id);
-          console.log('[AuthContext] Initial profile fetch completed');
-        } catch (error) {
-          console.error('[AuthContext] Error calling initial fetchProfile:', error);
-        }
+        await fetchProfile(session.user.id);
+        console.log('[AuthContext] Initial session loaded, profile loaded');
       }
 
-      if (mounted) {
-        setIsLoading(false);
-        console.log('[AuthContext] Initial isLoading set to false');
-      }
+      setIsLoading(false);
     });
 
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
