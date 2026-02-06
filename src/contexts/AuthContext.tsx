@@ -157,9 +157,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log(`Retrying profile fetch in 2 seconds...`);
             retryTimeout = setTimeout(() => fetchProfileWithRetry(userId, attempt + 1), 2000);
           }
+          setIsLoading(false);
           return;
         }
 
+        console.log(`[AuthContext] Profile fetched:`, profileData);
         setProfile(profileData as Profile | null);
 
         const { data: roleData } = await supabase
@@ -174,9 +176,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setIsAdmin(currentIsAdmin);
         setIsSuperAdmin(currentIsSuperAdmin);
+        
+        // Only set loading to false after profile is fully loaded
+        setIsLoading(false);
 
       } catch (error) {
         console.error("Unhandled error in fetchProfileWithRetry:", error);
+        setIsLoading(false);
       }
     };
 
@@ -187,15 +193,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        // Dispara a busca do perfil de forma assíncrona
-        fetchProfileWithRetry(session.user.id);
+        // Keep loading true while fetching profile
         console.log('[AuthContext] User authenticated, profile fetch initiated');
+        await fetchProfileWithRetry(session.user.id);
       } else {
         setProfile(null);
         setIsAdmin(false);
         setIsSuperAdmin(false);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
