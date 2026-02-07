@@ -623,6 +623,40 @@ export type Database = {
       get_current_congregation_id: { Args: never; Returns: string }
       get_current_profile_id: { Args: never; Returns: string }
       get_current_user_email: { Args: never; Returns: string }
+      get_my_profile: {
+        Args: never
+        Returns: {
+          congregation_id: string
+          email: string
+          full_name: string
+          id: string
+          is_driver: boolean
+          is_exempt: boolean
+          is_married: boolean
+          pix_key: string
+          sex: string
+          show_tips: boolean
+          spouse_id: string
+          user_id: string
+        }[]
+      }
+      get_profile_by_email: {
+        Args: { user_email: string }
+        Returns: {
+          congregation_id: string
+          email: string
+          full_name: string
+          id: string
+          is_driver: boolean
+          is_exempt: boolean
+          is_married: boolean
+          pix_key: string
+          sex: string
+          show_tips: boolean
+          spouse_id: string
+          user_id: string
+        }[]
+      }
       get_profile_id_from_user_id: {
         Args: { p_user_id: string }
         Returns: string

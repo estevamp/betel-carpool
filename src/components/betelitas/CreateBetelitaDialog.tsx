@@ -90,7 +90,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
 
       const { data: newProfile, error } = await supabase.from("profiles").insert({
         full_name: data.fullName,
-        email: data.email || null,
+        email: data.email ? data.email.toLowerCase().trim() : null,
         sex: data.sex || null,
         is_driver: data.isDriver,
         is_exempt: data.isExempt,
