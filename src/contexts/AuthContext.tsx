@@ -179,19 +179,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
+    let initialLoadDone = false;
 
-    // Listener for ONGOING auth changes (does NOT control isLoading)
+    // Listener for ONGOING auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (!isMounted) return;
+
+        // During initial load, skip — initializeAuth handles it
+        if (!initialLoadDone) return;
+
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
           // Use setTimeout to avoid potential deadlock with Supabase client
-          setTimeout(() => {
+          setTimeout(async () => {
             if (isMounted) {
-              loadProfile(session.user.id, session.user.email || "");
+              await loadProfile(session.user.id, session.user.email || "");
             }
           }, 0);
         } else {
@@ -218,6 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("[Auth] Error initializing:", error);
       } finally {
         if (isMounted) {
+          initialLoadDone = true;
           setIsLoading(false);
         }
       }
