@@ -102,8 +102,10 @@ async function linkProfileToUser(profile: Profile, userId: string): Promise<Prof
 
 /**
  * Fetches admin/super_admin roles for a user.
+ * Checks both user_roles table and congregation_administrators table.
  */
-async function fetchRoles(userId: string) {
+async function fetchRoles(userId: string, profileId: string) {
+  // Check user_roles table for admin/super_admin roles
   const { data: roleData } = await supabase
     .from("user_roles")
     .select("role")
@@ -111,9 +113,21 @@ async function fetchRoles(userId: string) {
     .in("role", ["admin", "super_admin"]);
 
   const roles = roleData || [];
+  const hasAdminRole = roles.some(r => r.role === "admin" || r.role === "super_admin");
+  const hasSuperAdminRole = roles.some(r => r.role === "super_admin");
+
+  // Check congregation_administrators table for congregation admin designation
+  const { data: congAdminData } = await supabase
+    .from("congregation_administrators")
+    .select("id")
+    .eq("profile_id", profileId)
+    .maybeSingle();
+
+  const isCongregationAdmin = !!congAdminData;
+
   return {
-    isAdmin: roles.some(r => r.role === "admin" || r.role === "super_admin"),
-    isSuperAdmin: roles.some(r => r.role === "super_admin"),
+    isAdmin: hasAdminRole || isCongregationAdmin,
+    isSuperAdmin: hasSuperAdminRole,
   };
 }
 
@@ -156,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Only fetch roles if profile has congregation (user is fully set up)
       if (linkedProfile.congregation_id) {
-        const { isAdmin: admin, isSuperAdmin: superAdmin } = await fetchRoles(userId);
+        const { isAdmin: admin, isSuperAdmin: superAdmin } = await fetchRoles(userId, linkedProfile.id);
         setIsAdmin(admin);
         setIsSuperAdmin(superAdmin);
       } else {
