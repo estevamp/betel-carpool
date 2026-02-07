@@ -31,6 +31,92 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Finds a profile by user_id first, then falls back to case-insensitive email search.
+ * Handles duplicate profiles by prioritizing the one with a congregation_id.
+ */
+async function findProfile(userId: string, userEmail: string): Promise<Profile | null> {
+  // 1. Try by user_id (strongest link)
+  const { data: idProfile, error: idError } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (idProfile) {
+    console.log(`[Auth] Profile found by user_id: ${idProfile.full_name}`);
+    return idProfile as Profile;
+  }
+
+  if (idError) {
+    console.warn("[Auth] Error finding profile by user_id:", idError.message);
+  }
+
+  // 2. Fallback: case-insensitive email search using ilike
+  const { data: emailProfiles, error: emailError } = await supabase
+    .from("profiles")
+    .select("*")
+    .ilike("email", userEmail);
+
+  if (emailError) {
+    console.error("[Auth] Error finding profile by email:", emailError.message);
+    return null;
+  }
+
+  if (!emailProfiles || emailProfiles.length === 0) {
+    console.log("[Auth] No profile found for email:", userEmail);
+    return null;
+  }
+
+  // 3. If multiple profiles, prioritize the one with congregation_id
+  if (emailProfiles.length > 1) {
+    console.warn(`[Auth] Found ${emailProfiles.length} profiles for email ${userEmail}, prioritizing one with congregation_id`);
+    const withCongregation = emailProfiles.find(p => p.congregation_id);
+    return (withCongregation || emailProfiles[0]) as Profile;
+  }
+
+  return emailProfiles[0] as Profile;
+}
+
+/**
+ * Links a profile to a user_id if not already linked.
+ */
+async function linkProfileToUser(profile: Profile, userId: string): Promise<Profile> {
+  if (profile.user_id === userId) return profile;
+
+  console.log(`[Auth] Linking profile ${profile.id} to user ${userId}`);
+  const { data: updated, error } = await supabase
+    .from("profiles")
+    .update({ user_id: userId })
+    .eq("id", profile.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[Auth] Error linking profile:", error.message);
+    return profile; // Return unlinked profile so user isn't blocked
+  }
+
+  return updated as Profile;
+}
+
+/**
+ * Fetches admin/super_admin roles for a user.
+ */
+async function fetchRoles(userId: string) {
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .in("role", ["admin", "super_admin"]);
+
+  const roles = roleData || [];
+  return {
+    isAdmin: roles.some(r => r.role === "admin" || r.role === "super_admin"),
+    isSuperAdmin: roles.some(r => r.role === "super_admin"),
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -39,281 +125,115 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const loadProfile = async (userId: string, userEmail: string) => {
     try {
-      // Get user email from current session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.email) {
-        console.error("[fetchProfile] No session or email found");
-        return;
-      }
-
-      const userEmail = session.user.email.toLowerCase();
-      console.log(`[fetchProfile] Searching for profile by email: ${userEmail}`);
-
-      // Search for profile by email (regardless of user_id)
-      const { data: emailProfile, error: emailProfileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("email", userEmail)
-        .maybeSingle();
-
-      if (emailProfileError) {
-        console.error("[fetchProfile] Error finding profile by email:", emailProfileError);
-        return;
-      }
-
-      if (!emailProfile) {
-        console.log("[fetchProfile] No profile found for this email.");
+      if (!userEmail) {
+        console.error("[Auth] No email available");
         setProfile(null);
         setIsAdmin(false);
         setIsSuperAdmin(false);
         return;
       }
 
-      console.log(`[fetchProfile] Profile found:`, emailProfile);
+      const normalizedEmail = userEmail.toLowerCase().trim();
 
-      // Check if profile has congregation_id
-      if (!emailProfile.congregation_id) {
-        console.log("[fetchProfile] Profile found but no congregation_id.");
-        setProfile(emailProfile as Profile);
+      // Find profile
+      const foundProfile = await findProfile(userId, normalizedEmail);
+
+      if (!foundProfile) {
+        setProfile(null);
         setIsAdmin(false);
         setIsSuperAdmin(false);
         return;
       }
 
-      // Profile has congregation_id, link user_id if needed
-      if (!emailProfile.user_id || emailProfile.user_id !== userId) {
-        console.log(`[fetchProfile] Linking user_id: ${userId}`);
-        
-        const { data: updatedProfile, error: updateError } = await supabase
-          .from("profiles")
-          .update({ user_id: userId })
-          .eq("id", emailProfile.id)
-          .select()
-          .single();
+      // Link profile to user if needed
+      const linkedProfile = foundProfile.congregation_id
+        ? await linkProfileToUser(foundProfile, userId)
+        : foundProfile;
 
-        if (updateError) {
-          console.error("[fetchProfile] Error linking profile to user:", updateError);
-          // Set profile anyway so user can see restricted access message if needed
-          setProfile(emailProfile as Profile);
-          return;
-        }
+      setProfile(linkedProfile);
 
-        setProfile(updatedProfile as Profile);
-        console.log(`[fetchProfile] Profile linked: ${updatedProfile.full_name}`);
+      // Only fetch roles if profile has congregation (user is fully set up)
+      if (linkedProfile.congregation_id) {
+        const { isAdmin: admin, isSuperAdmin: superAdmin } = await fetchRoles(userId);
+        setIsAdmin(admin);
+        setIsSuperAdmin(superAdmin);
       } else {
-        setProfile(emailProfile as Profile);
-        console.log(`[fetchProfile] Profile already linked: ${emailProfile.full_name}`);
+        setIsAdmin(false);
+        setIsSuperAdmin(false);
       }
-
-      // Check if user is admin or super admin
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .in("role", ["admin", "super_admin"]);
-
-      const roles = roleData || [];
-      const currentIsAdmin = roles.some(r => r.role === "admin" || r.role === "super_admin");
-      const currentIsSuperAdmin = roles.some(r => r.role === "super_admin");
-
-      setIsAdmin(currentIsAdmin);
-      setIsSuperAdmin(currentIsSuperAdmin);
-
     } catch (error) {
-      console.error("Error in fetchProfile:", error);
+      console.error("[Auth] Unexpected error loading profile:", error);
+      setProfile(null);
+      setIsAdmin(false);
+      setIsSuperAdmin(false);
     }
   };
 
   const refreshProfile = async () => {
-    if (user) {
-      await fetchProfile(user.id);
+    if (user?.email) {
+      await loadProfile(user.id, user.email);
     }
   };
 
   useEffect(() => {
     let isMounted = true;
-    let retryTimeout: NodeJS.Timeout;
-    let safetyTimeout: NodeJS.Timeout;
 
-    const fetchProfileWithRetry = async (userId: string, userEmail: string, attempt = 1) => {
-      try {
-        console.log(`[AuthContext] fetchProfileWithRetry called for userId: ${userId}, email: ${userEmail}, attempt: ${attempt}`);
-        
-        if (!userEmail) {
-          console.error("[AuthContext] User has no email");
-          setProfile(null);
-          setIsAdmin(false);
-          setIsSuperAdmin(false);
-          setIsLoading(false);
-          return;
-        }
+    // Listener for ONGOING auth changes (does NOT control isLoading)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (!isMounted) return;
+        setSession(session);
+        setUser(session?.user ?? null);
 
-        if (!isMounted) {
-          console.log(`[AuthContext] Component unmounted, aborting profile fetch`);
-          return;
-        }
-
-        console.log(`[AuthContext] Searching for profile by email: ${userEmail}`);
-
-        // STEP 1: Search for profile by email (regardless of user_id)
-        const { data: emailProfile, error: emailProfileError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("email", userEmail)
-          .maybeSingle();
-
-        if (emailProfileError) {
-          console.error("[AuthContext] Error finding profile by email:", emailProfileError);
-          console.error("[AuthContext] Error details:", JSON.stringify(emailProfileError));
-          if (emailProfileError.code === '42P17' && attempt < 3) {
-            console.log(`[AuthContext] Retrying profile fetch in 2 seconds (attempt ${attempt}/3)...`);
-            retryTimeout = setTimeout(() => fetchProfileWithRetry(userId, userEmail, attempt + 1), 2000);
-            return;
-          }
-          // Always set loading to false, even on error
-          console.log("[AuthContext] Setting isLoading to false after error");
-          setProfile(null);
-          setIsAdmin(false);
-          setIsSuperAdmin(false);
-          setIsLoading(false);
-          return;
-        }
-
-        // STEP 2: If no profile found by email, user needs to be invited
-        if (!emailProfile) {
-          console.log("[AuthContext] No profile found for this email. User needs to be invited.");
-          setProfile(null);
-          setIsAdmin(false);
-          setIsSuperAdmin(false);
-          setIsLoading(false);
-          return;
-        }
-
-        console.log(`[AuthContext] Profile found by email:`, emailProfile);
-
-        // STEP 3: Check if profile has congregation_id
-        if (!emailProfile.congregation_id) {
-          console.log("[AuthContext] Profile found but no congregation_id. Access restricted.");
-          // Set profile so ProtectedRoute can show restricted access message
-          setProfile(emailProfile as Profile);
-          setIsAdmin(false);
-          setIsSuperAdmin(false);
-          setIsLoading(false);
-          return;
-        }
-
-        // STEP 4: Profile has congregation_id, check if it needs user_id
-        if (!emailProfile.user_id || emailProfile.user_id !== userId) {
-          console.log(`[AuthContext] Profile has congregation but no user_id. Linking user_id: ${userId}`);
-          
-          const { data: updatedProfile, error: updateError } = await supabase
-            .from("profiles")
-            .update({ user_id: userId })
-            .eq("id", emailProfile.id)
-            .select()
-            .single();
-
-          if (updateError) {
-            console.error("[AuthContext] Error linking profile to user:", updateError);
-            console.error("[AuthContext] Update error details:", JSON.stringify(updateError));
-            // Set the profile anyway so user doesn't get stuck
-            setProfile(emailProfile as Profile);
-            setIsAdmin(false);
-            setIsSuperAdmin(false);
-            setIsLoading(false);
-            return;
-          }
-
-          console.log(`[AuthContext] Profile linked successfully: ${updatedProfile.full_name}, User ID: ${updatedProfile.user_id}, Congregation ID: ${updatedProfile.congregation_id}`);
-          setProfile(updatedProfile as Profile);
+        if (session?.user) {
+          // Use setTimeout to avoid potential deadlock with Supabase client
+          setTimeout(() => {
+            if (isMounted) {
+              loadProfile(session.user.id, session.user.email || "");
+            }
+          }, 0);
         } else {
-          // Profile already has correct user_id
-          console.log(`[AuthContext] Profile already linked: ${emailProfile.full_name}, User ID: ${emailProfile.user_id}, Congregation ID: ${emailProfile.congregation_id}`);
-          setProfile(emailProfile as Profile);
+          setProfile(null);
+          setIsAdmin(false);
+          setIsSuperAdmin(false);
         }
+      }
+    );
 
-        // Check if user is admin or super admin
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId)
-          .in("role", ["admin", "super_admin"]);
+    // INITIAL load (controls isLoading)
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
 
-        const roles = roleData || [];
-        const currentIsAdmin = roles.some(r => r.role === "admin" || r.role === "super_admin");
-        const currentIsSuperAdmin = roles.some(r => r.role === "super_admin");
+        setSession(session);
+        setUser(session?.user ?? null);
 
-        setIsAdmin(currentIsAdmin);
-        setIsSuperAdmin(currentIsSuperAdmin);
-        
-        console.log(`[AuthContext] Profile loading complete, setting isLoading to false`);
-        setIsLoading(false);
-
+        if (session?.user) {
+          await loadProfile(session.user.id, session.user.email || "");
+        }
       } catch (error) {
-        console.error("[AuthContext] Unhandled error in fetchProfileWithRetry:", error);
-        console.error("[AuthContext] Error stack:", error instanceof Error ? error.stack : 'No stack trace');
-        // Always set loading to false on any error
-        setProfile(null);
-        setIsAdmin(false);
-        setIsSuperAdmin(false);
-        setIsLoading(false);
+        console.error("[Auth] Error initializing:", error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    const handleAuthStateChange = async (event: string, session: Session | null) => {
-      if (!isMounted) return;
-
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        // Fire profile fetch without awaiting - it will set isLoading(false) when done
-        console.log('[AuthContext] User authenticated, profile fetch initiated');
-        const userEmail = session.user.email?.toLowerCase() || '';
-        
-        // Safety timeout: if profile fetch takes more than 15 seconds, force loading to false
-        // This prevents the iOS issue where the app gets stuck on "Verificando Perfil"
-        safetyTimeout = setTimeout(() => {
-          if (isMounted && isLoading) {
-            console.warn('[AuthContext] Safety timeout triggered - forcing isLoading to false after 15s');
-            setIsLoading(false);
-          }
-        }, 15000);
-        
-        fetchProfileWithRetry(session.user.id, userEmail);
-      } else {
-        setProfile(null);
-        setIsAdmin(false);
-        setIsSuperAdmin(false);
-        setIsLoading(false);
-      }
-    };
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (isMounted) {
-        handleAuthStateChange('INITIAL_SESSION', session);
-      }
-    });
+    initializeAuth();
 
     return () => {
       isMounted = false;
-      clearTimeout(retryTimeout);
-      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       return { error };
     } catch (error) {
       return { error: error as Error };

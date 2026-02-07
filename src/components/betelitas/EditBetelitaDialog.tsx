@@ -83,7 +83,7 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
         .from("profiles")
         .update({
           full_name: data.full_name,
-          email: data.email || null,
+          email: data.email ? data.email.toLowerCase().trim() : null,
           sex: data.sex || null,
           is_driver: data.is_driver,
           is_exempt: data.is_exempt,
