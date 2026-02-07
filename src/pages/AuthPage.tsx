@@ -51,10 +51,6 @@ export default function AuthPage() {
             : error.message,
         });
       } else {
-        toast({
-          title: "Bem-vindo!",
-          description: "Login realizado com sucesso.",
-        });
         navigate("/");
       }
     } catch (error) {
@@ -99,10 +95,6 @@ export default function AuthPage() {
       } else {
         // Success - the auth state change will trigger navigation
         console.log(`[AuthPage] OAuth success, waiting for auth state change...`);
-        toast({
-          title: "Bem-vindo!",
-          description: "Login realizado com sucesso.",
-        });
         // Don't set isLoading to false here - let AuthContext handle it
       }
     } catch (error) {
