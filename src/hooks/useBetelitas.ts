@@ -45,15 +45,24 @@ export function useBetelitas(options?: { congregationId?: string }) {
 
       if (profilesError) throw profilesError;
 
-      // Fetch admin user_ids
+      // Fetch admin user_ids from user_roles
       const { data: adminRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id")
-        .eq("role", "admin");
+        .in("role", ["admin", "super_admin"]);
 
       if (rolesError) throw rolesError;
 
-      // Fetch user_id mapping from profiles to check admin status
+      // Fetch congregation administrators (profile-based admin designation)
+      const { data: congAdmins, error: congAdminsError } = await supabase
+        .from("congregation_administrators")
+        .select("profile_id");
+
+      if (congAdminsError) throw congAdminsError;
+
+      const adminProfileIds = new Set(congAdmins?.map((ca) => ca.profile_id) ?? []);
+
+      // Fetch user_id mapping from profiles
       const { data: profilesWithUserId, error: userIdError } = await supabase
         .from("profiles")
         .select("id, user_id");
@@ -73,12 +82,14 @@ export function useBetelitas(options?: { congregationId?: string }) {
       // Map profiles with admin status and spouse name
       return (profiles ?? []).map((profile) => {
         const userId = profileUserIdMap.get(profile.id);
+        const isAdminByRole = userId ? adminUserIds.has(userId) : false;
+        const isAdminByCongregation = adminProfileIds.has(profile.id);
         return {
           ...profile,
           spouse_name: profile.spouse_id
             ? profileNameMap.get(profile.spouse_id) ?? null
             : null,
-          is_admin: userId ? adminUserIds.has(userId) : false,
+          is_admin: isAdminByRole || isAdminByCongregation,
           user_id: userId ?? null,
         };
       });
