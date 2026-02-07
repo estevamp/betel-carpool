@@ -189,6 +189,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // During initial load, skip — initializeAuth handles it
         if (!initialLoadDone) return;
 
+        // On sign-in, set loading to prevent flash of "profile not found"
+        if (event === 'SIGNED_IN') {
+          setIsLoading(true);
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
 
@@ -196,13 +201,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Use setTimeout to avoid potential deadlock with Supabase client
           setTimeout(async () => {
             if (isMounted) {
-              await loadProfile(session.user.id, session.user.email || "");
+              try {
+                await loadProfile(session.user.id, session.user.email || "");
+              } finally {
+                if (isMounted) setIsLoading(false);
+              }
             }
           }, 0);
         } else {
           setProfile(null);
           setIsAdmin(false);
           setIsSuperAdmin(false);
+          setIsLoading(false);
         }
       }
     );
