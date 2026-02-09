@@ -51,16 +51,6 @@ const secondaryItems = [
     label: "Financeiro",
     path: "/financeiro",
   },
-  {
-    icon: HelpCircle,
-    label: "Perguntas Frequentes",
-    path: "/faq",
-  },
-  {
-    icon: Settings,
-    label: "Configurações",
-    path: "/configuracoes",
-  },
 ];
 const containerVariants = {
   hidden: {
