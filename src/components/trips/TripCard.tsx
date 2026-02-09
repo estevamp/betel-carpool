@@ -157,7 +157,7 @@ export function TripCard({
               <Car className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground text-lg">{trip.driver.full_name}</h3>
+              <h3 className="font-semibold text-foreground text-lg">{trip.driver?.full_name ?? "Motorista desconhecido"}</h3>
               <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
