@@ -131,14 +131,12 @@ export default function Dashboard() {
     },
   });
 
-  const subtitle = congregationName
-    ? `Transporte de Betelitas da Congregação: ${congregationName}`
-    : "Sistema de transporte de Betelitas";
+  const subtitle = "Sistema de transporte de betelitas";
   return (
     <motion.div className="space-y-8 max-w-4xl mx-auto" variants={containerVariants} initial="hidden" animate="visible">
       {/* Header */}
       <motion.div variants={itemVariants} className="text-center pt-4">
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Olá, {firstName}! 👋</h1>
+        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">{congregationName}</h1>
         <p className="text-muted-foreground mt-1">{subtitle}</p>
       </motion.div>
 
@@ -196,7 +194,11 @@ export default function Dashboard() {
                 const availableSeats = maxPassengers - passengerCount;
                 const departureTime = format(parseISO(trip.departure_at), "HH:mm");
                 return (
-                  <Link key={trip.id} to={`/viagens/${trip.id}`} className="flex items-center gap-4 px-5 py-4 hover:bg-muted/50 transition-colors">
+                  <Link
+                    key={trip.id}
+                    to={`/viagens/${trip.id}`}
+                    className="flex items-center gap-4 px-5 py-4 hover:bg-muted/50 transition-colors"
+                  >
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                       <Car className="h-6 w-6 text-primary" />
                     </div>
