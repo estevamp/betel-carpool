@@ -106,23 +106,13 @@ export function EvacuationCarCard({ car }: EvacuationCarCardProps) {
                 )}
               </span>
             ))}
-            {availableSeats > 0 &&
-              (canManage ? (
-                <AddPassengerPopover carId={car.id}>
-                  <button className="px-3 py-1.5 rounded-full text-sm border border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary hover:text-primary transition-colors">
-                    + Adicionar
-                  </button>
-                </AddPassengerPopover>
-              ) : (
-                Array.from({ length: availableSeats }).map((_, idx) => (
-                  <span
-                    key={`empty-${idx}`}
-                    className="px-3 py-1.5 rounded-full text-sm border border-dashed border-muted-foreground/30 text-muted-foreground/30"
-                  >
-                    Vaga livre
-                  </span>
-                ))
-              ))}
+            {availableSeats > 0 && (
+              <AddPassengerPopover carId={car.id}>
+                <button className="px-3 py-1.5 rounded-full text-sm border border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary hover:text-primary transition-colors">
+                  + Adicionar
+                </button>
+              </AddPassengerPopover>
+            )}
           </div>
         </div>
       </div>
