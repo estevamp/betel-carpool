@@ -131,7 +131,7 @@ export default function Dashboard() {
     },
   });
 
-  const subtitle = "Sistema de transporte de betelitas - " + firstName;
+  const subtitle = "Sistema de transporte de betelitas | " + firstName;
   return (
     <motion.div className="space-y-8 max-w-4xl mx-auto" variants={containerVariants} initial="hidden" animate="visible">
       {/* Header */}
