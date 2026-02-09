@@ -1,4 +1,4 @@
-import { Menu, Bell } from "lucide-react";
+import { Menu, Bell, Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOneSignal } from "@/hooks/useOneSignal";
 import { toast } from "sonner";
@@ -34,7 +34,7 @@ export function MobileHeader({
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">C</span>
+            <Car className="h-4 w-4 text-primary-foreground" />
           </div>
           <span className="font-semibold text-foreground">Carpool Betel</span>
         </div>
