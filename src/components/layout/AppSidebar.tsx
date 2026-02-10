@@ -158,7 +158,7 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
       <div className="flex items-center justify-between gap-2 px-4 py-5 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary shadow-lg">
-            <span className="text-lg font-bold text-sidebar-primary-foreground">C</span>
+            <Car className="h-4 w-4 text-primary-foreground" />
           </div>
           <div className="flex flex-col">
             <span className="font-semibold text-sidebar-foreground">Carpool Betel</span>
