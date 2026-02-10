@@ -365,30 +365,6 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                 )}
                 Salvar
               </Button>
-              <Button
-                type="button"
-                disabled={isSubmitting || !email}
-                onClick={form.handleSubmit(handleSendInvite)}
-                size="sm"
-              >
-                {(isSubmitting && submitAction === "invite") || isInviting ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Mail className="h-3 w-3" />
-                )}
-                Enviar Convite
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={false}
-                onClick={handleCopyLinkClick}
-                size="sm"
-                title="Copiar link do convite"
-              >
-                <Copy className="h-3 w-3" />
-                Copiar link
-              </Button>
             </DialogFooter>
           </form>
         </Form>
