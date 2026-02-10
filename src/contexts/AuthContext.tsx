@@ -225,6 +225,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return; // Don't reload profile
         }
 
+        // If SIGNED_IN event but profile already exists for this user, skip reload
+        if (event === 'SIGNED_IN' && profile && profile.user_id === session?.user?.id) {
+          console.log(`[Auth] Skipping profile reload for SIGNED_IN - profile already loaded`);
+          setSession(session);
+          setUser(session?.user ?? null);
+          return; // Don't reload profile
+        }
+
         console.log(`[Auth] Processing auth event: ${event}`);
 
         // On sign-in, set loading to prevent flash of "profile not found"
