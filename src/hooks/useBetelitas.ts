@@ -49,18 +49,25 @@ export function useBetelitas(options?: { congregationId?: string }) {
       const { data: adminRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id")
-        .in("role", ["admin", "super_admin"]);
+        .eq("role", "admin"); // Apenas 'admin'
 
       if (rolesError) throw rolesError;
 
       // Fetch congregation administrators (profile-based admin designation)
       const { data: congAdmins, error: congAdminsError } = await supabase
         .from("congregation_administrators")
-        .select("profile_id");
+        .select("profile_id, congregation_id"); // Incluir congregation_id
 
       if (congAdminsError) throw congAdminsError;
 
-      const adminProfileIds = new Set(congAdmins?.map((ca) => ca.profile_id) ?? []);
+      // Create a map of profile_id -> Set of congregation_ids they admin
+      const adminCongregationsMap = new Map<string, Set<string>>();
+      (congAdmins ?? []).forEach((ca) => {
+        if (!adminCongregationsMap.has(ca.profile_id)) {
+          adminCongregationsMap.set(ca.profile_id, new Set());
+        }
+        adminCongregationsMap.get(ca.profile_id)!.add(ca.congregation_id);
+      });
 
       // Fetch user_id mapping from profiles
       const { data: profilesWithUserId, error: userIdError } = await supabase
@@ -82,14 +89,20 @@ export function useBetelitas(options?: { congregationId?: string }) {
       // Map profiles with admin status and spouse name
       return (profiles ?? []).map((profile) => {
         const userId = profileUserIdMap.get(profile.id);
-        const isAdminByRole = userId ? adminUserIds.has(userId) : false;
-        const isAdminByCongregation = adminProfileIds.has(profile.id);
+        const hasAdminRole = userId ? adminUserIds.has(userId) : false;
+
+        // Check if user is admin of THEIR OWN congregation
+        const adminCongregations = adminCongregationsMap.get(profile.id);
+        const isAdminOfOwnCongregation =
+          profile.congregation_id &&
+          adminCongregations?.has(profile.congregation_id);
+
         return {
           ...profile,
           spouse_name: profile.spouse_id
             ? profileNameMap.get(profile.spouse_id) ?? null
             : null,
-          is_admin: isAdminByRole || isAdminByCongregation,
+          is_admin: hasAdminRole && isAdminOfOwnCongregation, // Usa AND
           user_id: userId ?? null,
         };
       });
