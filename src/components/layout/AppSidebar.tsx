@@ -106,9 +106,9 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
   const { isSuperAdmin } = useIsSuperAdmin();
   const { selectedCongregationId } = useSelectedCongregation();
   const { congregations } = useCongregations();
-  const congregationName = congregations?.find(c => 
-    isSuperAdmin ? c.id === selectedCongregationId : c.id === profile?.congregation_id
-  )?.name || "Carpool";
+  const congregationName =
+    congregations?.find((c) => (isSuperAdmin ? c.id === selectedCongregationId : c.id === profile?.congregation_id))
+      ?.name || "Carpool";
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
@@ -161,7 +161,7 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
             <span className="text-lg font-bold text-sidebar-primary-foreground">C</span>
           </div>
           <div className="flex flex-col">
-            <span className="font-semibold text-sidebar-foreground">Carpool</span>
+            <span className="font-semibold text-sidebar-foreground">Carpool Betel</span>
             <span className="text-xs text-sidebar-foreground/60 truncate max-w-[120px]">{congregationName}</span>
           </div>
         </div>
