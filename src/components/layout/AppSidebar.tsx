@@ -19,8 +19,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSelectedCongregation } from "@/contexts/CongregationContext";
-import { useCongregations } from "@/hooks/useCongregations";
 const mainNavItems = [
   {
     icon: Home,
@@ -116,16 +114,6 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
       .slice(0, 2)
       .toUpperCase();
   };
-
-  const { selectedCongregationId } = useSelectedCongregation();
-  const { congregations } = useCongregations();
-
-  const currentCongregation = isSuperAdmin
-    ? congregations?.find((c) => c.id === selectedCongregationId)
-    : congregations?.find((c) => c.id === profile?.congregation_id);
-
-  const congregationName = currentCongregation?.name;
-
   const NavItem = ({ item }: { item: (typeof mainNavItems)[0] }) => {
     const isActive = location.pathname === item.path;
     return (
@@ -167,7 +155,7 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
           </div>
           <div className="flex flex-col">
             <span className="font-semibold text-sidebar-foreground">Carpool</span>
-            <span className="text-xs text-sidebar-foreground/60">{CongregationName}</span>
+            <span className="text-xs text-sidebar-foreground/60">Betel</span>
           </div>
         </div>
         {mobile && (
