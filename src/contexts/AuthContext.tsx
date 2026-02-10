@@ -203,6 +203,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // During initial load, skip — initializeAuth handles it
         if (!initialLoadDone) return;
 
+        // Ignore events that don't require profile reload
+        // TOKEN_REFRESHED: happens when tab regains focus or token expires
+        // USER_UPDATED: happens when user metadata changes (not profile data)
+        if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+          console.log(`[Auth] Skipping profile reload for event: ${event}`);
+          setSession(session);
+          setUser(session?.user ?? null);
+          return; // Don't reload profile
+        }
+
+        console.log(`[Auth] Processing auth event: ${event}`);
+
         // On sign-in, set loading to prevent flash of "profile not found"
         if (event === 'SIGNED_IN') {
           setIsLoading(true);
