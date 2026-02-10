@@ -44,6 +44,8 @@ serve(async (req: Request): Promise<Response> => {
       throw new Error("Apenas administradores podem excluir perfis");
     }
 
+    const isSuperAdmin = roleData.role === "super_admin";
+
     const { profileId } = await req.json();
     if (!profileId) {
       throw new Error("ID do perfil é obrigatório");
@@ -53,15 +55,28 @@ serve(async (req: Request): Promise<Response> => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Get the profile to find user_id and spouse
+    // Get the profile to find user_id, spouse, and congregation
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
-      .select("id, user_id, spouse_id")
+      .select("id, user_id, spouse_id, congregation_id")
       .eq("id", profileId)
       .maybeSingle();
 
     if (profileError || !profile) {
       throw new Error("Perfil não encontrado");
+    }
+
+    // If not super_admin, verify the profile belongs to the admin's congregation
+    if (!isSuperAdmin) {
+      const { data: adminProfile } = await userClient
+        .from("profiles")
+        .select("congregation_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!adminProfile || adminProfile.congregation_id !== profile.congregation_id) {
+        throw new Error("Você só pode excluir perfis da sua congregação");
+      }
     }
 
     // Clear spouse link if exists
@@ -70,6 +85,66 @@ serve(async (req: Request): Promise<Response> => {
         .from("profiles")
         .update({ spouse_id: null, is_married: false })
         .eq("id", profile.spouse_id);
+    }
+
+    // Remove from congregation_administrators if they are an admin
+    const { error: removeAdminError } = await adminClient
+      .from("congregation_administrators")
+      .delete()
+      .eq("profile_id", profileId);
+    
+    if (removeAdminError) {
+      console.error("Error removing from congregation_administrators:", removeAdminError);
+    }
+
+    // Get future trips where this profile is the driver
+    const { data: driverTrips, error: driverTripsError } = await adminClient
+      .from("trips")
+      .select("id")
+      .eq("driver_id", profileId)
+      .gte("date", new Date().toISOString());
+
+    if (driverTripsError) {
+      console.error("Error fetching driver trips:", driverTripsError);
+    } else if (driverTrips && driverTrips.length > 0) {
+      // Delete future trips where they are the driver
+      const tripIds = driverTrips.map((trip: any) => trip.id);
+      const { error: deleteTripsError } = await adminClient
+        .from("trips")
+        .delete()
+        .in("id", tripIds);
+      
+      if (deleteTripsError) {
+        console.error("Error deleting driver trips:", deleteTripsError);
+      }
+    }
+
+    // Remove as passenger from future trips
+    const { data: passengerTrips, error: passengerTripsError } = await adminClient
+      .from("trip_passengers")
+      .select("trip_id, trips!inner(date)")
+      .eq("passenger_id", profileId);
+
+    if (passengerTripsError) {
+      console.error("Error fetching passenger trips:", passengerTripsError);
+    } else if (passengerTrips && passengerTrips.length > 0) {
+      // Filter for future trips
+      const futurePassengerTrips = passengerTrips.filter((tp: any) => {
+        const tripDate = new Date(tp.trips.date);
+        return tripDate >= new Date();
+      });
+
+      if (futurePassengerTrips.length > 0) {
+        const { error: removePassengerError } = await adminClient
+          .from("trip_passengers")
+          .delete()
+          .eq("passenger_id", profileId)
+          .in("trip_id", futurePassengerTrips.map((tp: any) => tp.trip_id));
+        
+        if (removePassengerError) {
+          console.error("Error removing as passenger:", removePassengerError);
+        }
+      }
     }
 
     // If profile has a linked auth user, delete the auth user (cascade will delete profile)
