@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -139,18 +139,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Cooldown mechanism to prevent excessive profile reloads
-  let lastProfileLoad = 0;
+  // Use ref to track profile state in event listeners
+  const profileRef = useRef<Profile | null>(null);
+  const lastProfileLoadRef = useRef<number>(0);
   const PROFILE_LOAD_COOLDOWN = 5000; // 5 seconds
 
   const loadProfile = async (userId: string, userEmail: string) => {
     // Check cooldown
     const now = Date.now();
-    if (now - lastProfileLoad < PROFILE_LOAD_COOLDOWN) {
+    if (now - lastProfileLoadRef.current < PROFILE_LOAD_COOLDOWN) {
       console.log('[Auth] Skipping profile reload (cooldown active)');
       return;
     }
-    lastProfileLoad = now;
+    lastProfileLoadRef.current = now;
 
     try {
       if (!userEmail) {
@@ -179,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         : foundProfile;
 
       setProfile(linkedProfile);
+      profileRef.current = linkedProfile; // Update ref for event listeners
 
       // Only fetch roles if profile has congregation (user is fully set up)
       if (linkedProfile.congregation_id) {
@@ -192,6 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("[Auth] Unexpected error loading profile:", error);
       setProfile(null);
+      profileRef.current = null; // Update ref for event listeners
       setIsAdmin(false);
       setIsSuperAdmin(false);
     }
@@ -226,7 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // If SIGNED_IN event but profile already exists for this user, skip reload
-        if (event === 'SIGNED_IN' && profile && profile.user_id === session?.user?.id) {
+        if (event === 'SIGNED_IN' && profileRef.current && profileRef.current.user_id === session?.user?.id) {
           console.log(`[Auth] Skipping profile reload for SIGNED_IN - profile already loaded`);
           setSession(session);
           setUser(session?.user ?? null);
@@ -245,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           // Only reload profile if it doesn't exist or if the user_id changed
-          if (!profile || profile.user_id !== session.user.id) {
+          if (!profileRef.current || profileRef.current.user_id !== session.user.id) {
             console.log('[Auth] Profile needs reload - loading...');
             // Use setTimeout to avoid potential deadlock with Supabase client
             setTimeout(async () => {
