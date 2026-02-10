@@ -66,7 +66,8 @@ const mainNavItems = [
     icon: Building2,
     label: "Congregações",
     path: "/congregacoes",
-    adminOnly: true, // Only super-admins can see this
+    adminOnly: false,
+    superAdminOnly: true,
   },
 ];
 const secondaryNavItems = [
@@ -181,7 +182,10 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
       <ScrollArea className="flex-1 px-3 py-4">
         <div className="space-y-1">
           {mainNavItems
-            .filter((item) => !item.adminOnly || isAdmin || isSuperAdmin)
+            .filter((item) => {
+              if ('superAdminOnly' in item && item.superAdminOnly) return isSuperAdmin;
+              return !item.adminOnly || isAdmin || isSuperAdmin;
+            })
             .map((item) => (
               <NavItem key={item.path} item={item} />
             ))}
