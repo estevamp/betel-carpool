@@ -139,7 +139,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Cooldown mechanism to prevent excessive profile reloads
+  let lastProfileLoad = 0;
+  const PROFILE_LOAD_COOLDOWN = 5000; // 5 seconds
+
   const loadProfile = async (userId: string, userEmail: string) => {
+    // Check cooldown
+    const now = Date.now();
+    if (now - lastProfileLoad < PROFILE_LOAD_COOLDOWN) {
+      console.log('[Auth] Skipping profile reload (cooldown active)');
+      return;
+    }
+    lastProfileLoad = now;
+
     try {
       if (!userEmail) {
         console.error("[Auth] No email available");
