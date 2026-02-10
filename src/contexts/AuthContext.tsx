@@ -236,16 +236,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Use setTimeout to avoid potential deadlock with Supabase client
-          setTimeout(async () => {
-            if (isMounted) {
-              try {
-                await loadProfile(session.user.id, session.user.email || "");
-              } finally {
-                if (isMounted) setIsLoading(false);
+          // Only reload profile if it doesn't exist or if the user_id changed
+          if (!profile || profile.user_id !== session.user.id) {
+            console.log('[Auth] Profile needs reload - loading...');
+            // Use setTimeout to avoid potential deadlock with Supabase client
+            setTimeout(async () => {
+              if (isMounted) {
+                try {
+                  await loadProfile(session.user.id, session.user.email || "");
+                } finally {
+                  if (isMounted) setIsLoading(false);
+                }
               }
-            }
-          }, 0);
+            }, 0);
+          } else {
+            console.log('[Auth] Profile already loaded, skipping reload');
+            // Just update session/user without reloading profile
+            setIsLoading(false);
+          }
         } else {
           setProfile(null);
           setIsAdmin(false);
