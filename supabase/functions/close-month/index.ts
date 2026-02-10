@@ -13,6 +13,7 @@ interface Profile {
   is_exempt: boolean;
   spouse_id: string | null;
   pix_key: string | null;
+  congregation_id: string | null;
 }
 
 interface TripPassenger {
@@ -26,6 +27,7 @@ interface Trip {
   driver_id: string;
   is_betel_car: boolean;
   departure_at: string;
+  congregation_id: string | null;
 }
 
 const ROUND_TRIP_COST = 15.0;
@@ -65,17 +67,17 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .eq("role", "admin")
-      .single();
+      .in("role", ["admin", "super_admin"])
+      .limit(1);
 
-    if (!roleData) {
+    if (!roleData || roleData.length === 0) {
       return new Response(JSON.stringify({ error: "Unauthorized - Admin only" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { month } = await req.json();
+    const { month, congregation_id } = await req.json();
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
       return new Response(JSON.stringify({ error: "Invalid month format. Use YYYY-MM" }), {
         status: 400,
@@ -83,17 +85,36 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`Processing month: ${month}`);
+    // Determine congregation: use provided one or get from user's profile
+    let targetCongregationId = congregation_id;
+    if (!targetCongregationId) {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("congregation_id")
+        .eq("user_id", user.id)
+        .single();
+      targetCongregationId = profileData?.congregation_id;
+    }
+
+    if (!targetCongregationId) {
+      return new Response(JSON.stringify({ error: "Congregação não encontrada" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log(`Processing month: ${month} for congregation: ${targetCongregationId}`);
 
     // Parse month to get date range
     const [year, monthNum] = month.split("-").map(Number);
     const monthStart = new Date(year, monthNum - 1, 1);
     const monthEnd = new Date(year, monthNum, 0, 23, 59, 59, 999);
 
-    // Fetch all profiles
+    // Fetch profiles for this congregation only
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, full_name, sex, is_married, is_exempt, spouse_id, pix_key");
+      .select("id, full_name, sex, is_married, is_exempt, spouse_id, pix_key, congregation_id")
+      .eq("congregation_id", targetCongregationId);
 
     if (profilesError) throw profilesError;
 
@@ -101,27 +122,33 @@ Deno.serve(async (req) => {
       (profiles as Profile[]).map((p) => [p.id, p])
     );
 
-    // Fetch trips for the month
+    // Fetch trips for the month filtered by congregation
     const { data: trips, error: tripsError } = await supabase
       .from("trips")
-      .select("id, driver_id, is_betel_car, departure_at")
+      .select("id, driver_id, is_betel_car, departure_at, congregation_id")
+      .eq("congregation_id", targetCongregationId)
       .gte("departure_at", monthStart.toISOString())
       .lte("departure_at", monthEnd.toISOString());
 
     if (tripsError) throw tripsError;
 
-    console.log(`Found ${trips?.length || 0} trips for month ${month}`);
+    console.log(`Found ${trips?.length || 0} trips for month ${month}, congregation ${targetCongregationId}`);
 
     // Fetch all passengers for these trips
     const tripIds = (trips as Trip[]).map((t) => t.id);
-    const { data: passengers, error: passengersError } = await supabase
-      .from("trip_passengers")
-      .select("trip_id, passenger_id, trip_type")
-      .in("trip_id", tripIds);
+    
+    let passengers: TripPassenger[] = [];
+    if (tripIds.length > 0) {
+      const { data: passengersData, error: passengersError } = await supabase
+        .from("trip_passengers")
+        .select("trip_id, passenger_id, trip_type")
+        .in("trip_id", tripIds);
 
-    if (passengersError) throw passengersError;
+      if (passengersError) throw passengersError;
+      passengers = (passengersData ?? []) as TripPassenger[];
+    }
 
-    console.log(`Found ${passengers?.length || 0} passenger records`);
+    console.log(`Found ${passengers.length} passenger records`);
 
     // Create trip lookup
     const tripMap = new Map<string, Trip>(
@@ -129,10 +156,9 @@ Deno.serve(async (req) => {
     );
 
     // Calculate raw debts (passenger -> driver)
-    // debtorId -> creditorId -> amount
     const rawDebts = new Map<string, Map<string, number>>();
 
-    for (const passenger of (passengers as TripPassenger[])) {
+    for (const passenger of passengers) {
       const trip = tripMap.get(passenger.trip_id);
       if (!trip) continue;
 
@@ -141,32 +167,17 @@ Deno.serve(async (req) => {
 
       if (!passengerProfile || !driverProfile) continue;
 
-      // Skip if it's a Betel car (free ride)
-      if (trip.is_betel_car) {
-        console.log(`Skipping passenger ${passengerProfile.full_name} - Betel car`);
-        continue;
-      }
-
-      // Skip if passenger is exempt
-      if (passengerProfile.is_exempt) {
-        console.log(`Skipping passenger ${passengerProfile.full_name} - is_exempt`);
-        continue;
-      }
-
-      // Skip if driver is the same as passenger
+      if (trip.is_betel_car) continue;
+      if (passengerProfile.is_exempt) continue;
       if (passenger.passenger_id === trip.driver_id) continue;
 
-      // Calculate cost based on trip type
       const cost = passenger.trip_type === "Ida e Volta" ? ROUND_TRIP_COST : ONE_WAY_COST;
 
-      // Determine who pays: if woman is married, her husband pays
       let debtorId = passenger.passenger_id;
       if (passengerProfile.sex === "Mulher" && passengerProfile.is_married && passengerProfile.spouse_id) {
         debtorId = passengerProfile.spouse_id;
-        console.log(`Consolidating ${passengerProfile.full_name}'s debt to spouse`);
       }
 
-      // Add to debts
       if (!rawDebts.has(debtorId)) {
         rawDebts.set(debtorId, new Map());
       }
@@ -182,6 +193,7 @@ Deno.serve(async (req) => {
       amount: number;
       month: string;
       trip_type: string;
+      congregation_id: string;
     }> = [];
 
     for (const [debtorId, creditorMap] of rawDebts) {
@@ -191,43 +203,40 @@ Deno.serve(async (req) => {
           creditor_id: creditorId,
           amount,
           month,
-          trip_type: "Ida e Volta", // simplified for now
+          trip_type: "Ida e Volta",
+          congregation_id: targetCongregationId,
         });
       }
     }
 
     console.log(`Generated ${transactions.length} transactions`);
 
-    // Delete existing transactions for this month
+    // Delete existing transactions for this month AND congregation only
     const { error: deleteTransError } = await supabase
       .from("transactions")
       .delete()
-      .eq("month", month);
+      .eq("month", month)
+      .eq("congregation_id", targetCongregationId);
 
     if (deleteTransError) throw deleteTransError;
 
-    // Insert new transactions
     if (transactions.length > 0) {
       const { error: insertTransError } = await supabase
         .from("transactions")
         .insert(transactions);
-
       if (insertTransError) throw insertTransError;
     }
 
     // Calculate net balances for transfer optimization
-    const netBalances = new Map<string, number>(); // positive = to receive, negative = to pay
+    const netBalances = new Map<string, number>();
 
     for (const [debtorId, creditorMap] of rawDebts) {
       for (const [creditorId, amount] of creditorMap) {
-        // Debtor loses money
         netBalances.set(debtorId, (netBalances.get(debtorId) || 0) - amount);
-        // Creditor gains money
         netBalances.set(creditorId, (netBalances.get(creditorId) || 0) + amount);
       }
     }
 
-    // Separate into debtors (negative balance) and creditors (positive balance)
     const debtors: Array<{ id: string; amount: number }> = [];
     const creditors: Array<{ id: string; amount: number }> = [];
 
@@ -239,31 +248,30 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Sort by amount (largest first) for better matching
     debtors.sort((a, b) => b.amount - a.amount);
     creditors.sort((a, b) => b.amount - a.amount);
 
-    // Generate optimized transfers (minimize number of transactions)
     const transfers: Array<{
       debtor_id: string;
       creditor_id: string;
       amount: number;
       month: string;
+      congregation_id: string;
     }> = [];
 
     let i = 0, j = 0;
     while (i < debtors.length && j < creditors.length) {
       const debtor = debtors[i];
       const creditor = creditors[j];
-      
       const transferAmount = Math.min(debtor.amount, creditor.amount);
       
       if (transferAmount > 0.01) {
         transfers.push({
           debtor_id: debtor.id,
           creditor_id: creditor.id,
-          amount: Math.round(transferAmount * 100) / 100, // Round to 2 decimals
+          amount: Math.round(transferAmount * 100) / 100,
           month,
+          congregation_id: targetCongregationId,
         });
       }
 
@@ -276,52 +284,44 @@ Deno.serve(async (req) => {
 
     console.log(`Generated ${transfers.length} optimized transfers`);
 
-    // Delete existing transfers for this month
+    // Delete existing transfers for this month AND congregation only
     const { error: deleteTransfersError } = await supabase
       .from("transfers")
       .delete()
-      .eq("month", month);
+      .eq("month", month)
+      .eq("congregation_id", targetCongregationId);
 
     if (deleteTransfersError) throw deleteTransfersError;
 
-    // Insert new transfers
     if (transfers.length > 0) {
       const { error: insertTransfersError } = await supabase
         .from("transfers")
         .insert(transfers);
-
       if (insertTransfersError) throw insertTransfersError;
     }
 
-    // Clean up old data (> 6 months)
+    // Clean up old data (> 6 months) for this congregation only
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     const cutoffMonth = `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, "0")}`;
 
-    console.log(`Cleaning up data older than ${cutoffMonth}`);
-
-    const { error: cleanupTransError } = await supabase
+    await supabase
       .from("transactions")
       .delete()
-      .lt("month", cutoffMonth);
+      .lt("month", cutoffMonth)
+      .eq("congregation_id", targetCongregationId);
 
-    if (cleanupTransError) {
-      console.error("Error cleaning up old transactions:", cleanupTransError);
-    }
-
-    const { error: cleanupTransfersError } = await supabase
+    await supabase
       .from("transfers")
       .delete()
-      .lt("month", cutoffMonth);
-
-    if (cleanupTransfersError) {
-      console.error("Error cleaning up old transfers:", cleanupTransfersError);
-    }
+      .lt("month", cutoffMonth)
+      .eq("congregation_id", targetCongregationId);
 
     return new Response(
       JSON.stringify({
         success: true,
         month,
+        congregation_id: targetCongregationId,
         transactionsCount: transactions.length,
         transfersCount: transfers.length,
         message: `Fechamento do mês ${month} realizado com sucesso!`,
