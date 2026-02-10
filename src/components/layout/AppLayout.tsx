@@ -14,14 +14,14 @@ export function AppLayout() {
   const location = useLocation();
 
   // Não mostrar o seletor de congregações na página de Congregações
-  const showCongregationSelector = isSuperAdmin && location.pathname !== '/congregacoes';
+  const showCongregationSelector = isSuperAdmin && location.pathname !== "/congregacoes";
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
         {/* Desktop Sidebar */}
         <AppSidebar />
-        
+
         {/* Mobile Overlay */}
         {sidebarOpen && (
           <div
@@ -29,12 +29,14 @@ export function AppLayout() {
             onClick={() => setSidebarOpen(false)}
           />
         )}
-        
+
         {/* Mobile Sidebar */}
-        <div className={`
+        <div
+          className={`
           fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 ease-in-out lg:hidden
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}>
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
+        >
           <AppSidebar mobile onClose={() => setSidebarOpen(false)} />
         </div>
 
@@ -43,11 +45,8 @@ export function AppLayout() {
           <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
           {showCongregationSelector && (
             <div className="flex items-center gap-2 p-4 lg:p-6 border-b border-border">
-              <span className="text-sm text-muted-foreground">Visualizando Congregação:</span>
-              <CongregationSelector
-                value={selectedCongregationId}
-                onChange={setSelectedCongregationId}
-              />
+              <span className="text-sm text-muted-foreground">Visualizando congregação:</span>
+              <CongregationSelector value={selectedCongregationId} onChange={setSelectedCongregationId} />
             </div>
           )}
           <div className="flex-1 p-4 lg:p-6 overflow-auto custom-scrollbar">
