@@ -97,11 +97,18 @@ interface AppSidebarProps {
   onClose?: () => void;
 }
 import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
+import { useCongregations } from "@/hooks/useCongregations";
 export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, signOut, isAdmin } = useAuth();
   const { isSuperAdmin } = useIsSuperAdmin();
+  const { selectedCongregationId } = useSelectedCongregation();
+  const { congregations } = useCongregations();
+  const congregationName = congregations?.find(c => 
+    isSuperAdmin ? c.id === selectedCongregationId : c.id === profile?.congregation_id
+  )?.name || "Carpool";
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
@@ -155,7 +162,7 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
           </div>
           <div className="flex flex-col">
             <span className="font-semibold text-sidebar-foreground">Carpool</span>
-            <span className="text-xs text-sidebar-foreground/60">Betel</span>
+            <span className="text-xs text-sidebar-foreground/60 truncate max-w-[120px]">{congregationName}</span>
           </div>
         </div>
         {mobile && (
