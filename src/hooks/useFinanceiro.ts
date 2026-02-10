@@ -77,16 +77,19 @@ export function useFinanceiro(selectedMonth: string) {
   const monthStart = startOfMonth(new Date(year, month - 1));
   const monthEnd = endOfMonth(new Date(year, month - 1));
 
+  // Determine the effective congregation ID for filtering
+  const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : profile?.congregation_id;
+
   // Fetch all profiles for name mapping
   const profilesQuery = useQuery({
-    queryKey: ["profiles", selectedCongregationId],
+    queryKey: ["profiles", effectiveCongregationId],
     queryFn: async () => {
       let query = supabase
         .from("profiles")
         .select("id, full_name, pix_key, congregation_id");
 
-      if (isSuperAdmin && selectedCongregationId) {
-        query = query.eq("congregation_id", selectedCongregationId);
+      if (effectiveCongregationId) {
+        query = query.eq("congregation_id", effectiveCongregationId);
       }
 
       const { data, error } = await query;
@@ -97,15 +100,15 @@ export function useFinanceiro(selectedMonth: string) {
 
   // Fetch transactions for the month
   const transactionsQuery = useQuery({
-    queryKey: ["transactions", selectedMonth, selectedCongregationId],
+    queryKey: ["transactions", selectedMonth, effectiveCongregationId],
     queryFn: async () => {
       let query = supabase
         .from("transactions")
         .select("*")
         .eq("month", selectedMonth);
 
-      if (isSuperAdmin && selectedCongregationId) {
-        query = query.eq("congregation_id", selectedCongregationId);
+      if (effectiveCongregationId) {
+        query = query.eq("congregation_id", effectiveCongregationId);
       }
 
       const { data, error } = await query;
@@ -116,15 +119,15 @@ export function useFinanceiro(selectedMonth: string) {
 
   // Fetch transfers for the month
   const transfersQuery = useQuery({
-    queryKey: ["transfers", selectedMonth, selectedCongregationId],
+    queryKey: ["transfers", selectedMonth, effectiveCongregationId],
     queryFn: async () => {
       let query = supabase
         .from("transfers")
         .select("*")
         .eq("month", selectedMonth);
 
-      if (isSuperAdmin && selectedCongregationId) {
-        query = query.eq("congregation_id", selectedCongregationId);
+      if (effectiveCongregationId) {
+        query = query.eq("congregation_id", effectiveCongregationId);
       }
 
       const { data, error } = await query;
@@ -151,8 +154,8 @@ export function useFinanceiro(selectedMonth: string) {
         .lte("departure_at", monthEnd.toISOString())
         .order("departure_at", { ascending: true });
 
-      if (isSuperAdmin && selectedCongregationId) {
-        query = query.eq("congregation_id", selectedCongregationId);
+      if (effectiveCongregationId) {
+        query = query.eq("congregation_id", effectiveCongregationId);
       }
 
       const { data, error } = await query;
@@ -257,7 +260,7 @@ export function useFinanceiro(selectedMonth: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth, selectedCongregationId] });
+      queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth, effectiveCongregationId] });
       toast.success("Transferência marcada como paga!");
     },
     onError: (error: Error) => {
@@ -282,7 +285,7 @@ export function useFinanceiro(selectedMonth: string) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ month: monthToClose, congregation_id: isSuperAdmin ? selectedCongregationId : profile?.congregation_id }),
+          body: JSON.stringify({ month: monthToClose, congregation_id: effectiveCongregationId }),
         }
       );
 
@@ -294,8 +297,8 @@ export function useFinanceiro(selectedMonth: string) {
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["transactions", selectedMonth, selectedCongregationId] });
-      queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth, selectedCongregationId] });
+      queryClient.invalidateQueries({ queryKey: ["transactions", selectedMonth, effectiveCongregationId] });
+      queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth, effectiveCongregationId] });
       toast.success(data.message || "Mês fechado com sucesso!");
     },
     onError: (error: Error) => {
