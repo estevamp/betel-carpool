@@ -38,9 +38,14 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
   };
 
   // Filtrar betelitas que já não são administradores desta congregação
-  // O hook useBetelitas já filtra por congregation_id, então só precisamos excluir os que já são admins
+  // E que já fizeram login (têm user_id vinculado)
   const availableBetelitas = betelitas?.filter(
-    (b) => !admins?.some((a) => a.profile_id === b.id)
+    (b) => !admins?.some((a) => a.profile_id === b.id) && b.user_id !== null
+  );
+
+  // Betelitas que ainda não fizeram login
+  const betelitasWithoutLogin = betelitas?.filter(
+    (b) => !admins?.some((a) => a.profile_id === b.id) && b.user_id === null
   );
 
   return (
@@ -82,6 +87,23 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
                     <div className="p-2 text-sm text-muted-foreground">
                       Nenhum betelita disponível nesta congregação
                     </div>
+                  )}
+                  {betelitasWithoutLogin && betelitasWithoutLogin.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1">
+                        Aguardando primeiro login
+                      </div>
+                      {betelitasWithoutLogin.map((betelita) => (
+                        <SelectItem
+                          key={betelita.id}
+                          value={betelita.id}
+                          disabled
+                          className="opacity-50"
+                        >
+                          {betelita.full_name} (não fez login ainda)
+                        </SelectItem>
+                      ))}
+                    </>
                   )}
                 </SelectContent>
               </Select>

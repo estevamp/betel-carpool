@@ -68,9 +68,23 @@ serve(async (req) => {
     });
   }
 
-  // Add 'admin' role to the user if they have a user_id (already accepted invite)
-  // If no user_id, we still allow congregation admin assignment - they'll get the role when they login
-  if (profileData?.user_id) {
+  // CRITICAL: Validate that the profile has a linked user_id (user has logged in at least once)
+  if (!profileData?.user_id) {
+    return new Response(
+      JSON.stringify({
+        error: "Não é possível designar um administrador para um perfil que ainda não fez login. O usuário deve fazer login pelo menos uma vez antes de ser designado como administrador.",
+        profile_email: profileData?.email,
+        profile_name: profileData?.full_name
+      }),
+      {
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+        status: 400,
+      }
+    );
+  }
+
+  // Add 'admin' role to the user (they have a user_id, so they've logged in)
+  if (profileData.user_id) {
     const { error: insertRoleError } = await supabaseClient
       .from("user_roles")
       .insert({ user_id: profileData.user_id, role: "admin" });
