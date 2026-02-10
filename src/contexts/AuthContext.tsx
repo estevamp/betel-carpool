@@ -89,20 +89,14 @@ async function linkProfileToUser(profile: Profile, userId: string): Promise<Prof
     .from("profiles")
     .update({ user_id: userId })
     .eq("id", profile.id)
-    .select("*")
-    .maybeSingle();
+    .select()
+    .single();
 
   if (error) {
-    console.error("[Auth] Error linking profile:", error.message, error);
+    console.error("[Auth] Error linking profile:", error.message);
     return profile; // Return unlinked profile so user isn't blocked
   }
 
-  if (!updated) {
-    console.warn("[Auth] Profile update returned no data, using original profile");
-    return profile;
-  }
-
-  console.log(`[Auth] Profile successfully linked to user ${userId}`);
   return updated as Profile;
 }
 
@@ -137,25 +131,6 @@ async function fetchRoles(userId: string, profileId: string) {
   };
 }
 
-/**
- * Verifica se deve pular o reload do perfil baseado no evento
- */
-function shouldSkipProfileReload(
-  event: string, 
-  profileRef: Profile | null, 
-  sessionUserId?: string
-): boolean {
-  const SKIP_EVENTS = ['TOKEN_REFRESHED', 'USER_UPDATED'];
-  
-  if (SKIP_EVENTS.includes(event)) return true;
-  
-  if (event === 'SIGNED_IN' && profileRef?.user_id === sessionUserId) {
-    return true;
-  }
-
-  return false;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -169,78 +144,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const lastProfileLoadRef = useRef<number>(0);
   const PROFILE_LOAD_COOLDOWN = 5000; // 5 seconds
 
-  // Funções auxiliares
-  const canLoadProfile = (): boolean => {
+  const loadProfile = async (userId: string, userEmail: string) => {
+    // Check cooldown
     const now = Date.now();
     if (now - lastProfileLoadRef.current < PROFILE_LOAD_COOLDOWN) {
-      return false;
-    }
-    lastProfileLoadRef.current = now;
-    return true;
-  };
-
-  const validateAndNormalizeEmail = (email: string): string => {
-    if (!email) {
-      throw new Error("No email available");
-    }
-    return email.toLowerCase().trim();
-  };
-
-  const resetProfileState = () => {
-    setProfile(null);
-    profileRef.current = null;
-    setIsAdmin(false);
-    setIsSuperAdmin(false);
-  };
-
-  const ensureProfileLinked = async (profile: Profile, userId: string): Promise<Profile> => {
-    return profile.congregation_id 
-      ? await linkProfileToUser(profile, userId)
-      : profile;
-  };
-
-  const updateProfileAndRoles = async (profile: Profile, userId: string) => {
-    setProfile(profile);
-    profileRef.current = profile;
-
-    if (profile.congregation_id) {
-      const { isAdmin: admin, isSuperAdmin: superAdmin } = await fetchRoles(userId, profile.id);
-      setIsAdmin(admin);
-      setIsSuperAdmin(superAdmin);
-    } else {
-      setIsAdmin(false);
-      setIsSuperAdmin(false);
-    }
-  };
-
-  const resetAuthState = () => {
-    setProfile(null);
-    setIsAdmin(false);
-    setIsSuperAdmin(false);
-    setIsLoading(false);
-  };
-
-  const loadProfile = async (userId: string, userEmail: string) => {
-    if (!canLoadProfile()) {
       console.log('[Auth] Skipping profile reload (cooldown active)');
       return;
     }
+    lastProfileLoadRef.current = now;
 
     try {
-      const normalizedEmail = validateAndNormalizeEmail(userEmail);
-      const foundProfile = await findProfile(userId, normalizedEmail);
-      
-      if (!foundProfile) {
-        resetProfileState();
+      if (!userEmail) {
+        console.error("[Auth] No email available");
+        setProfile(null);
+        setIsAdmin(false);
+        setIsSuperAdmin(false);
         return;
       }
 
-      const linkedProfile = await ensureProfileLinked(foundProfile, userId);
-      await updateProfileAndRoles(linkedProfile, userId);
-      
+      const normalizedEmail = userEmail.toLowerCase().trim();
+
+      // Find profile
+      const foundProfile = await findProfile(userId, normalizedEmail);
+
+      if (!foundProfile) {
+        setProfile(null);
+        setIsAdmin(false);
+        setIsSuperAdmin(false);
+        return;
+      }
+
+      // Link profile to user if needed
+      const linkedProfile = foundProfile.congregation_id
+        ? await linkProfileToUser(foundProfile, userId)
+        : foundProfile;
+
+      setProfile(linkedProfile);
+      profileRef.current = linkedProfile; // Update ref for event listeners
+
+      // Only fetch roles if profile has congregation (user is fully set up)
+      if (linkedProfile.congregation_id) {
+        const { isAdmin: admin, isSuperAdmin: superAdmin } = await fetchRoles(userId, linkedProfile.id);
+        setIsAdmin(admin);
+        setIsSuperAdmin(superAdmin);
+      } else {
+        setIsAdmin(false);
+        setIsSuperAdmin(false);
+      }
     } catch (error) {
       console.error("[Auth] Unexpected error loading profile:", error);
-      resetProfileState();
+      setProfile(null);
+      profileRef.current = null; // Update ref for event listeners
+      setIsAdmin(false);
+      setIsSuperAdmin(false);
     }
   };
 
@@ -254,39 +210,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
     let initialLoadDone = false;
 
-    const handleProfileLoad = (user: User) => {
-      if (!profileRef.current || profileRef.current.user_id !== user.id) {
-        console.log('[Auth] Profile needs reload - loading...');
-        setTimeout(async () => {
-          if (isMounted) {
-            try {
-              await loadProfile(user.id, user.email || "");
-            } finally {
-              if (isMounted) setIsLoading(false);
-            }
-          }
-        }, 0);
-      } else {
-        console.log('[Auth] Profile already loaded, skipping reload');
-        setIsLoading(false);
-      }
-    };
-
     // Listener for ONGOING auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (!isMounted || !initialLoadDone) return;
+        if (!isMounted) return;
 
-        // Verificar se deve pular o reload
-        if (shouldSkipProfileReload(event, profileRef.current, session?.user?.id)) {
+        // During initial load, skip — initializeAuth handles it
+        if (!initialLoadDone) return;
+
+        // Ignore events that don't require profile reload
+        // TOKEN_REFRESHED: happens when tab regains focus or token expires
+        // USER_UPDATED: happens when user metadata changes (not profile data)
+        if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
           console.log(`[Auth] Skipping profile reload for event: ${event}`);
           setSession(session);
           setUser(session?.user ?? null);
-          return;
+          return; // Don't reload profile
+        }
+
+        // If SIGNED_IN event but profile already exists for this user, skip reload
+        if (event === 'SIGNED_IN' && profileRef.current && profileRef.current.user_id === session?.user?.id) {
+          console.log(`[Auth] Skipping profile reload for SIGNED_IN - profile already loaded`);
+          setSession(session);
+          setUser(session?.user ?? null);
+          return; // Don't reload profile
         }
 
         console.log(`[Auth] Processing auth event: ${event}`);
 
+        // On sign-in, set loading to prevent flash of "profile not found"
         if (event === 'SIGNED_IN') {
           setIsLoading(true);
         }
@@ -295,9 +247,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          handleProfileLoad(session.user);
+          // Only reload profile if it doesn't exist or if the user_id changed
+          if (!profileRef.current || profileRef.current.user_id !== session.user.id) {
+            console.log('[Auth] Profile needs reload - loading...');
+            // Use setTimeout to avoid potential deadlock with Supabase client
+            setTimeout(async () => {
+              if (isMounted) {
+                try {
+                  await loadProfile(session.user.id, session.user.email || "");
+                } finally {
+                  if (isMounted) setIsLoading(false);
+                }
+              }
+            }, 0);
+          } else {
+            console.log('[Auth] Profile already loaded, skipping reload');
+            // Just update session/user without reloading profile
+            setIsLoading(false);
+          }
         } else {
-          resetAuthState();
+          setProfile(null);
+          setIsAdmin(false);
+          setIsSuperAdmin(false);
+          setIsLoading(false);
         }
       }
     );

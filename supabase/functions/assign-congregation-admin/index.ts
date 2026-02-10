@@ -25,10 +25,9 @@ serve(async (req) => {
 
   const { profile_id, congregation_id } = await req.json();
 
-  // Use service role for admin operations
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
     { global: { headers: { Authorization: authHeader } } }
   );
 
@@ -76,16 +75,11 @@ serve(async (req) => {
       .from("user_roles")
       .insert({ user_id: profileData.user_id, role: "admin" });
 
-    // If role assignment fails due to unique violation (role already exists), that's OK
-    // But if it fails for other reasons, we should know about it
-    if (insertRoleError && !insertRoleError.message.includes("duplicate key")) {
-      console.error(`Error assigning 'admin' role to user ${profileData.user_id}: ${insertRoleError.message}`);
-      // Still continue - the congregation_administrators entry is more important
-      // The role can be fixed manually or granted upon next login
-    } else if (insertRoleError) {
-      console.log(`User ${profileData.user_id} already has admin role`);
-    } else {
-      console.log(`Successfully assigned admin role to user ${profileData.user_id}`);
+    // If role assignment fails (e.g., unique violation, or FK violation due to stale user_id),
+    // log it but don't block the main task of assigning congregation admin role.
+    // The role can be granted later upon login.
+    if (insertRoleError) {
+      console.warn(`Ignoring error while trying to assign 'admin' role to user ${profileData.user_id}: ${insertRoleError.message}`);
     }
   }
 
