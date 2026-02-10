@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { oneSignalService } from "@/services/oneSignalService";
+import { VISITANTE_PROFILE_ID } from "@/constants/profiles";
 
 export interface EvacuationPassenger {
   id: string;
@@ -206,10 +207,12 @@ export function useEvacuation() {
     },
   });
 
-  // Get all passenger IDs already allocated
+  // Get all passenger IDs already allocated (excluding Visitante)
   const allocatedPassengerIds = new Set(
     evacuationQuery.data?.flatMap((car) =>
-      car.passengers.map((p) => p.passenger_id)
+      car.passengers
+        .filter((p) => p.passenger_id !== VISITANTE_PROFILE_ID) // Excluir Visitante
+        .map((p) => p.passenger_id)
     ) ?? []
   );
 

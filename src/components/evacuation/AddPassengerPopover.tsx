@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useEvacuation } from "@/hooks/useEvacuation";
+import { VISITANTE_PROFILE_ID } from "@/constants/profiles"; // Importar a constante
 
 interface AddPassengerPopoverProps {
   carId: string;
@@ -34,9 +35,11 @@ export function AddPassengerPopover({
   const { addPassenger, isAddingPassenger, allocatedPassengerIds, allocatedDriverIds } =
     useEvacuation();
 
-  // Filter out already allocated people
+  // Filter out already allocated people, but allow 'Visitante' to be added multiple times
   const availableProfiles = profiles.filter(
-    (p) => !allocatedPassengerIds.has(p.id) && !allocatedDriverIds.has(p.id)
+    (p) =>
+      (p.id === VISITANTE_PROFILE_ID || !allocatedPassengerIds.has(p.id)) &&
+      !allocatedDriverIds.has(p.id)
   );
 
   const handleSelect = (profileId: string) => {
