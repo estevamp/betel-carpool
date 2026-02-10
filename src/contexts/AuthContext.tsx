@@ -89,14 +89,20 @@ async function linkProfileToUser(profile: Profile, userId: string): Promise<Prof
     .from("profiles")
     .update({ user_id: userId })
     .eq("id", profile.id)
-    .select()
-    .single();
+    .select("*")
+    .maybeSingle();
 
   if (error) {
-    console.error("[Auth] Error linking profile:", error.message);
+    console.error("[Auth] Error linking profile:", error.message, error);
     return profile; // Return unlinked profile so user isn't blocked
   }
 
+  if (!updated) {
+    console.warn("[Auth] Profile update returned no data, using original profile");
+    return profile;
+  }
+
+  console.log(`[Auth] Profile successfully linked to user ${userId}`);
   return updated as Profile;
 }
 
