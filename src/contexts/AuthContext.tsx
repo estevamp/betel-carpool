@@ -326,6 +326,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile(null);
+    profileRef.current = null; // Clear the ref to force reload on next login
     setIsAdmin(false);
     setIsSuperAdmin(false);
   };
