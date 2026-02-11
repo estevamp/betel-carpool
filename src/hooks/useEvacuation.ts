@@ -45,8 +45,10 @@ export function useEvacuation() {
         .select("*, driver:profiles(id, full_name)")
         .order("created_at", { ascending: true });
 
-      if (isSuperAdmin && selectedCongregationId) {
+      if (selectedCongregationId) {
         query = query.eq("congregation_id", selectedCongregationId);
+      } else if (!isSuperAdmin && profile?.congregation_id) {
+        query = query.eq("congregation_id", profile.congregation_id);
       }
 
       // Fetch all evacuation cars
@@ -68,8 +70,8 @@ export function useEvacuation() {
 
       if (profilesError) throw profilesError;
 
-      const profileNameMap = new Map(
-        profiles?.map((p) => [p.id, p.full_name]) ?? []
+      const profileNameMap = new Map<string, string>(
+        profiles?.map((p) => [p.id, p.full_name as string]) ?? []
       );
 
       // Group passengers by car
