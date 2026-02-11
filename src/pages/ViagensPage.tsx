@@ -43,6 +43,11 @@ export default function ViagensPage() {
   today.setHours(0, 0, 0, 0); // Set to start of day for comparison
 
   const filteredTrips = trips.filter((trip) => {
+    // Filter out canceled trips
+    if (trip.is_active === false) {
+      return false;
+    }
+
     // Filter out past trips (only show today and future)
     const tripDate = new Date(trip.departure_at);
     if (tripDate < today) {

@@ -184,7 +184,7 @@ export function useTrips() {
     mutationFn: async (tripId: string) => {
       const { error } = await supabase
         .from("trips")
-        .delete()
+        .update({ is_active: false })
         .eq("id", tripId);
 
       if (error) throw error;
