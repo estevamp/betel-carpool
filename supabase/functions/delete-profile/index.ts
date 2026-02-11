@@ -3,19 +3,27 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req: Request): Promise<Response> => {
+  // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", {
+      status: 200,
+      headers: corsHeaders
+    });
   }
 
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
-      throw new Error("Não autorizado");
+      return new Response(
+        JSON.stringify({ error: "Não autorizado" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -30,7 +38,10 @@ serve(async (req: Request): Promise<Response> => {
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await userClient.auth.getUser(token);
     if (authError || !user) {
-      throw new Error("Não autorizado");
+      return new Response(
+        JSON.stringify({ error: "Não autorizado" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     const { data: roleData } = await userClient
@@ -41,12 +52,18 @@ serve(async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (!roleData) {
-      throw new Error("Apenas administradores podem excluir perfis");
+      return new Response(
+        JSON.stringify({ error: "Apenas administradores podem excluir perfis" }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     const { profileId } = await req.json();
     if (!profileId) {
-      throw new Error("ID do perfil é obrigatório");
+      return new Response(
+        JSON.stringify({ error: "ID do perfil é obrigatório" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
@@ -61,7 +78,10 @@ serve(async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (profileError || !profile) {
-      throw new Error("Perfil não encontrado");
+      return new Response(
+        JSON.stringify({ error: "Perfil não encontrado" }),
+        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     // If not super_admin, verify the profile belongs to the admin's congregation
@@ -74,7 +94,10 @@ serve(async (req: Request): Promise<Response> => {
         .maybeSingle();
 
       if (!adminProfile || adminProfile.congregation_id !== profile.congregation_id) {
-        throw new Error("Você só pode excluir perfis da sua congregação");
+        return new Response(
+          JSON.stringify({ error: "Você só pode excluir perfis da sua congregação" }),
+          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
       }
     }
 
@@ -164,7 +187,7 @@ serve(async (req: Request): Promise<Response> => {
     console.error("Error in delete-profile:", message);
     return new Response(
       JSON.stringify({ error: message }),
-      { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 });

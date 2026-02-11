@@ -3,9 +3,6 @@
 -- ============================================
 
 -- 1. Re-create has_role function with proper type handling
--- The error "function public.has_role(uuid, unknown) does not exist" 
--- often happens when the second argument is passed as a string literal 
--- and PostgreSQL can't automatically cast it to the app_role enum.
 CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role text)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -21,7 +18,7 @@ AS $$
     )
 $$;
 
--- Also keep the enum version for compatibility if needed, but the text one is safer for JS calls
+-- Also keep the enum version for compatibility if needed
 CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role public.app_role)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -53,8 +50,15 @@ CREATE POLICY "Users can insert their own profile"
     );
 
 -- 3. Fix RLS for ride_requests (Allow insert)
+DROP POLICY IF EXISTS "Ride requests are viewable by authenticated users" ON public.ride_requests;
 DROP POLICY IF EXISTS "Users can manage their own ride requests" ON public.ride_requests;
-CREATE POLICY "Users can view and delete their own ride requests"
+DROP POLICY IF EXISTS "Users can view and delete their own ride requests" ON public.ride_requests;
+DROP POLICY IF EXISTS "Users can view their own ride requests" ON public.ride_requests;
+DROP POLICY IF EXISTS "Users can insert their own ride requests" ON public.ride_requests;
+DROP POLICY IF EXISTS "Users can update their own ride requests" ON public.ride_requests;
+DROP POLICY IF EXISTS "Users can delete their own ride requests" ON public.ride_requests;
+
+CREATE POLICY "Users can view their own ride requests"
     ON public.ride_requests FOR SELECT
     TO authenticated
     USING (profile_id = public.get_current_profile_id() OR public.has_role(auth.uid(), 'admin'));
@@ -83,13 +87,20 @@ CREATE POLICY "Drivers can create trips"
     ON public.trips FOR INSERT
     TO authenticated
     WITH CHECK (
-        driver_id = public.get_current_profile_id()
+        driver_id = public.get_current_profile_id() 
         OR public.has_role(auth.uid(), 'admin')
     );
 
 -- 5. Fix RLS for absences (Allow insert)
+DROP POLICY IF EXISTS "Absences are viewable by authenticated users" ON public.absences;
 DROP POLICY IF EXISTS "Users can manage their own absences" ON public.absences;
-CREATE POLICY "Users can view and delete their own absences"
+DROP POLICY IF EXISTS "Users can view and delete their own absences" ON public.absences;
+DROP POLICY IF EXISTS "Users can view their own absences" ON public.absences;
+DROP POLICY IF EXISTS "Users can insert their own absences" ON public.absences;
+DROP POLICY IF EXISTS "Users can update their own absences" ON public.absences;
+DROP POLICY IF EXISTS "Users can delete their own absences" ON public.absences;
+
+CREATE POLICY "Users can view their own absences"
     ON public.absences FOR SELECT
     TO authenticated
     USING (profile_id = public.get_current_profile_id() OR public.has_role(auth.uid(), 'admin'));
@@ -98,7 +109,7 @@ CREATE POLICY "Users can insert their own absences"
     ON public.absences FOR INSERT
     TO authenticated
     WITH CHECK (
-        profile_id = public.get_current_profile_id()
+        profile_id = public.get_current_profile_id() 
         OR public.has_role(auth.uid(), 'admin')
     );
 
