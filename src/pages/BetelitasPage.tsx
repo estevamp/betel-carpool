@@ -55,34 +55,20 @@ export default function BetelitasPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (person: Betelita) => {
-      // Refresh session to get a valid token
-      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
-      
-      if (sessionError || !session) {
-        console.error("Session error:", sessionError);
-        throw new Error("Sessão expirada. Por favor, faça login novamente.");
+      // Use Supabase client's built-in functions.invoke method
+      // This automatically handles authentication and headers correctly
+      const { data, error } = await supabase.functions.invoke('delete-profile', {
+        body: { profileId: person.id },
+      });
+
+      if (error) {
+        console.error("Delete profile error:", error);
+        throw new Error(error.message || "Erro ao excluir perfil");
       }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-profile`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ profileId: person.id }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Delete profile error:", response.status, errorText);
-        throw new Error(`Erro ao excluir: ${response.status}`);
+      if (!data?.success) {
+        throw new Error(data?.error || "Erro ao excluir perfil");
       }
-
-      const result = await response.json();
-      if (!result.success) throw new Error(result.error || "Erro ao excluir");
       
       return person.id;
     },
