@@ -14,10 +14,11 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    const authHeader = req.headers.get("authorization");
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
     if (!authHeader) {
+      console.error("Missing Authorization header");
       return new Response(
-        JSON.stringify({ error: "Não autorizado" }),
+        JSON.stringify({ error: "Não autorizado: Cabeçalho de autorização ausente" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -26,25 +27,48 @@ serve(async (req: Request): Promise<Response> => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Verify caller is admin
+    // 1. Create a client with the user's own JWT to verify they are who they say they are
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
+      global: {
+        headers: {
+          Authorization: authHeader,
+          apikey: supabaseAnonKey
+        }
+      },
     });
 
     const { data: { user }, error: authError } = await userClient.auth.getUser();
+    
     if (authError || !user) {
+      console.error("Auth error from userClient:", authError?.message || authError);
+      console.error("Auth header present:", !!authHeader);
+      console.error("Supabase URL:", supabaseUrl);
       return new Response(
-        JSON.stringify({ error: "Não autorizado" }),
+        JSON.stringify({
+          error: authError?.message || "Não autorizado: Token inválido",
+          details: "Verifique se você está autenticado e tente novamente"
+        }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    const { data: roleData } = await userClient
+    // 2. Create an admin client for database operations
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // Verify caller is admin
+    const { data: roleData, error: roleError } = await adminClient
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
       .in("role", ["admin", "super_admin"])
       .maybeSingle();
+
+    if (roleError) {
+      console.error("Error checking roles:", roleError);
+      throw roleError;
+    }
 
     if (!roleData) {
       return new Response(
@@ -61,11 +85,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    // Get the profile to find user_id and spouse
+    // Get the profile to find user_id and congregation
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       .select("id, user_id, spouse_id, congregation_id")
@@ -82,7 +102,7 @@ serve(async (req: Request): Promise<Response> => {
     // If not super_admin, verify the profile belongs to the admin's congregation
     const isSuperAdmin = roleData.role === "super_admin";
     if (!isSuperAdmin) {
-      const { data: adminProfile } = await userClient
+      const { data: adminProfile } = await adminClient
         .from("profiles")
         .select("congregation_id")
         .eq("user_id", user.id)
@@ -96,23 +116,13 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    // Delete related records to avoid foreign key violations
-    // 1. Absences
+    // Delete related records
     await adminClient.from("absences").delete().eq("profile_id", profileId);
-
-    // 2. Ride Requests
     await adminClient.from("ride_requests").delete().eq("profile_id", profileId);
-
-    // 3. Trip Passengers
     await adminClient.from("trip_passengers").delete().eq("passenger_id", profileId);
-
-    // 4. Transactions
     await adminClient.from("transactions").delete().or(`debtor_id.eq.${profileId},creditor_id.eq.${profileId}`);
-
-    // 5. Transfers
     await adminClient.from("transfers").delete().or(`debtor_id.eq.${profileId},creditor_id.eq.${profileId}`);
 
-    // Clear spouse link if exists
     if (profile.spouse_id) {
       await adminClient
         .from("profiles")
@@ -120,56 +130,29 @@ serve(async (req: Request): Promise<Response> => {
         .eq("id", profile.spouse_id);
     }
 
-    // Remove from congregation_administrators if they are an admin
-    const { error: removeAdminError } = await adminClient
-      .from("congregation_administrators")
-      .delete()
-      .eq("profile_id", profileId);
-    
-    if (removeAdminError) {
-      console.error("Error removing from congregation_administrators:", removeAdminError);
-    }
+    await adminClient.from("congregation_administrators").delete().eq("profile_id", profileId);
 
-    // Delete future trips where this profile is the driver
-    const { data: driverTrips, error: driverTripsError } = await adminClient
+    // Delete future trips
+    const { data: driverTrips } = await adminClient
       .from("trips")
       .select("id")
       .eq("driver_id", profileId)
       .gte("date", new Date().toISOString());
 
-    if (driverTripsError) {
-      console.error("Error fetching driver trips:", driverTripsError);
-    } else if (driverTrips && driverTrips.length > 0) {
-      const tripIds = driverTrips.map((trip: any) => trip.id);
-      const { error: deleteTripsError } = await adminClient
-        .from("trips")
-        .delete()
-        .in("id", tripIds);
-      
-      if (deleteTripsError) {
-        console.error("Error deleting driver trips:", deleteTripsError);
-      }
+    if (driverTrips && driverTrips.length > 0) {
+      await adminClient.from("trips").delete().in("id", driverTrips.map(t => t.id));
     }
 
-    // If profile has a linked auth user, delete the auth user (cascade will delete profile)
+    // Delete Auth User if exists, otherwise delete profile directly
     if (profile.user_id) {
       const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(profile.user_id);
       if (deleteAuthError) {
-        console.error("Error deleting auth user:", deleteAuthError);
-        // Fall back to just deleting the profile
-        const { error: deleteProfileError } = await adminClient
-          .from("profiles")
-          .delete()
-          .eq("id", profileId);
+        console.error("Error deleting auth user, falling back to profile delete:", deleteAuthError);
+        const { error: deleteProfileError } = await adminClient.from("profiles").delete().eq("id", profileId);
         if (deleteProfileError) throw deleteProfileError;
       }
-      // auth user deletion cascades to profile, so no need to delete profile separately
     } else {
-      // No auth user, just delete the profile
-      const { error: deleteProfileError } = await adminClient
-        .from("profiles")
-        .delete()
-        .eq("id", profileId);
+      const { error: deleteProfileError } = await adminClient.from("profiles").delete().eq("id", profileId);
       if (deleteProfileError) throw deleteProfileError;
     }
 
