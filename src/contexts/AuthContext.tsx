@@ -36,12 +36,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
  * Handles duplicate profiles by prioritizing the one with a congregation_id.
  */
 async function findProfile(userId: string, userEmail: string): Promise<Profile | null> {
+  console.log(`[Auth] Finding profile for userId: ${userId}, email: ${userEmail}`);
+  
   // 1. Try by user_id (strongest link)
   const { data: idProfile, error: idError } = await supabase
     .from("profiles")
     .select("*")
     .eq("user_id", userId)
     .maybeSingle();
+
+  console.log(`[Auth] Query by user_id result:`, { idProfile, idError });
 
   if (idProfile) {
     console.log(`[Auth] Profile found by user_id: ${idProfile.full_name}`);
@@ -53,13 +57,16 @@ async function findProfile(userId: string, userEmail: string): Promise<Profile |
   }
 
   // 2. Fallback: case-insensitive email search using ilike
+  console.log(`[Auth] Trying to find profile by email: ${userEmail}`);
   const { data: emailProfiles, error: emailError } = await supabase
     .from("profiles")
     .select("*")
     .ilike("email", userEmail);
 
+  console.log(`[Auth] Query by email result:`, { emailProfiles, emailError });
+
   if (emailError) {
-    console.error("[Auth] Error finding profile by email:", emailError.message);
+    console.error("[Auth] Error finding profile by email:", emailError.message, emailError);
     return null;
   }
 
@@ -75,6 +82,7 @@ async function findProfile(userId: string, userEmail: string): Promise<Profile |
     return (withCongregation || emailProfiles[0]) as Profile;
   }
 
+  console.log(`[Auth] Returning profile:`, emailProfiles[0]);
   return emailProfiles[0] as Profile;
 }
 
