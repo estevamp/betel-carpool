@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req: Request): Promise<Response> => {
@@ -14,7 +14,12 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Create client with user's JWT token
+    const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       console.error("Missing Authorization header");
       return new Response(
@@ -23,30 +28,18 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // 1. Create a client with the user's own JWT to verify they are who they say they are
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: authHeader,
-          apikey: supabaseAnonKey
-        }
-      },
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     
     if (authError || !user) {
-      console.error("Auth error from userClient:", authError?.message || authError);
-      console.error("Auth header present:", !!authHeader);
-      console.error("Supabase URL:", supabaseUrl);
+      console.error("Auth error:", authError?.message || "No user found");
       return new Response(
         JSON.stringify({
-          error: authError?.message || "Não autorizado: Token inválido",
-          details: "Verifique se você está autenticado e tente novamente"
+          error: "Não autorizado: Token inválido ou expirado"
         }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );

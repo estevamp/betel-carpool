@@ -65,11 +65,16 @@ export default function BetelitasPage() {
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${session.access_token}`,
-            "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({ profileId: person.id }),
         }
       );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Delete profile error:", response.status, errorText);
+        throw new Error(`Erro ao excluir: ${response.status}`);
+      }
 
       const result = await response.json();
       if (!result.success) throw new Error(result.error || "Erro ao excluir");
