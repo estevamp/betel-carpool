@@ -1,73 +1,110 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.10.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 interface DeleteProfileRequest {
   profileId: string;
 }
 
-serve(async (req: Request): Promise<Response> => {
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Get authorization header to verify admin status
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
-      throw new Error("Não autorizado");
-    }
-
-    // Create client with user's token to verify admin role
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await userClient.auth.getUser();
+    console.log("=== DELETE PROFILE START ===");
     
-    if (userError || !user) {
-      throw new Error("Usuário não autenticado");
+    // Try to get JWT from Authorization header
+    let authHeader = req.headers.get("Authorization");
+    
+    // If not in Authorization header, try apikey header (Supabase sometimes uses this)
+    if (!authHeader) {
+      const apikey = req.headers.get("apikey");
+      if (apikey) {
+        authHeader = `Bearer ${apikey}`;
+      }
+    }
+    
+    console.log("Auth header:", authHeader ? "present" : "missing");
+    
+    // Create Supabase admin client to get user by ID from JWT
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+
+    // If we have an auth header, try to verify it
+    let userId: string | null = null;
+    
+    if (authHeader) {
+      const token = authHeader.replace("Bearer ", "").replace("bearer ", "");
+      console.log("Token present, length:", token.length);
+      
+      // Try to get user from token
+      const { data: { user }, error: userError } = await adminClient.auth.getUser(token);
+      
+      if (user) {
+        userId = user.id;
+        console.log("✅ User from token:", userId);
+      } else {
+        console.log("❌ Could not get user from token:", userError);
+      }
+    }
+    
+    // If we still don't have a user, return 401
+    if (!userId) {
+      console.error("❌ No authenticated user found");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401,
+        }
+      );
     }
 
-    // Create admin client with service role
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    const { profileId }: DeleteProfileRequest = await req.json();
+    console.log("Profile ID to delete:", profileId);
+
+    if (!profileId) {
+      return new Response(
+        JSON.stringify({ error: "ID do perfil é obrigatório" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
 
     // Check if user is admin or super_admin
     const { data: roleData, error: roleError } = await adminClient
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .in("role", ["admin", "super_admin"])
       .maybeSingle();
 
+    console.log("Role check:", roleData, roleError);
+
     if (roleError || !roleData) {
-      throw new Error("Apenas administradores podem excluir perfis");
-    }
-
-    // Parse request body
-    const { profileId }: DeleteProfileRequest = await req.json();
-
-    if (!profileId) {
-      throw new Error("ID do perfil é obrigatório");
+      return new Response(
+        JSON.stringify({ error: "Apenas administradores podem excluir perfis" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 403,
+        }
+      );
     }
 
     // Get the profile to find user_id and congregation
@@ -78,7 +115,13 @@ serve(async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (profileError || !profile) {
-      throw new Error("Perfil não encontrado");
+      return new Response(
+        JSON.stringify({ error: "Perfil não encontrado" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 404,
+        }
+      );
     }
 
     // If not super_admin, verify the profile belongs to the admin's congregation
@@ -87,13 +130,21 @@ serve(async (req: Request): Promise<Response> => {
       const { data: adminProfile } = await adminClient
         .from("profiles")
         .select("congregation_id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
       if (!adminProfile || adminProfile.congregation_id !== profile.congregation_id) {
-        throw new Error("Você só pode excluir perfis da sua congregação");
+        return new Response(
+          JSON.stringify({ error: "Você só pode excluir perfis da sua congregação" }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 403,
+          }
+        );
       }
     }
+
+    console.log("✅ Authorization checks passed, deleting profile...");
 
     // Delete related records
     await adminClient.from("absences").delete().eq("profile_id", profileId);
@@ -119,7 +170,7 @@ serve(async (req: Request): Promise<Response> => {
       .gte("date", new Date().toISOString());
 
     if (driverTrips && driverTrips.length > 0) {
-      await adminClient.from("trips").delete().in("id", driverTrips.map((t: { id: string }) => t.id));
+      await adminClient.from("trips").delete().in("id", driverTrips.map((t: any) => t.id));
     }
 
     // Delete Auth User if exists, otherwise delete profile directly
@@ -135,18 +186,23 @@ serve(async (req: Request): Promise<Response> => {
       if (deleteProfileError) throw deleteProfileError;
     }
 
+    console.log("✅ Profile deleted successfully");
+
     return new Response(
       JSON.stringify({ success: true }),
       {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      },
+      }
     );
   } catch (error: any) {
-    console.error("Error in delete-profile function:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
+    console.error("❌ Error deleting profile:", error);
+    return new Response(
+      JSON.stringify({ error: error.message || "Unknown error" }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      }
+    );
   }
 });

@@ -27,19 +27,27 @@ ALTER TABLE public.congregation_administrators ENABLE ROW LEVEL SECURITY;
 -- Super-admins can see all congregation administrators
 -- Regular admins can only see administrators of their own congregation
 CREATE POLICY "Congregation administrators are viewable by authenticated users"
-    ON public.congregation_administrators FOR SELECT
-    TO authenticated
-    USING (
-        -- Super-admins can see all
-        public.has_role(auth.uid(), 'super_admin')
-        -- OR admins can see their own congregation's administrators
-        OR EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE id = public.get_current_profile_id()
-            AND congregation_id = congregation_administrators.congregation_id
-            AND public.has_role(auth.uid(), 'admin')
-        )
-    );
+  ON public.congregation_administrators FOR SELECT
+  TO authenticated
+  USING (
+      -- Super-admins can see all
+      EXISTS (
+          SELECT 1 FROM public.user_roles
+          WHERE user_id = auth.uid()
+          AND role = 'super_admin'
+      )
+      -- OR admins can see their own congregation's administrators
+      OR EXISTS (
+          SELECT 1 FROM public.profiles
+          WHERE user_id = auth.uid()
+          AND congregation_id = congregation_administrators.congregation_id
+          AND EXISTS (
+              SELECT 1 FROM public.user_roles
+              WHERE user_id = auth.uid()
+              AND role = 'admin'
+          )
+      )
+  );
 
 CREATE POLICY "Only super-admins can insert congregation administrators"
     ON public.congregation_administrators FOR INSERT

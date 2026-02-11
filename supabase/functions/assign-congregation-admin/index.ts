@@ -24,15 +24,22 @@ serve(async (req) => {
   const token = authHeader.replace("Bearer ", "");
 
   const { profile_id, congregation_id } = await req.json();
+  console.log(`Assigning admin: profile_id=${profile_id}, congregation_id=${congregation_id}`);
 
-  const supabaseClient = createClient(
+  // Create admin client with service role key to bypass RLS after authorization
+  const adminClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-    { global: { headers: { Authorization: authHeader } } }
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
   );
 
   // Check if the user is a super_admin - pass token explicitly for Lovable Cloud
-  const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+  const { data: { user }, error: authError } = await adminClient.auth.getUser(token);
   if (authError || !user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -40,7 +47,7 @@ serve(async (req) => {
     });
   }
 
-  const { data: roleData, error: roleError } = await supabaseClient
+  const { data: roleData, error: roleError } = await adminClient
     .from("user_roles")
     .select("role")
     .eq("user_id", user.id)
@@ -55,7 +62,7 @@ serve(async (req) => {
   }
 
   // Get the user_id from the profile_id
-  const { data: profileData, error: profileError } = await supabaseClient
+  const { data: profileData, error: profileError } = await adminClient
     .from("profiles")
     .select("user_id, full_name, email")
     .eq("id", profile_id)
@@ -85,33 +92,52 @@ serve(async (req) => {
 
   // Add 'admin' role to the user (they have a user_id, so they've logged in)
   if (profileData.user_id) {
-    const { error: insertRoleError } = await supabaseClient
+    console.log(`Adding 'admin' role to user_id=${profileData.user_id}`);
+    // Use upsert with onConflict to prevent duplicates and handle race conditions
+    const { error: insertRoleError } = await adminClient
       .from("user_roles")
-      .insert({ user_id: profileData.user_id, role: "admin" });
+      .upsert(
+        { user_id: profileData.user_id, role: "admin" },
+        { onConflict: 'user_id,role' }
+      );
 
-    // If role assignment fails (e.g., unique violation, or FK violation due to stale user_id),
-    // log it but don't block the main task of assigning congregation admin role.
-    // The role can be granted later upon login.
     if (insertRoleError) {
-      console.warn(`Ignoring error while trying to assign 'admin' role to user ${profileData.user_id}: ${insertRoleError.message}`);
+      console.error(`Error assigning 'admin' role to user ${profileData.user_id}: ${insertRoleError.message}`);
+    } else {
+      console.log(`Successfully assigned 'admin' role to user ${profileData.user_id}`);
     }
   }
 
   // Assign the profile as a congregation administrator
-  const { error } = await supabaseClient
+  console.log(`Inserting into congregation_administrators: profile_id=${profile_id}, congregation_id=${congregation_id}`);
+  
+  // Use upsert with onConflict to prevent duplicates and handle race conditions
+  const { error: insertError } = await adminClient
     .from("congregation_administrators")
-    .insert({ profile_id, congregation_id });
+    .upsert(
+      { profile_id, congregation_id },
+      { onConflict: 'profile_id,congregation_id' }
+    );
 
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+  if (insertError) {
+    return new Response(JSON.stringify({ error: insertError.message }), {
       headers: { "Content-Type": "application/json", ...corsHeaders },
       status: 400,
     });
   }
 
   // Return a simple success message as we are not selecting the data anymore.
-  return new Response(JSON.stringify({ success: true }), {
+  console.log(`Successfully completed assignment for profile_id=${profile_id}`);
+  return new Response(JSON.stringify({
+    success: true,
+    message: "Administrador designado com sucesso",
+    details: {
+      profile_id,
+      congregation_id,
+      user_id: profileData.user_id
+    }
+  }), {
     headers: { "Content-Type": "application/json", ...corsHeaders },
-    status: 201,
+    status: 200,
   });
 });

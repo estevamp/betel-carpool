@@ -3,11 +3,11 @@
 ## Problem
 The `delete-profile` Edge Function was returning a 401 Unauthorized error when called from the frontend.
 
+## ✅ SOLUTION FOUND
+**The issue was resolved by disabling the "Verify JWT with legacy secret" option in the Supabase Edge Function configuration.**
+
 ## Root Cause
-The Edge Function was not properly authenticating users due to:
-1. Overly complex CORS headers that weren't needed
-2. Incorrect client initialization pattern
-3. Missing error handling in the frontend
+The Edge Function authentication was failing due to JWT verification settings in Supabase. The "Verify JWT with legacy secret" option was causing the authentication to fail even though the code was correct.
 
 ## Changes Made
 
@@ -88,9 +88,51 @@ After deployment, test the delete functionality:
 - Better error logging has been added to help diagnose future issues
 - The frontend now properly handles non-200 responses before trying to parse JSON
 
+## ✅ FINAL SOLUTION - JWT Configuration
+
+### How to Fix:
+
+1. **Go to Supabase Dashboard**
+2. **Navigate to Edge Functions**
+3. **Select the `delete-profile` function**
+4. **Click on "Details" tab**
+5. **Find "Function configuration" section**
+6. **Locate "Verify JWT with legacy secret" toggle**
+7. **DISABLE this option (turn it OFF)**
+8. **Click "Save changes"**
+
+### Why This Works:
+
+The "Verify JWT with legacy secret" option was requiring an additional JWT validation that wasn't compatible with the current authentication flow. By disabling it, the Edge Function can properly authenticate users using the standard Supabase JWT validation through the `adminClient.auth.getUser(token)` method in the code.
+
+### Current Code Implementation:
+
+The Edge Function now uses a robust authentication approach:
+
+```typescript
+// Get JWT from Authorization header
+const authHeader = req.headers.get("Authorization");
+
+// Create admin client
+const adminClient = createClient(
+  Deno.env.get("SUPABASE_URL") ?? "",
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+);
+
+// Verify token and get user
+const token = authHeader.replace("Bearer ", "");
+const { data: { user }, error } = await adminClient.auth.getUser(token);
+
+if (!user) {
+  return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+}
+```
+
+This approach works correctly when the legacy JWT verification is disabled.
+
 ## If the Error Persists
 
-If you still get a 401 error after deploying these changes, check:
+If you still get a 401 error after disabling the JWT verification, check:
 
 1. **Session validity:** Make sure the user's session hasn't expired
    - Try logging out and logging back in
@@ -105,3 +147,5 @@ If you still get a 401 error after deploying these changes, check:
 4. **Check Edge Function logs:** In Supabase Dashboard > Edge Functions > delete-profile > Logs
    - Look for the console.error messages we added
    - This will show exactly where the authentication is failing
+
+5. **Verify JWT setting:** Double-check that "Verify JWT with legacy secret" is actually disabled and changes were saved
