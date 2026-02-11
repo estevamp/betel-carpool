@@ -181,7 +181,14 @@ export function TripCard({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-popover">
                 <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>Editar viagem</DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive" onClick={() => onDeleteTrip(trip.id)}>
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => {
+                    if (window.confirm("Tem certeza que deseja cancelar esta viagem?")) {
+                      onDeleteTrip(trip.id);
+                    }
+                  }}
+                >
                   Cancelar viagem
                 </DropdownMenuItem>
               </DropdownMenuContent>
