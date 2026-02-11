@@ -238,7 +238,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // If SIGNED_IN event but profile already exists for this user, skip reload
         if (event === 'SIGNED_IN' && profileRef.current && profileRef.current.user_id === session?.user?.id) {
-          console.log(`[Auth] Skipping profile reload for SIGNED_IN - profile already loaded`);
+          console.log(`[Auth] Skipping profile reload for SIGNED_IN - profile already loaded`, {
+            profileRefUserId: profileRef.current.user_id,
+            sessionUserId: session?.user?.id,
+            profileRefData: profileRef.current
+          });
           setSession(session);
           setUser(session?.user ?? null);
           return; // Don't reload profile
@@ -322,13 +326,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    console.log('[Auth] Signing out - clearing all state');
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setProfile(null);
     profileRef.current = null; // Clear the ref to force reload on next login
+    lastProfileLoadRef.current = 0; // Reset cooldown timer
     setIsAdmin(false);
     setIsSuperAdmin(false);
+    console.log('[Auth] Sign out complete - profileRef:', profileRef.current);
   };
 
   return (
