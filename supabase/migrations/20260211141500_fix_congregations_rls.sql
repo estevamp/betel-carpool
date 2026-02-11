@@ -9,11 +9,28 @@ BEGIN
     END IF;
 END $$;
 
+-- Re-create the policy using a simpler approach that doesn't depend on custom functions
+-- if they are not yet available in the remote database, while still allowing super_admins
+-- to see everything via the user_roles table.
 CREATE POLICY "Congregations are viewable by authenticated users"
     ON public.congregations FOR SELECT
     TO authenticated
     USING (
-        public.is_super_admin()
-        OR id = public.get_current_congregation_id()
-        OR public.is_congregation_admin(id)
+        -- Super-admin check via user_roles
+        EXISTS (
+            SELECT 1 FROM public.user_roles
+            WHERE user_id = auth.uid()
+            AND role = 'super_admin'
+        )
+        -- User belongs to this congregation
+        OR id IN (
+            SELECT congregation_id FROM public.profiles
+            WHERE user_id = auth.uid()
+        )
+        -- User is an admin of this congregation
+        OR id IN (
+            SELECT ca.congregation_id FROM public.congregation_administrators ca
+            JOIN public.profiles p ON ca.profile_id = p.id
+            WHERE p.user_id = auth.uid()
+        )
     );

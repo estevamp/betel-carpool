@@ -78,6 +78,22 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
+    // Delete related records to avoid foreign key violations
+    // 1. Absences
+    await adminClient.from("absences").delete().eq("profile_id", profileId);
+
+    // 2. Ride Requests
+    await adminClient.from("ride_requests").delete().eq("profile_id", profileId);
+
+    // 3. Trip Passengers
+    await adminClient.from("trip_passengers").delete().eq("passenger_id", profileId);
+
+    // 4. Transactions
+    await adminClient.from("transactions").delete().or(`debtor_id.eq.${profileId},creditor_id.eq.${profileId}`);
+
+    // 5. Transfers
+    await adminClient.from("transfers").delete().or(`debtor_id.eq.${profileId},creditor_id.eq.${profileId}`);
+
     // Clear spouse link if exists
     if (profile.spouse_id) {
       await adminClient
