@@ -177,6 +177,7 @@ CREATE POLICY "Evacuation cars are viewable by congregation members"
     USING (
         public.is_super_admin()
         OR congregation_id = public.get_current_congregation_id()
+        OR public.is_congregation_admin(congregation_id)
     );
 
 CREATE POLICY "Drivers can manage their evacuation cars"

@@ -47,7 +47,7 @@ export function useEvacuation() {
 
       if (selectedCongregationId) {
         query = query.eq("congregation_id", selectedCongregationId);
-      } else if (!isSuperAdmin && profile?.congregation_id) {
+      } else if (profile?.congregation_id) {
         query = query.eq("congregation_id", profile.congregation_id);
       }
 
@@ -107,7 +107,7 @@ export function useEvacuation() {
         driver_id: profile.id,
         destination: data.destination || null,
         notes: data.notes || null,
-        congregation_id: isSuperAdmin && selectedCongregationId ? selectedCongregationId : profile.congregation_id,
+        congregation_id: selectedCongregationId || profile.congregation_id,
       });
 
       if (error) throw error;
