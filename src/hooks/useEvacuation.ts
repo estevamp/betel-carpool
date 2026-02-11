@@ -167,11 +167,20 @@ export function useEvacuation() {
       // Send push notification to the driver
       if (car && passengerProfile) {
         try {
-          await oneSignalService.notifyPassengerAdded(
-            car.driver_id,
-            passengerProfile.full_name,
-            car.destination || undefined
-          );
+          // Get the driver's user_id from their profile
+          const { data: driverProfile } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .eq("id", car.driver_id)
+            .single();
+
+          if (driverProfile?.user_id) {
+            await oneSignalService.notifyPassengerAdded(
+              driverProfile.user_id,
+              passengerProfile.full_name,
+              car.destination || undefined
+            );
+          }
         } catch (notificationError) {
           console.error("Error sending push notification:", notificationError);
           // Don't fail the mutation if notification fails
