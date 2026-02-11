@@ -113,30 +113,39 @@ async function linkProfileToUser(profile: Profile, userId: string): Promise<Prof
  * Checks both user_roles table and congregation_administrators table.
  */
 async function fetchRoles(userId: string, profileId: string) {
+  console.log(`[Auth] Fetching roles for userId: ${userId}, profileId: ${profileId}`);
+  
   // Check user_roles table for admin/super_admin roles
-  const { data: roleData } = await supabase
+  const { data: roleData, error: roleError } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
     .in("role", ["admin", "super_admin"]);
+
+  console.log(`[Auth] user_roles query result:`, { roleData, roleError });
 
   const roles = roleData || [];
   const hasAdminRole = roles.some(r => r.role === "admin" || r.role === "super_admin");
   const hasSuperAdminRole = roles.some(r => r.role === "super_admin");
 
   // Check congregation_administrators table for congregation admin designation
-  const { data: congAdminData } = await supabase
+  const { data: congAdminData, error: congError } = await supabase
     .from("congregation_administrators")
     .select("id")
     .eq("profile_id", profileId)
     .maybeSingle();
 
+  console.log(`[Auth] congregation_administrators query result:`, { congAdminData, congError });
+
   const isCongregationAdmin = !!congAdminData;
 
-  return {
+  const result = {
     isAdmin: hasAdminRole || isCongregationAdmin,
     isSuperAdmin: hasSuperAdminRole,
   };
+  
+  console.log(`[Auth] Final roles:`, result);
+  return result;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
