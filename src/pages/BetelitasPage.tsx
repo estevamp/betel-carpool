@@ -55,8 +55,13 @@ export default function BetelitasPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (person: Betelita) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Não autenticado");
+      // Refresh session to get a valid token
+      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
+      
+      if (sessionError || !session) {
+        console.error("Session error:", sessionError);
+        throw new Error("Sessão expirada. Por favor, faça login novamente.");
+      }
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-profile`,
