@@ -10,6 +10,7 @@
 DROP POLICY IF EXISTS "Profiles are viewable by authenticated users" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can update congregation profiles" ON public.profiles;
 
 -- Recreate with congregation filtering
 CREATE POLICY "Profiles are viewable by authenticated users"
@@ -117,6 +118,7 @@ CREATE POLICY "Drivers can delete their own trips"
 -- ============================================
 DROP POLICY IF EXISTS "Absences are viewable by authenticated users" ON public.absences;
 DROP POLICY IF EXISTS "Users can manage their own absences" ON public.absences;
+DROP POLICY IF EXISTS "Absences are viewable by congregation members" ON public.absences;
 
 CREATE POLICY "Absences are viewable by congregation members"
     ON public.absences FOR SELECT
@@ -142,6 +144,7 @@ CREATE POLICY "Users can manage their own absences"
 -- ============================================
 DROP POLICY IF EXISTS "Ride requests are viewable by authenticated users" ON public.ride_requests;
 DROP POLICY IF EXISTS "Users can manage their own ride requests" ON public.ride_requests;
+DROP POLICY IF EXISTS "Ride requests are viewable by congregation members" ON public.ride_requests;
 
 CREATE POLICY "Ride requests are viewable by congregation members"
     ON public.ride_requests FOR SELECT
@@ -170,6 +173,7 @@ CREATE POLICY "Users can manage their own ride requests"
 -- ============================================
 DROP POLICY IF EXISTS "Evacuation cars are viewable by authenticated users" ON public.evacuation_cars;
 DROP POLICY IF EXISTS "Drivers can manage their evacuation cars" ON public.evacuation_cars;
+DROP POLICY IF EXISTS "Evacuation cars are viewable by congregation members" ON public.evacuation_cars;
 
 CREATE POLICY "Evacuation cars are viewable by congregation members"
     ON public.evacuation_cars FOR SELECT

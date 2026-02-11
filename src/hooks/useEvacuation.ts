@@ -175,11 +175,15 @@ export function useEvacuation() {
             .single();
 
           if (driverProfile?.user_id) {
-            await oneSignalService.notifyPassengerAdded(
-              driverProfile.user_id,
-              passengerProfile.full_name,
-              car.destination || undefined
-            );
+            try {
+              await oneSignalService.notifyPassengerAdded(
+                driverProfile.user_id,
+                passengerProfile.full_name,
+                car.destination || undefined
+              );
+            } catch (oneSignalError) {
+              console.warn("OneSignal notification failed, but passenger was added:", oneSignalError);
+            }
           }
         } catch (notificationError) {
           console.error("Error sending push notification:", notificationError);
