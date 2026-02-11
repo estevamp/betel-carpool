@@ -70,33 +70,27 @@ export default function AuthPage() {
     console.log(`[AuthPage] Starting ${provider} sign in...`);
     
     try {
-      // First, we need to get the user's email to check if they have a profile
-      // Since OAuth doesn't give us the email before redirect, we'll handle validation after auth
-      const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: `${window.location.origin}/auth`,
+      // Use Supabase directly instead of Lovable wrapper to avoid OAuth issues
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth`,
+        },
       });
       
-      console.log(`[AuthPage] OAuth result:`, { redirected: result.redirected, hasError: !!result.error });
+      console.log(`[AuthPage] OAuth result:`, { data, error });
       
-      // If redirected, don't reset loading state - user is being redirected
-      if (result.redirected) {
-        console.log(`[AuthPage] User being redirected to ${provider} login...`);
-        return;
-      }
-      
-      if (result.error) {
-        console.error(`[AuthPage] OAuth error:`, result.error);
+      if (error) {
+        console.error(`[AuthPage] OAuth error:`, error);
         toast({
           variant: "destructive",
           title: `Erro ao entrar com ${provider === "google" ? "Google" : "Apple"}`,
-          description: result.error.message,
+          description: error.message,
         });
         setIsLoading(false);
-      } else {
-        // Success - the auth state change will trigger navigation
-        console.log(`[AuthPage] OAuth success, waiting for auth state change...`);
-        // Don't set isLoading to false here - let AuthContext handle it
       }
+      // If successful, user will be redirected to OAuth provider
+      // Don't set isLoading to false - user is being redirected
     } catch (error) {
       console.error(`[AuthPage] ${provider} auth error:`, error);
       console.error(`[AuthPage] Error details:`, error instanceof Error ? error.stack : 'No stack trace');
