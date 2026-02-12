@@ -27,28 +27,59 @@ serve(async (req) => {
       }
     );
 
+    // Get the authorization header
     const authHeader = req.headers.get("Authorization");
+    console.log("Auth header present:", !!authHeader);
     
-    // If we have an auth header, verify the user
+    // Try to verify the user from the JWT token
     let user = null;
     if (authHeader) {
-      const { data: { user: verifiedUser }, error: userError } = await supabaseAdmin.auth.getUser(authHeader.replace("Bearer ", ""));
-      if (!userError && verifiedUser) {
-        user = verifiedUser;
+      const token = authHeader.replace("Bearer ", "");
+      console.log("Token length:", token.length);
+      
+      const { data, error: userError } = await supabaseAdmin.auth.getUser(token);
+      
+      if (userError) {
+        console.error("Auth error:", userError.message, userError.status);
+        // Return 401 with detailed error
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Authentication failed",
+            details: userError.message
+          }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      if (data?.user) {
+        user = data.user;
+        console.log("User authenticated:", user.id);
       }
     }
 
-    // If no user found via token, check if it's a service role call (e.g. from cron)
+    // If no auth header, check if it's a service role call (e.g. from cron)
     if (!user) {
       const apiKey = req.headers.get("apikey");
       const isServiceRole = apiKey === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
       
       if (!isServiceRole) {
-        return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        console.error("No valid authentication found");
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Unauthorized - No valid authentication provided"
+          }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
       }
+      console.log("Service role authentication successful");
       // For service role, we don't have a specific user, but we allow the operation
     }
 
