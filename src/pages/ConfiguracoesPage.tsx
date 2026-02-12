@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Settings, Wallet, Bell, Shield, Database, Building2 } from "lucide-react";
+import { Settings, Wallet, Bell, Shield, Database, Building2, Calendar, Clock, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -11,6 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/ui/toggle-group";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -40,6 +45,16 @@ export default function ConfiguracoesPage() {
   
   const [congregationName, setCongregationName] = useState("");
   const [defaultCongregationId, setDefaultCongregationId] = useState("");
+  
+  // Notification Settings
+  const [notifMessage, setNotifMessage] = useState("");
+  const [notifDays, setNotifDays] = useState<string[]>([]);
+  const [notifTime, setNotifTime] = useState("08:00");
+  const [notifEnabled, setNotifEnabled] = useState(false);
+
+  const { profile } = useAuth();
+  const effectiveCongregationId = isSuperAdmin ? defaultCongregationId : profile?.congregation_id;
+
   const {
     data: settings,
     isLoading
@@ -66,6 +81,31 @@ export default function ConfiguracoesPage() {
       }
     }
   }, [settings]);
+
+  const { data: notificationSettings, isLoading: isLoadingNotif } = useQuery({
+    queryKey: ["notification-settings", effectiveCongregationId],
+    queryFn: async () => {
+      if (!effectiveCongregationId) return null;
+      const { data, error } = await supabase
+        .from("notification_settings")
+        .select("*")
+        .eq("congregation_id", effectiveCongregationId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!effectiveCongregationId,
+  });
+
+  useEffect(() => {
+    if (notificationSettings) {
+      setNotifMessage(notificationSettings.message);
+      setNotifDays(notificationSettings.scheduled_days?.map(String) || []);
+      setNotifTime(notificationSettings.scheduled_time?.substring(0, 5) || "08:00");
+      setNotifEnabled(notificationSettings.is_enabled);
+    }
+  }, [notificationSettings]);
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       // Save congregation name
@@ -123,6 +163,42 @@ export default function ConfiguracoesPage() {
       console.error(error);
     }
   });
+
+  const saveNotificationMutation = useMutation({
+    mutationFn: async () => {
+      if (!effectiveCongregationId) {
+        toast.error("Selecione uma congregação primeiro");
+        return;
+      }
+
+      const payload = {
+        congregation_id: effectiveCongregationId,
+        message: notifMessage,
+        scheduled_days: notifDays.map(Number),
+        scheduled_time: notifTime + (notifTime.length === 5 ? ":00" : ""),
+        is_enabled: notifEnabled,
+      };
+
+      console.log("Saving notification settings:", payload);
+
+      const { error } = await supabase
+        .from("notification_settings")
+        .upsert(payload, { onConflict: 'congregation_id' });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["notification-settings", effectiveCongregationId]
+      });
+      toast.success("Configurações de notificação salvas!");
+    },
+    onError: (error) => {
+      toast.error("Erro ao salvar notificações");
+      console.error(error);
+    }
+  });
+
   return <div className="space-y-6 max-w-2xl">
       {/* Header */}
       <div>
@@ -165,6 +241,91 @@ export default function ConfiguracoesPage() {
           </div>
         </div>
       </div>
+
+      {/* Automatic Notifications (Admin Only) */}
+      {(isAdmin || isSuperAdmin) && (
+        <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <Calendar className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-foreground">Notificações Automáticas</h2>
+              <p className="text-sm text-muted-foreground">Lembrete semanal para a congregação</p>
+            </div>
+          </div>
+          <div className="p-5 space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Ativar envio automático</Label>
+                <p className="text-sm text-muted-foreground">Enviar mensagem nos dias e horários definidos</p>
+              </div>
+              <Switch
+                checked={notifEnabled}
+                onCheckedChange={setNotifEnabled}
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Mensagem Padrão
+              </Label>
+              <Textarea
+                value={notifMessage}
+                onChange={(e) => setNotifMessage(e.target.value)}
+                placeholder="Digite a mensagem que será enviada..."
+                className="min-h-[100px]"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Dias da Semana
+              </Label>
+              <ToggleGroup
+                type="multiple"
+                value={notifDays}
+                onValueChange={setNotifDays}
+                className="justify-start flex-wrap"
+              >
+                <ToggleGroupItem value="0" aria-label="Domingo" className="w-10 h-10">D</ToggleGroupItem>
+                <ToggleGroupItem value="1" aria-label="Segunda" className="w-10 h-10">S</ToggleGroupItem>
+                <ToggleGroupItem value="2" aria-label="Terça" className="w-10 h-10">T</ToggleGroupItem>
+                <ToggleGroupItem value="3" aria-label="Quarta" className="w-10 h-10">Q</ToggleGroupItem>
+                <ToggleGroupItem value="4" aria-label="Quinta" className="w-10 h-10">Q</ToggleGroupItem>
+                <ToggleGroupItem value="5" aria-label="Sexta" className="w-10 h-10">S</ToggleGroupItem>
+                <ToggleGroupItem value="6" aria-label="Sábado" className="w-10 h-10">S</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Horário de Envio
+              </Label>
+              <Input
+                type="time"
+                value={notifTime}
+                onChange={(e) => setNotifTime(e.target.value)}
+                className="max-w-[150px]"
+              />
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => saveNotificationMutation.mutate()}
+                disabled={saveNotificationMutation.isPending}
+              >
+                {saveNotificationMutation.isPending ? "Salvando..." : "Salvar Configurações de Notificação"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Admin Only */}
       {isAdmin && <div className="bg-card rounded-xl border border-warning/30 shadow-card overflow-hidden">

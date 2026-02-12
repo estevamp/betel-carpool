@@ -17,12 +17,17 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
+<<<<<<< HEAD
+=======
+      console.error("Missing Authorization header");
+>>>>>>> 37742acc7ee9386168356141d427fcf6af0b3b5a
       return new Response(JSON.stringify({ success: false, error: "Missing authorization header" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+<<<<<<< HEAD
     // Use SERVICE_ROLE_KEY to bypass RLS and avoid AuthSessionMissingError
     // We will manually verify the user's identity using the JWT
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
@@ -54,6 +59,18 @@ serve(async (req) => {
     if (userError || !user) {
       console.error("User verification failed:", userError);
       return new Response(JSON.stringify({ success: false, error: "Unauthorized", details: userError }), {
+=======
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      console.error("User verification failed:", userError);
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+>>>>>>> 37742acc7ee9386168356141d427fcf6af0b3b5a
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -63,13 +80,21 @@ serve(async (req) => {
     if (!message || !congregationId) throw new Error("Message and congregationId are required");
 
     // Verify if user is admin of this congregation or super admin
+<<<<<<< HEAD
     const { data: profile } = await supabaseAdmin
+=======
+    const { data: profile } = await supabaseClient
+>>>>>>> 37742acc7ee9386168356141d427fcf6af0b3b5a
       .from('profiles')
       .select('id, is_super_admin')
       .eq('user_id', user.id)
       .single();
 
+<<<<<<< HEAD
     const { data: isAdmin } = await supabaseAdmin
+=======
+    const { data: isAdmin } = await supabaseClient
+>>>>>>> 37742acc7ee9386168356141d427fcf6af0b3b5a
       .from('congregation_administrators')
       .select('id')
       .eq('congregation_id', congregationId)
@@ -81,7 +106,11 @@ serve(async (req) => {
     }
 
     // Get all users from this congregation
+<<<<<<< HEAD
     const { data: members, error: membersError } = await supabaseAdmin
+=======
+    const { data: members, error: membersError } = await supabaseClient
+>>>>>>> 37742acc7ee9386168356141d427fcf6af0b3b5a
       .from('profiles')
       .select('user_id')
       .eq('congregation_id', congregationId)
@@ -118,7 +147,10 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
+<<<<<<< HEAD
     console.error("Function error:", error);
+=======
+>>>>>>> 37742acc7ee9386168356141d427fcf6af0b3b5a
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,
