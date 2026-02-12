@@ -23,12 +23,12 @@ serve(async (req) => {
       });
     }
 
-    // Create client with the user's JWT
-    const supabaseClient = createClient(
+    // Use SERVICE_ROLE_KEY to bypass RLS and avoid AuthSessionMissingError
+    // We will manually verify the user's identity using the JWT
+    const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       {
-        global: { headers: { Authorization: authHeader } },
         auth: {
           persistSession: false,
           autoRefreshToken: false,
@@ -37,8 +37,10 @@ serve(async (req) => {
       }
     );
 
-    // Verify the user
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // Manually verify the user by calling getUser with the token from the header
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+
     if (userError || !user) {
       console.error("User verification failed:", userError);
       return new Response(JSON.stringify({ success: false, error: "Unauthorized", details: userError }), {
@@ -51,13 +53,13 @@ serve(async (req) => {
     if (!message || !congregationId) throw new Error("Message and congregationId are required");
 
     // Verify if user is admin of this congregation or super admin
-    const { data: profile } = await supabaseClient
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('id, is_super_admin')
       .eq('user_id', user.id)
       .single();
 
-    const { data: isAdmin } = await supabaseClient
+    const { data: isAdmin } = await supabaseAdmin
       .from('congregation_administrators')
       .select('id')
       .eq('congregation_id', congregationId)
@@ -69,7 +71,7 @@ serve(async (req) => {
     }
 
     // Get all users from this congregation
-    const { data: members, error: membersError } = await supabaseClient
+    const { data: members, error: membersError } = await supabaseAdmin
       .from('profiles')
       .select('user_id')
       .eq('congregation_id', congregationId)
