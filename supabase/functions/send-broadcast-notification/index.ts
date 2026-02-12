@@ -45,7 +45,17 @@ serve(async (req) => {
 
     if (userError || !user) {
       console.error("User verification failed:", userError);
-      return new Response(JSON.stringify({ success: false, error: "Unauthorized", details: userError?.message }), {
+      // If getUser fails, it might be because the token is invalid or expired
+      // We return the specific error message to help debugging
+      return new Response(JSON.stringify({
+        success: false,
+        error: "Unauthorized",
+        details: userError?.message || "User not found",
+        debug: {
+          hasToken: !!token,
+          tokenLength: token?.length
+        }
+      }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
