@@ -19,14 +19,15 @@ export const CongregationCard = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{congregation.name}</CardTitle>
+        <CardTitle className="text-lg sm:text-xl break-words">{congregation.name}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onManageAdmins(congregation)}
+            className="w-full sm:w-auto justify-start sm:justify-center"
           >
             <Users className="mr-2 h-4 w-4" />
             Administradores
@@ -35,6 +36,7 @@ export const CongregationCard = ({
             variant="outline"
             size="sm"
             onClick={() => onEdit(congregation)}
+            className="w-full sm:w-auto justify-start sm:justify-center"
           >
             <Pencil className="mr-2 h-4 w-4" />
             Editar
@@ -43,6 +45,7 @@ export const CongregationCard = ({
             variant="destructive"
             size="sm"
             onClick={() => onDelete(congregation.id)}
+            className="w-full sm:w-auto justify-start sm:justify-center"
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Deletar

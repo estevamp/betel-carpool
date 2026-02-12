@@ -50,9 +50,9 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl break-words">
             Gerenciar Administradores - {congregation?.name}
           </DialogTitle>
         </DialogHeader>
@@ -60,8 +60,8 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
         <div className="space-y-6">
           {/* Adicionar novo administrador */}
           <div className="space-y-2">
-            <Label>Adicionar Administrador</Label>
-            <div className="flex gap-2">
+            <Label className="text-sm sm:text-base">Adicionar Administrador</Label>
+            <div className="flex flex-col sm:flex-row gap-2">
               <Select
                 value={selectedProfileId}
                 onValueChange={setSelectedProfileId}
@@ -110,6 +110,7 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
               <Button
                 onClick={handleAddAdmin}
                 disabled={!selectedProfileId || addAdmin.isPending || isLoadingBetelitas}
+                className="w-full sm:w-auto"
               >
                 <UserPlus className="mr-2 h-4 w-4" />
                 Adicionar
@@ -119,18 +120,18 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
 
           {/* Lista de administradores atuais */}
           <div className="space-y-2">
-            <Label>Administradores Atuais</Label>
+            <Label className="text-sm sm:text-base">Administradores Atuais</Label>
             {isLoading ? (
               <div className="text-sm text-muted-foreground">Carregando...</div>
             ) : admins && admins.length > 0 ? (
               <div className="space-y-2">
                 {admins.map((admin) => (
                   <Card key={admin.id}>
-                    <CardContent className="flex items-center justify-between p-4">
-                      <div>
-                        <p className="font-medium">{admin.profile?.full_name}</p>
+                    <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm sm:text-base break-words">{admin.profile?.full_name}</p>
                         {admin.profile?.email && (
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs sm:text-sm text-muted-foreground break-all">
                             {admin.profile.email}
                           </p>
                         )}
@@ -140,8 +141,10 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
                         size="sm"
                         onClick={() => handleRemoveAdmin(admin.id)}
                         disabled={removeAdmin.isPending}
+                        className="w-full sm:w-auto"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 sm:mr-0" />
+                        <span className="sm:hidden ml-2">Remover</span>
                       </Button>
                     </CardContent>
                   </Card>
@@ -155,8 +158,8 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
           </div>
         </div>
 
-        <div className="flex justify-end">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <div className="flex justify-end pt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Fechar
           </Button>
         </div>

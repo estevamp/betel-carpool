@@ -17,7 +17,7 @@ export default function CongregationsPage() {
 
   if (loadingAuth) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-4 sm:p-6">
         <div className="space-y-4">
           <Skeleton className="h-10 w-64" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -51,15 +51,17 @@ export default function CongregationsPage() {
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Gerenciar Congregações</h1>
-          <p className="text-muted-foreground mt-1">
+    <div className="container mx-auto p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="w-full sm:w-auto">
+          <h1 className="text-2xl sm:text-3xl font-bold">Gerenciar Congregações</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Crie e gerencie congregações e seus administradores
           </p>
         </div>
-        <CreateCongregationDialog />
+        <div className="w-full sm:w-auto">
+          <CreateCongregationDialog />
+        </div>
       </div>
 
       {isLoading ? (
@@ -82,7 +84,7 @@ export default function CongregationsPage() {
         </div>
       ) : (
         <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">
+          <p className="text-sm sm:text-base text-muted-foreground mb-4">
             Nenhuma congregação cadastrada ainda.
           </p>
           <CreateCongregationDialog />
