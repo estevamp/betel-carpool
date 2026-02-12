@@ -57,8 +57,15 @@ export const useCongregationAdmins = (congregationId?: string) => {
         },
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (error) {
+        console.error('Edge Function error:', error);
+        throw error;
+      }
+      
+      if (data?.error) {
+        console.error('Edge Function returned error:', data);
+        throw new Error(data.error);
+      }
       
       return data;
     },
@@ -66,8 +73,23 @@ export const useCongregationAdmins = (congregationId?: string) => {
       queryClient.invalidateQueries({ queryKey: ['congregation-admins'] });
       toast.success('Administrador adicionado com sucesso!');
     },
-    onError: (error: Error) => {
-      toast.error('Erro ao adicionar administrador: ' + error.message);
+    onError: (error: any) => {
+      console.error('Full error object:', error);
+      
+      // Tentar extrair a mensagem de erro mais específica
+      let errorMessage = 'Erro desconhecido ao adicionar administrador';
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.error) {
+        errorMessage = error.error;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      toast.error(errorMessage, {
+        duration: 5000,
+      });
     },
   });
 
