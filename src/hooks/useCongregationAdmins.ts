@@ -51,20 +51,32 @@ export const useCongregationAdmins = (congregationId?: string) => {
     mutationFn: async ({ profileId, congregationId }: { profileId: string; congregationId: string }) => {
       try {
         // Usar a Edge Function que tem a lógica correta e permissões adequadas
-        const { data, error } = await supabase.functions.invoke('assign-congregation-admin', {
+        const response = await supabase.functions.invoke('assign-congregation-admin', {
           body: {
             profile_id: profileId,
             congregation_id: congregationId,
           },
         });
 
-        console.log('Edge Function response:', { data, error });
+        console.log('Edge Function full response:', response);
+
+        const { data, error } = response;
 
         if (error) {
-          console.error('Edge Function error:', error);
-          // Tentar extrair mensagem do contexto do erro
-          if (error.context) {
-            console.error('Error context:', error.context);
+          console.error('Edge Function error object:', error);
+          
+          // Se for um erro de status (como 400), tentar ler o corpo da resposta
+          if (error instanceof Error && 'context' in error) {
+            const context = (error as any).context;
+            if (context instanceof Response) {
+              try {
+                const body = await context.clone().json();
+                console.error('Edge Function error body:', body);
+                if (body.error) throw new Error(body.error);
+              } catch (e) {
+                console.error('Could not parse error body as JSON', e);
+              }
+            }
           }
           throw error;
         }
@@ -77,7 +89,6 @@ export const useCongregationAdmins = (congregationId?: string) => {
         return data;
       } catch (err: any) {
         console.error('Caught error in mutationFn:', err);
-        // Re-throw para que o onError capture
         throw err;
       }
     },
