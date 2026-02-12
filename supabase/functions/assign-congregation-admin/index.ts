@@ -93,29 +93,48 @@ serve(async (req) => {
   // Add 'admin' role to the user (they have a user_id, so they've logged in)
   if (profileData.user_id) {
     console.log(`Adding 'admin' role to user_id=${profileData.user_id}`);
-    // Use upsert with onConflict to prevent duplicates and handle race conditions
-    const { error: insertRoleError } = await adminClient
+    
+    // First check if the role already exists to avoid conflict
+    const { data: existingRole } = await adminClient
       .from("user_roles")
-      .upsert(
-        { user_id: profileData.user_id, role: "admin" }
-      );
+      .select("id")
+      .eq("user_id", profileData.user_id)
+      .eq("role", "admin")
+      .maybeSingle();
 
-    if (insertRoleError) {
-      console.error(`Error assigning 'admin' role to user ${profileData.user_id}: ${insertRoleError.message}`);
+    if (!existingRole) {
+      const { error: insertRoleError } = await adminClient
+        .from("user_roles")
+        .insert({ user_id: profileData.user_id, role: "admin" });
+
+      if (insertRoleError) {
+        console.error(`Error assigning 'admin' role to user ${profileData.user_id}: ${insertRoleError.message}`);
+      } else {
+        console.log(`Successfully assigned 'admin' role to user ${profileData.user_id}`);
+      }
     } else {
-      console.log(`Successfully assigned 'admin' role to user ${profileData.user_id}`);
+      console.log(`User ${profileData.user_id} already has 'admin' role`);
     }
   }
 
   // Assign the profile as a congregation administrator
   console.log(`Inserting into congregation_administrators: profile_id=${profile_id}, congregation_id=${congregation_id}`);
   
-  // Use upsert with onConflict to prevent duplicates and handle race conditions
-  const { error: insertError } = await adminClient
+  // Check if already an administrator for this congregation
+  const { data: existingAdmin } = await adminClient
     .from("congregation_administrators")
-    .upsert(
-      { profile_id, congregation_id }
-    );
+    .select("id")
+    .eq("profile_id", profile_id)
+    .eq("congregation_id", congregation_id)
+    .maybeSingle();
+
+  let insertError = null;
+  if (!existingAdmin) {
+    const { error } = await adminClient
+      .from("congregation_administrators")
+      .insert({ profile_id, congregation_id });
+    insertError = error;
+  }
 
   if (insertError) {
     return new Response(JSON.stringify({ error: insertError.message }), {
