@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, Car, Shield } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Search, Car, Shield, Bell } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,6 +25,7 @@ import { EditBetelitaDialog } from "@/components/betelitas/EditBetelitaDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
 import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
+import { BroadcastNotificationDialog } from "@/components/betelitas/BroadcastNotificationDialog";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -42,6 +43,7 @@ export default function BetelitasPage() {
   const [viewPerson, setViewPerson] = useState<Betelita | null>(null);
   const [editPerson, setEditPerson] = useState<Betelita | null>(null);
   const [deletePerson, setDeletePerson] = useState<Betelita | null>(null);
+  const [showBroadcastDialog, setShowBroadcastDialog] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -51,7 +53,23 @@ export default function BetelitasPage() {
   const { selectedCongregationId } = useSelectedCongregation();
 
   // Get the effective congregation ID for query invalidation
-  const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : undefined;
+  const { profile } = useAuth();
+  const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : profile?.congregation_id;
+
+  const { data: notificationSettings } = useQuery({
+    queryKey: ["notification-settings", effectiveCongregationId],
+    queryFn: async () => {
+      if (!effectiveCongregationId) return null;
+      const { data, error } = await supabase
+        .from("notification_settings")
+        .select("*")
+        .eq("congregation_id", effectiveCongregationId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!effectiveCongregationId,
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (person: Betelita) => {
@@ -114,12 +132,22 @@ export default function BetelitasPage() {
           </p>
         </div>
         {isAdmin && (
-          <CreateBetelitaDialog>
-            <Button className="gap-2 bg-primary hover:bg-primary/90">
-              <Plus className="h-4 w-4" />
-              Adicionar Betelita
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setShowBroadcastDialog(true)}
+            >
+              <Bell className="h-4 w-4" />
+              Notificar Todos
             </Button>
-          </CreateBetelitaDialog>
+            <CreateBetelitaDialog>
+              <Button className="gap-2 bg-primary hover:bg-primary/90">
+                <Plus className="h-4 w-4" />
+                Adicionar Betelita
+              </Button>
+            </CreateBetelitaDialog>
+          </div>
         )}
       </div>
 
@@ -255,6 +283,13 @@ export default function BetelitasPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BroadcastNotificationDialog
+        open={showBroadcastDialog}
+        onOpenChange={setShowBroadcastDialog}
+        congregationId={effectiveCongregationId}
+        defaultMessage={notificationSettings?.message}
+      />
     </div>
   );
 }
