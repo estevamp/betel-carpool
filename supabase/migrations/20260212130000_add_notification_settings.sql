@@ -26,11 +26,8 @@ USING (
         SELECT 1 FROM public.congregation_administrators
         WHERE congregation_id = notification_settings.congregation_id
         AND profile_id = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
-    ) OR 
-    EXISTS (
-        SELECT 1 FROM public.profiles
-        WHERE user_id = auth.uid() AND is_super_admin = true
     )
+    OR public.is_super_admin()
 );
 
 CREATE POLICY "Admins can update their congregation notification settings"
@@ -40,11 +37,8 @@ USING (
         SELECT 1 FROM public.congregation_administrators
         WHERE congregation_id = notification_settings.congregation_id
         AND profile_id = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
-    ) OR 
-    EXISTS (
-        SELECT 1 FROM public.profiles
-        WHERE user_id = auth.uid() AND is_super_admin = true
     )
+    OR public.is_super_admin()
 );
 
 CREATE POLICY "Admins can insert their congregation notification settings"
@@ -54,11 +48,8 @@ WITH CHECK (
         SELECT 1 FROM public.congregation_administrators
         WHERE congregation_id = notification_settings.congregation_id
         AND profile_id = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
-    ) OR 
-    EXISTS (
-        SELECT 1 FROM public.profiles
-        WHERE user_id = auth.uid() AND is_super_admin = true
     )
+    OR public.is_super_admin()
 );
 
 -- Trigger for updated_at
