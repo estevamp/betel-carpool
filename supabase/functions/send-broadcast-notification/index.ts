@@ -15,18 +15,6 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      console.error("Missing Authorization header");
-      return new Response(JSON.stringify({ success: false, error: "Missing authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Extract the JWT token from the Authorization header
-    const token = authHeader.replace("Bearer ", "");
-
     // Create admin client for database operations (bypasses RLS)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -39,61 +27,52 @@ serve(async (req) => {
       }
     );
 
-    // Verify the user's JWT token by passing it directly to getUser()
-    // This avoids the AuthSessionMissingError
-    // We use a separate client with the user's token to verify identity
-    const supabaseUser = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
+    const authHeader = req.headers.get("Authorization");
+    
+    // If we have an auth header, verify the user
+    let user = null;
+    if (authHeader) {
+      const { data: { user: verifiedUser }, error: userError } = await supabaseAdmin.auth.getUser(authHeader.replace("Bearer ", ""));
+      if (!userError && verifiedUser) {
+        user = verifiedUser;
       }
-    );
+    }
 
-    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
-
-    if (userError || !user) {
-      console.error("User verification failed:", userError);
-      return new Response(JSON.stringify({
-        success: false,
-        error: "Unauthorized",
-        details: userError?.message || "User not found",
-        debug: {
-          hasToken: !!token,
-          tokenLength: token?.length,
-          authHeader: authHeader ? "Present" : "Missing"
-        }
-      }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // If no user found via token, check if it's a service role call (e.g. from cron)
+    if (!user) {
+      const apiKey = req.headers.get("apikey");
+      const isServiceRole = apiKey === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      
+      if (!isServiceRole) {
+        return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // For service role, we don't have a specific user, but we allow the operation
     }
 
     const { message, congregationId } = await req.json();
     if (!message || !congregationId) throw new Error("Message and congregationId are required");
 
-    // Verify if user is admin of this congregation or super admin
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('id, is_super_admin')
-      .eq('user_id', user.id)
-      .single();
+    // If we have a user, verify if they are admin of this congregation or super admin
+    if (user) {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('id, is_super_admin')
+        .eq('user_id', user.id)
+        .single();
 
-    const { data: isAdmin } = await supabaseAdmin
-      .from('congregation_administrators')
-      .select('id')
-      .eq('congregation_id', congregationId)
-      .eq('profile_id', profile?.id)
-      .maybeSingle();
+      const { data: isAdmin } = await supabaseAdmin
+        .from('congregation_administrators')
+        .select('id')
+        .eq('congregation_id', congregationId)
+        .eq('profile_id', profile?.id)
+        .maybeSingle();
 
-    if (!profile?.is_super_admin && !isAdmin) {
-      throw new Error("Forbidden: You are not an admin of this congregation");
+      if (!profile?.is_super_admin && !isAdmin) {
+        throw new Error("Forbidden: You are not an admin of this congregation");
+      }
     }
 
     // Get all users from this congregation
