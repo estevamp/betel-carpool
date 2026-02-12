@@ -15,6 +15,18 @@ serve(async (req) => {
   }
 
   try {
+    // Create admin client first so we can use it for verification
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
+
     // Get the authorization header
     const authHeader = req.headers.get("Authorization");
     console.log("Auth header present:", !!authHeader);
@@ -25,31 +37,18 @@ serve(async (req) => {
       const token = authHeader.replace("Bearer ", "");
       console.log("Token length:", token.length);
       
-      // Create a client with the user's token to verify it
-      const supabaseClient = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-        {
-          global: {
-            headers: { Authorization: authHeader },
-          },
-          auth: {
-            persistSession: false,
-            autoRefreshToken: false,
-          },
-        }
-      );
-      
-      const { data, error: userError } = await supabaseClient.auth.getUser();
+      // Use the admin client to verify the token
+      // This is the most reliable way in Edge Functions when "Verify JWT" is off
+      const { data, error: userError } = await supabaseAdmin.auth.getUser(token);
       
       if (userError) {
         console.error("Auth error:", userError.message, userError.status);
         return new Response(
-          JSON.stringify({
-            success: false,
-            error: "Authentication failed",
-            details: userError.message
-          }),
+          JSON.stringify({ 
+            success: false, 
+            error: "Authentication failed", 
+            details: userError.message 
+          }), 
           {
             status: 401,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -71,10 +70,10 @@ serve(async (req) => {
       if (!isServiceRole) {
         console.error("No valid authentication found");
         return new Response(
-          JSON.stringify({
-            success: false,
-            error: "Unauthorized - No valid authentication provided"
-          }),
+          JSON.stringify({ 
+            success: false, 
+            error: "Unauthorized - No valid authentication provided" 
+          }), 
           {
             status: 401,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -82,20 +81,7 @@ serve(async (req) => {
         );
       }
       console.log("Service role authentication successful");
-      // For service role, we don't have a specific user, but we allow the operation
     }
-
-    // Create admin client for database operations (bypasses RLS)
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
-      }
-    );
 
     const { message, congregationId } = await req.json();
     if (!message || !congregationId) throw new Error("Message and congregationId are required");
@@ -133,7 +119,7 @@ serve(async (req) => {
 
     if (membersError) throw membersError;
 
-    const userIds = members.map(m => m.user_id);
+    const userIds = members.map((m: any) => m.user_id);
     if (userIds.length === 0) {
       return new Response(JSON.stringify({ success: true, message: "No members to notify" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
