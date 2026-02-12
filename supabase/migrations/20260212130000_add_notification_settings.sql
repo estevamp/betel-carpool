@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS public.notification_settings (
 );
 
 -- Enable RLS
-ALTER TABLE public.notification_settings ENABLE CONTROL ROW LEVEL SECURITY;
+ALTER TABLE public.notification_settings ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for notification_settings
 CREATE POLICY "Admins can view their congregation notification settings"
