@@ -15,101 +15,66 @@ serve(async (req) => {
   }
 
   try {
-    // Create admin client first so we can use it for verification
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
-      }
-    );
-
-    // Get the authorization header
-    const authHeader = req.headers.get("Authorization");
-    console.log("Auth header present:", !!authHeader);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     
-    // Try to verify the user from the JWT token
+    // Create admin client
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+
+    const authHeader = req.headers.get("Authorization");
     let user = null;
+
     if (authHeader) {
       const token = authHeader.replace("Bearer ", "");
-      console.log("Token length:", token.length);
       
-      // Use the admin client to verify the token
-      // This is the most reliable way in Edge Functions when "Verify JWT" is off
-      const { data, error: userError } = await supabaseAdmin.auth.getUser(token);
+      // Verify JWT manually using the service role client
+      // This is the most robust way when "Verify JWT" is off
+      const { data: { user: verifiedUser }, error: userError } = await supabaseAdmin.auth.getUser(token);
       
       if (userError) {
         console.error("Auth error:", userError.message, userError.status);
         return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: "Authentication failed", 
-            details: userError.message 
-          }), 
-          {
-            status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          JSON.stringify({ success: false, error: "Authentication failed", details: userError.message }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
-      if (data?.user) {
-        user = data.user;
-        console.log("User authenticated:", user.id);
-      }
+      user = verifiedUser;
     }
 
-    // If no auth header, check if it's a service role call (e.g. from cron)
     if (!user) {
       const apiKey = req.headers.get("apikey");
-      const isServiceRole = apiKey === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      
-      if (!isServiceRole) {
-        console.error("No valid authentication found");
+      if (apiKey !== supabaseServiceKey) {
         return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: "Unauthorized - No valid authentication provided" 
-          }), 
-          {
-            status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          JSON.stringify({ success: false, error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      console.log("Service role authentication successful");
     }
 
     const { message, congregationId } = await req.json();
     if (!message || !congregationId) throw new Error("Message and congregationId are required");
 
-    // If we have a user, verify if they are admin of this congregation or super admin
     if (user) {
+      // Check permissions using the admin client but passing the user's token for the RPC
+      // Or just use the admin client to check roles directly to avoid RPC context issues
       const { data: profile } = await supabaseAdmin
         .from('profiles')
         .select('id')
         .eq('user_id', user.id)
         .single();
 
-      console.log("Checking permissions for profile:", profile?.id);
-
-      // Check if user is super admin using the helper function
-      // We need to use the user's context for RPC if it depends on auth.uid()
-      const userClient = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-        {
-          global: {
-            headers: { Authorization: authHeader! },
-          },
-        }
-      );
-
-      const { data: isSuperAdmin } = await userClient.rpc('is_super_admin');
-      console.log("Is Super Admin:", isSuperAdmin);
+      // Check super admin role directly from user_roles table
+      const { data: superAdminRole } = await supabaseAdmin
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('role', 'super_admin')
+        .maybeSingle();
 
       const { data: isAdmin } = await supabaseAdmin
         .from('congregation_administrators')
@@ -117,15 +82,12 @@ serve(async (req) => {
         .eq('congregation_id', congregationId)
         .eq('profile_id', profile?.id)
         .maybeSingle();
-      
-      console.log("Is Congregation Admin:", !!isAdmin, "for congregation:", congregationId);
 
-      if (!isSuperAdmin && !isAdmin) {
-        throw new Error(`Forbidden: You are not an admin of this congregation. Profile: ${profile?.id}, Congregation: ${congregationId}`);
+      if (!superAdminRole && !isAdmin) {
+        throw new Error("Forbidden: You are not an admin of this congregation");
       }
     }
 
-    // Get all users from this congregation
     const { data: members, error: membersError } = await supabaseAdmin
       .from('profiles')
       .select('user_id')
@@ -141,7 +103,6 @@ serve(async (req) => {
       });
     }
 
-    // Send via OneSignal
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
