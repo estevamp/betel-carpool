@@ -166,15 +166,20 @@ export default function ConfiguracoesPage() {
 
   const saveNotificationMutation = useMutation({
     mutationFn: async () => {
-      if (!effectiveCongregationId) return;
+      if (!effectiveCongregationId) {
+        toast.error("Selecione uma congregação primeiro");
+        return;
+      }
 
       const payload = {
         congregation_id: effectiveCongregationId,
         message: notifMessage,
         scheduled_days: notifDays.map(Number),
-        scheduled_time: notifTime + ":00",
+        scheduled_time: notifTime + (notifTime.length === 5 ? ":00" : ""),
         is_enabled: notifEnabled,
       };
+
+      console.log("Saving notification settings:", payload);
 
       const { error } = await supabase
         .from("notification_settings")
