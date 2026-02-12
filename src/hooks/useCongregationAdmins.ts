@@ -49,25 +49,37 @@ export const useCongregationAdmins = (congregationId?: string) => {
   // Adicionar administrador
   const addAdmin = useMutation({
     mutationFn: async ({ profileId, congregationId }: { profileId: string; congregationId: string }) => {
-      // Usar a Edge Function que tem a lógica correta e permissões adequadas
-      const { data, error } = await supabase.functions.invoke('assign-congregation-admin', {
-        body: {
-          profile_id: profileId,
-          congregation_id: congregationId,
-        },
-      });
+      try {
+        // Usar a Edge Function que tem a lógica correta e permissões adequadas
+        const { data, error } = await supabase.functions.invoke('assign-congregation-admin', {
+          body: {
+            profile_id: profileId,
+            congregation_id: congregationId,
+          },
+        });
 
-      if (error) {
-        console.error('Edge Function error:', error);
-        throw error;
+        console.log('Edge Function response:', { data, error });
+
+        if (error) {
+          console.error('Edge Function error:', error);
+          // Tentar extrair mensagem do contexto do erro
+          if (error.context) {
+            console.error('Error context:', error.context);
+          }
+          throw error;
+        }
+        
+        if (data?.error) {
+          console.error('Edge Function returned error in data:', data);
+          throw new Error(data.error);
+        }
+        
+        return data;
+      } catch (err: any) {
+        console.error('Caught error in mutationFn:', err);
+        // Re-throw para que o onError capture
+        throw err;
       }
-      
-      if (data?.error) {
-        console.error('Edge Function returned error:', data);
-        throw new Error(data.error);
-      }
-      
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['congregation-admins'] });
