@@ -15,18 +15,6 @@ serve(async (req) => {
   }
 
   try {
-    // Create admin client for database operations (bypasses RLS)
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
-      }
-    );
-
     // Get the authorization header
     const authHeader = req.headers.get("Authorization");
     console.log("Auth header present:", !!authHeader);
@@ -37,11 +25,25 @@ serve(async (req) => {
       const token = authHeader.replace("Bearer ", "");
       console.log("Token length:", token.length);
       
-      const { data, error: userError } = await supabaseAdmin.auth.getUser(token);
+      // Create a client with the user's token to verify it
+      const supabaseClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        {
+          global: {
+            headers: { Authorization: authHeader },
+          },
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+          },
+        }
+      );
+      
+      const { data, error: userError } = await supabaseClient.auth.getUser();
       
       if (userError) {
         console.error("Auth error:", userError.message, userError.status);
-        // Return 401 with detailed error
         return new Response(
           JSON.stringify({
             success: false,
@@ -83,6 +85,18 @@ serve(async (req) => {
       // For service role, we don't have a specific user, but we allow the operation
     }
 
+    // Create admin client for database operations (bypasses RLS)
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
+
     const { message, congregationId } = await req.json();
     if (!message || !congregationId) throw new Error("Message and congregationId are required");
 
@@ -90,9 +104,13 @@ serve(async (req) => {
     if (user) {
       const { data: profile } = await supabaseAdmin
         .from('profiles')
-        .select('id, is_super_admin')
+        .select('id')
         .eq('user_id', user.id)
         .single();
+
+      // Check if user is super admin using the helper function
+      const { data: isSuperAdmin } = await supabaseAdmin
+        .rpc('is_super_admin');
 
       const { data: isAdmin } = await supabaseAdmin
         .from('congregation_administrators')
@@ -101,7 +119,7 @@ serve(async (req) => {
         .eq('profile_id', profile?.id)
         .maybeSingle();
 
-      if (!profile?.is_super_admin && !isAdmin) {
+      if (!isSuperAdmin && !isAdmin) {
         throw new Error("Forbidden: You are not an admin of this congregation");
       }
     }

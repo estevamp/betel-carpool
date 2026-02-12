@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS public.notification_settings (
 -- Enable RLS
 ALTER TABLE public.notification_settings ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Admins can view their congregation notification settings" ON public.notification_settings;
+DROP POLICY IF EXISTS "Admins can update their congregation notification settings" ON public.notification_settings;
+DROP POLICY IF EXISTS "Admins can insert their congregation notification settings" ON public.notification_settings;
+
 -- RLS Policies for notification_settings
 CREATE POLICY "Admins can view their congregation notification settings"
 ON public.notification_settings FOR SELECT
@@ -60,6 +65,8 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS set_notification_settings_updated_at ON public.notification_settings;
 
 CREATE TRIGGER set_notification_settings_updated_at
     BEFORE UPDATE ON public.notification_settings
