@@ -94,9 +94,22 @@ serve(async (req) => {
         .eq('user_id', user.id)
         .single();
 
+      console.log("Checking permissions for profile:", profile?.id);
+
       // Check if user is super admin using the helper function
-      const { data: isSuperAdmin } = await supabaseAdmin
-        .rpc('is_super_admin');
+      // We need to use the user's context for RPC if it depends on auth.uid()
+      const userClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        {
+          global: {
+            headers: { Authorization: authHeader! },
+          },
+        }
+      );
+
+      const { data: isSuperAdmin } = await userClient.rpc('is_super_admin');
+      console.log("Is Super Admin:", isSuperAdmin);
 
       const { data: isAdmin } = await supabaseAdmin
         .from('congregation_administrators')
@@ -104,9 +117,11 @@ serve(async (req) => {
         .eq('congregation_id', congregationId)
         .eq('profile_id', profile?.id)
         .maybeSingle();
+      
+      console.log("Is Congregation Admin:", !!isAdmin, "for congregation:", congregationId);
 
       if (!isSuperAdmin && !isAdmin) {
-        throw new Error("Forbidden: You are not an admin of this congregation");
+        throw new Error(`Forbidden: You are not an admin of this congregation. Profile: ${profile?.id}, Congregation: ${congregationId}`);
       }
     }
 
