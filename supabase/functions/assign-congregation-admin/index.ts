@@ -97,8 +97,7 @@ serve(async (req) => {
     const { error: insertRoleError } = await adminClient
       .from("user_roles")
       .upsert(
-        { user_id: profileData.user_id, role: "admin" },
-        { onConflict: 'user_id,role' }
+        { user_id: profileData.user_id, role: "admin" }
       );
 
     if (insertRoleError) {
@@ -115,8 +114,7 @@ serve(async (req) => {
   const { error: insertError } = await adminClient
     .from("congregation_administrators")
     .upsert(
-      { profile_id, congregation_id },
-      { onConflict: 'profile_id,congregation_id' }
+      { profile_id, congregation_id }
     );
 
   if (insertError) {
