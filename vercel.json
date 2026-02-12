@@ -1,6 +1,9 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/((?!api/|auth/|supabase/|_next/|static/|[\\w-]+\\.\\w+).*)",
+      "destination": "/index.html"
+    }
   ],
   "cleanUrls": true,
   "trailingSlash": false
