@@ -41,19 +41,33 @@ serve(async (req) => {
 
     // Verify the user's JWT token by passing it directly to getUser()
     // This avoids the AuthSessionMissingError
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    // We use a separate client with the user's token to verify identity
+    const supabaseUser = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
+
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
 
     if (userError || !user) {
       console.error("User verification failed:", userError);
-      // If getUser fails, it might be because the token is invalid or expired
-      // We return the specific error message to help debugging
       return new Response(JSON.stringify({
         success: false,
         error: "Unauthorized",
         details: userError?.message || "User not found",
         debug: {
           hasToken: !!token,
-          tokenLength: token?.length
+          tokenLength: token?.length,
+          authHeader: authHeader ? "Present" : "Missing"
         }
       }), {
         status: 401,
