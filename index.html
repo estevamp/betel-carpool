@@ -23,14 +23,16 @@
     <!-- OneSignal Web Push SDK -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
-      if (window.location.hostname === 'betel-carpool.lovable.app') {
+      // Enable OneSignal for both Lovable and Vercel domains
+      const allowedHostnames = ['betel-carpool.lovable.app', 'betel-carpool.vercel.app'];
+      if (allowedHostnames.includes(window.location.hostname) || window.location.hostname.endsWith('.vercel.app')) {
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         OneSignalDeferred.push(async function(OneSignal) {
           await OneSignal.init({
             appId: "cb24512d-c95a-4533-a08b-259a5e289e0e",
             safari_web_id: "web.onesignal.auto.0534d2b4-18a9-4e11-8788-4e680cd265b6",
             notifyButton: {
-              enable: false,
+              enable: true,
             },
           });
         });
