@@ -31,9 +31,15 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
     setSelectedProfileId('');
   };
 
-  const handleRemoveAdmin = async (adminId: string) => {
+  const handleRemoveAdmin = async (adminId: string, profileId: string) => {
+    if (!congregation) return;
+    
     if (confirm('Tem certeza que deseja remover este administrador?')) {
-      await removeAdmin.mutateAsync(adminId);
+      await removeAdmin.mutateAsync({
+        id: adminId,
+        profileId: profileId,
+        congregationId: congregation.id,
+      });
     }
   };
 
@@ -139,7 +145,7 @@ export const ManageAdminsDialog = ({ congregation, open, onOpenChange }: ManageA
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => handleRemoveAdmin(admin.id)}
+                        onClick={() => handleRemoveAdmin(admin.id, admin.profile_id)}
                         disabled={removeAdmin.isPending}
                         className="w-full sm:w-auto"
                       >

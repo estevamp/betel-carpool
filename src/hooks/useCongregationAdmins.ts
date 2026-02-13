@@ -132,6 +132,11 @@ export const useCongregationAdmins = (congregationId?: string) => {
                   throw new Error(body.error);
                 }
               } catch (parseError) {
+                // Check if parseError is actually our thrown error with the message
+                if (parseError instanceof Error && parseError.message !== error.message) {
+                  // This is our intentionally thrown error with the proper message
+                  throw parseError;
+                }
                 console.error('[removeAdmin] Failed to parse error body:', parseError);
                 // If JSON parsing fails, throw the original error
                 throw new Error(error.message || 'Erro ao remover administrador');
