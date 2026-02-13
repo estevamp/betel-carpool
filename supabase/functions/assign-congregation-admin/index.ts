@@ -89,8 +89,18 @@ serve(async (req) => {
     }
 
     // Ensure the profile belongs to the same congregation
-    if (profileData.congregation_id && profileData.congregation_id !== congregation_id) {
-        console.log(`Congregation mismatch: profile.congregation_id=${profileData.congregation_id}, requested congregation_id=${congregation_id}`);
+    // Use the profile's congregation if not provided (e.g. when called from Betelitas list)
+    const targetCongregationId = congregation_id || profileData.congregation_id;
+
+    if (!targetCongregationId) {
+        return new Response(JSON.stringify({ error: "Congregação não especificada" }), {
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+            status: 400,
+        });
+    }
+
+    if (profileData.congregation_id && profileData.congregation_id !== targetCongregationId) {
+        console.log(`Congregation mismatch: profile.congregation_id=${profileData.congregation_id}, requested congregation_id=${targetCongregationId}`);
         return new Response(JSON.stringify({ error: "O betelita deve pertencer à mesma congregação" }), {
             headers: { "Content-Type": "application/json", ...corsHeaders },
             status: 400,
@@ -126,14 +136,14 @@ serve(async (req) => {
       .from("congregation_administrators")
       .select("id")
       .eq("profile_id", profile_id)
-      .eq("congregation_id", congregation_id)
+      .eq("congregation_id", targetCongregationId)
       .maybeSingle();
 
     if (!existingAdmin) {
       const { error: insertError } = await adminClient
         .from("congregation_administrators")
-        .insert({ profile_id, congregation_id });
-      
+        .insert({ profile_id, congregation_id: targetCongregationId });
+
       if (insertError) {
         return new Response(JSON.stringify({ error: insertError.message }), {
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -148,11 +158,29 @@ serve(async (req) => {
     });
 
   } else if (action === 'remove') {
+    // Get the profile's congregation if not provided
+    let targetCongregationId = congregation_id;
+    if (!targetCongregationId) {
+      const { data: profileData } = await adminClient
+        .from("profiles")
+        .select("congregation_id")
+        .eq("id", profile_id)
+        .single();
+      targetCongregationId = profileData?.congregation_id;
+    }
+
+    if (!targetCongregationId) {
+      return new Response(JSON.stringify({ error: "Congregação não encontrada para este perfil" }), {
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+        status: 400,
+      });
+    }
+
     // Check if it's the last admin
     const { count, error: countError } = await adminClient
       .from("congregation_administrators")
       .select("*", { count: 'exact', head: true })
-      .eq("congregation_id", congregation_id);
+      .eq("congregation_id", targetCongregationId);
 
     if (countError) throw countError;
     if (count && count <= 1) {
@@ -167,7 +195,7 @@ serve(async (req) => {
       .from("congregation_administrators")
       .delete()
       .eq("profile_id", profile_id)
-      .eq("congregation_id", congregation_id);
+      .eq("congregation_id", targetCongregationId);
 
     if (deleteError) {
       return new Response(JSON.stringify({ error: deleteError.message }), {
