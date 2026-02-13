@@ -41,7 +41,7 @@ serve(async (req) => {
     });
   }
 
-  // Check if requester is super_admin or admin of the target congregation
+  // Check if requester is super_admin or admin
   const { data: requesterRoles } = await adminClient
     .from("user_roles")
     .select("role")
@@ -50,28 +50,19 @@ serve(async (req) => {
   const isSuperAdmin = requesterRoles?.some(r => r.role === 'super_admin');
   const isAdmin = requesterRoles?.some(r => r.role === 'admin');
 
-  if (!isSuperAdmin) {
-    if (!isAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden: Not an admin" }), {
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-        status: 403,
-      });
-    }
-
-    // Check if admin belongs to the congregation
-    const { data: requesterProfile } = await adminClient
-      .from("profiles")
-      .select("congregation_id")
-      .eq("user_id", user.id)
-      .single();
-
-    if (requesterProfile?.congregation_id !== congregation_id) {
-      return new Response(JSON.stringify({ error: "Forbidden: Not an admin of this congregation" }), {
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-        status: 403,
-      });
-    }
+  if (!isSuperAdmin && !isAdmin) {
+    return new Response(JSON.stringify({ error: "Forbidden: Not an admin" }), {
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+      status: 403,
+    });
   }
+
+  // Get requester's congregation for later validation
+  const { data: requesterProfile } = await adminClient
+    .from("profiles")
+    .select("congregation_id")
+    .eq("user_id", user.id)
+    .single();
 
   if (action === 'assign') {
     // Get the user_id from the profile_id
@@ -97,6 +88,14 @@ serve(async (req) => {
             headers: { "Content-Type": "application/json", ...corsHeaders },
             status: 400,
         });
+    }
+
+    // Validate requester has permission for this congregation
+    if (!isSuperAdmin && requesterProfile?.congregation_id !== targetCongregationId) {
+      return new Response(JSON.stringify({ error: "Forbidden: Not an admin of this congregation" }), {
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+        status: 403,
+      });
     }
 
     if (profileData.congregation_id && profileData.congregation_id !== targetCongregationId) {
@@ -173,6 +172,14 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Congregação não encontrada para este perfil" }), {
         headers: { "Content-Type": "application/json", ...corsHeaders },
         status: 400,
+      });
+    }
+
+    // Validate requester has permission for this congregation
+    if (!isSuperAdmin && requesterProfile?.congregation_id !== targetCongregationId) {
+      return new Response(JSON.stringify({ error: "Forbidden: Not an admin of this congregation" }), {
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+        status: 403,
       });
     }
 
