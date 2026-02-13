@@ -97,42 +97,62 @@ export const useCongregationAdmins = (congregationId?: string) => {
   // Remover administrador (por ID da tabela congregation_administrators)
   const removeAdmin = useMutation({
     mutationFn: async ({ id, profileId, congregationId }: { id?: string; profileId: string; congregationId: string }) => {
-      const response = await supabase.functions.invoke('assign-congregation-admin', {
-        body: {
-          profile_id: profileId,
-          congregation_id: congregationId,
-          action: 'remove'
-        },
-      });
+      console.log('[removeAdmin] Starting removal:', { profileId, congregationId });
+      
+      try {
+        const response = await supabase.functions.invoke('assign-congregation-admin', {
+          body: {
+            profile_id: profileId,
+            congregation_id: congregationId,
+            action: 'remove'
+          },
+        });
 
-      const { data, error } = response;
+        const { data, error } = response;
 
-      // Handle FunctionsHttpError (non-2xx responses)
-      if (error) {
-        // Try to extract error message from the response context
-        if (error instanceof Error && 'context' in error) {
-          const context = (error as any).context;
-          if (context instanceof Response) {
-            try {
-              const body = await context.json();
-              if (body.error) {
-                throw new Error(body.error);
+        console.log('[removeAdmin] Response:', { data, error });
+
+        // Handle FunctionsHttpError (non-2xx responses)
+        if (error) {
+          console.error('[removeAdmin] Edge function error:', error);
+          
+          // Try to extract error message from the response context
+          if (error instanceof Error && 'context' in error) {
+            const context = (error as any).context;
+            console.log('[removeAdmin] Error context type:', context?.constructor?.name);
+            
+            if (context instanceof Response) {
+              try {
+                // Clone the response before reading to avoid consuming it
+                const clonedResponse = context.clone();
+                const body = await clonedResponse.json();
+                console.log('[removeAdmin] Error body:', body);
+                
+                if (body.error) {
+                  throw new Error(body.error);
+                }
+              } catch (parseError) {
+                console.error('[removeAdmin] Failed to parse error body:', parseError);
+                // If JSON parsing fails, throw the original error
+                throw new Error(error.message || 'Erro ao remover administrador');
               }
-            } catch (parseError) {
-              // If JSON parsing fails, throw the original error
-              throw new Error(error.message || 'Erro ao remover administrador');
             }
           }
+          throw new Error(error.message || 'Erro ao remover administrador');
         }
-        throw new Error(error.message || 'Erro ao remover administrador');
+        
+        // Handle application-level errors in successful responses
+        if (data?.error) {
+          console.error('[removeAdmin] Application error in response:', data.error);
+          throw new Error(data.error);
+        }
+        
+        console.log('[removeAdmin] Success:', data);
+        return data;
+      } catch (err) {
+        console.error('[removeAdmin] Caught error:', err);
+        throw err;
       }
-      
-      // Handle application-level errors in successful responses
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-      
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['congregation-admins'] });

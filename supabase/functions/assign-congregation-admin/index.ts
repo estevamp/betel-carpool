@@ -157,6 +157,8 @@ serve(async (req) => {
     });
 
   } else if (action === 'remove') {
+    console.log(`[REMOVE] Starting removal for profile_id=${profile_id}, congregation_id=${congregation_id}`);
+    
     // Get the profile's congregation if not provided
     let targetCongregationId = congregation_id;
     if (!targetCongregationId) {
@@ -166,9 +168,11 @@ serve(async (req) => {
         .eq("id", profile_id)
         .single();
       targetCongregationId = profileData?.congregation_id;
+      console.log(`[REMOVE] Retrieved congregation from profile: ${targetCongregationId}`);
     }
 
     if (!targetCongregationId) {
+      console.log(`[REMOVE] ERROR: No congregation found`);
       return new Response(JSON.stringify({ error: "Congregação não encontrada para este perfil" }), {
         headers: { "Content-Type": "application/json", ...corsHeaders },
         status: 400,
@@ -189,11 +193,18 @@ serve(async (req) => {
       .select("profile_id")
       .eq("congregation_id", targetCongregationId);
 
-    if (countError) throw countError;
+    if (countError) {
+      console.log(`[REMOVE] ERROR counting admins:`, countError);
+      throw countError;
+    }
+    
+    console.log(`[REMOVE] Current admins count: ${currentAdmins?.length}, admins:`, currentAdmins);
     
     const isAdminBeingRemoved = currentAdmins?.some(a => a.profile_id === profile_id);
+    console.log(`[REMOVE] Is admin being removed in list: ${isAdminBeingRemoved}`);
     
     if (isAdminBeingRemoved && currentAdmins && currentAdmins.length <= 1) {
+      console.log(`[REMOVE] ERROR: Cannot remove last admin`);
       return new Response(JSON.stringify({ error: "A congregação deve ter pelo menos um administrador." }), {
         headers: { "Content-Type": "application/json", ...corsHeaders },
         status: 400,
@@ -201,6 +212,7 @@ serve(async (req) => {
     }
 
     // Remove from congregation_administrators
+    console.log(`[REMOVE] Attempting to delete admin record`);
     const { error: deleteError } = await adminClient
       .from("congregation_administrators")
       .delete()
@@ -208,21 +220,28 @@ serve(async (req) => {
       .eq("congregation_id", targetCongregationId);
 
     if (deleteError) {
+      console.log(`[REMOVE] ERROR deleting:`, deleteError);
       return new Response(JSON.stringify({ error: deleteError.message }), {
         headers: { "Content-Type": "application/json", ...corsHeaders },
         status: 400,
       });
     }
+    
+    console.log(`[REMOVE] Successfully deleted admin record`);
 
     // Check if user is admin in ANY other congregation
+    console.log(`[REMOVE] Checking if user is admin in other congregations`);
     const { data: otherAdmins } = await adminClient
       .from("congregation_administrators")
       .select("id")
       .eq("profile_id", profile_id)
       .limit(1);
 
+    console.log(`[REMOVE] Other admin records found: ${otherAdmins?.length || 0}`);
+
     if (!otherAdmins || otherAdmins.length === 0) {
       // Remove 'admin' role if not admin anywhere else
+      console.log(`[REMOVE] Removing admin role from user_roles`);
       const { data: profileData } = await adminClient
         .from("profiles")
         .select("user_id")
@@ -235,9 +254,11 @@ serve(async (req) => {
           .delete()
           .eq("user_id", profileData.user_id)
           .eq("role", "admin");
+        console.log(`[REMOVE] Admin role removed for user_id: ${profileData.user_id}`);
       }
     }
 
+    console.log(`[REMOVE] SUCCESS: Admin removed successfully`);
     return new Response(JSON.stringify({ success: true, message: "Administrador removido com sucesso" }), {
       headers: { "Content-Type": "application/json", ...corsHeaders },
       status: 200,
