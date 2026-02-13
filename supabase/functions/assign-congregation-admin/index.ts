@@ -177,13 +177,16 @@ serve(async (req) => {
     }
 
     // Check if it's the last admin
-    const { count, error: countError } = await adminClient
+    const { data: currentAdmins, error: countError } = await adminClient
       .from("congregation_administrators")
-      .select("*", { count: 'exact', head: true })
+      .select("profile_id")
       .eq("congregation_id", targetCongregationId);
 
     if (countError) throw countError;
-    if (count && count <= 1) {
+    
+    const isAdminBeingRemoved = currentAdmins?.some(a => a.profile_id === profile_id);
+    
+    if (isAdminBeingRemoved && currentAdmins && currentAdmins.length <= 1) {
       return new Response(JSON.stringify({ error: "A congregação deve ter pelo menos um administrador." }), {
         headers: { "Content-Type": "application/json", ...corsHeaders },
         status: 400,
