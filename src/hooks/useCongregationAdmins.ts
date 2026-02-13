@@ -107,21 +107,27 @@ export const useCongregationAdmins = (congregationId?: string) => {
 
       const { data, error } = response;
 
+      // Handle FunctionsHttpError (non-2xx responses)
       if (error) {
+        // Try to extract error message from the response context
         if (error instanceof Error && 'context' in error) {
           const context = (error as any).context;
           if (context instanceof Response) {
             try {
-              const body = await context.clone().json();
-              if (body.error) throw new Error(body.error);
-            } catch (e) {
-              console.error('Could not parse error body as JSON', e);
+              const body = await context.json();
+              if (body.error) {
+                throw new Error(body.error);
+              }
+            } catch (parseError) {
+              // If JSON parsing fails, throw the original error
+              throw new Error(error.message || 'Erro ao remover administrador');
             }
           }
         }
-        throw error;
+        throw new Error(error.message || 'Erro ao remover administrador');
       }
       
+      // Handle application-level errors in successful responses
       if (data?.error) {
         throw new Error(data.error);
       }
