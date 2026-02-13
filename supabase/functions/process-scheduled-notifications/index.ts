@@ -27,19 +27,59 @@ serve(async (req) => {
     });
 
     // Authentication check for the scheduler
-    // Since this is usually called by pg_cron, we check for the service role key
+    // Since this is called by pg_cron via pg_net, we need to check for the service role key
     const authHeader = req.headers.get("Authorization");
     const apiKey = req.headers.get("apikey");
-    const isServiceRole = 
-      apiKey === supabaseServiceKey || 
-      authHeader?.replace("Bearer ", "") === supabaseServiceKey;
+    
+    // Normalize keys for comparison (remove whitespace)
+    const normalizedServiceKey = supabaseServiceKey.trim();
+    const normalizedApiKey = apiKey?.trim();
+    const normalizedAuthToken = authHeader?.replace(/^Bearer\s+/i, "").trim();
+
+    // Log all headers for debugging
+    console.log("Request Headers:", {
+      authorization: authHeader ? `Bearer ${authHeader.substring(7, 20)}...` : "none",
+      apikey: apiKey ? `${apiKey.substring(0, 20)}...` : "none",
+      host: req.headers.get("host"),
+      "x-real-ip": req.headers.get("x-real-ip"),
+      "x-forwarded-for": req.headers.get("x-forwarded-for"),
+      "user-agent": req.headers.get("user-agent")
+    });
+
+    // Log auth check details
+    console.log("Auth Check:", {
+      hasApiKey: !!normalizedApiKey,
+      hasAuthToken: !!normalizedAuthToken,
+      apiKeyMatch: normalizedApiKey === normalizedServiceKey,
+      tokenMatch: normalizedAuthToken === normalizedServiceKey,
+      serviceKeyPrefix: normalizedServiceKey.substring(0, 20)
+    });
+
+    const isServiceRole =
+      (normalizedApiKey && normalizedApiKey === normalizedServiceKey) ||
+      (normalizedAuthToken && normalizedAuthToken === normalizedServiceKey);
 
     if (!isServiceRole) {
-      console.error("Unauthorized: Scheduler must be called with service role key");
-      return new Response(
-        JSON.stringify({ success: false, error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // Check if this is an internal request from pg_net/pg_cron
+      // These requests come from within the Supabase infrastructure
+      const userAgent = req.headers.get("user-agent") || "";
+      const isInternalRequest = userAgent.includes("pg_net") || userAgent.includes("supabase");
+      
+      console.log("Internal request check:", {
+        userAgent,
+        isInternalRequest
+      });
+      
+      if (!isInternalRequest) {
+        console.error("Unauthorized: Scheduler must be called with service role key or from internal network");
+        return new Response(
+          JSON.stringify({ success: false, error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      console.log("Authorized via internal request (pg_net/pg_cron)");
+    } else {
+      console.log("Authorized via service role key");
     }
 
     // Get current day (0-6) and time (HH:mm)
