@@ -89,7 +89,8 @@ serve(async (req) => {
     }
 
     // Ensure the profile belongs to the same congregation
-    if (profileData.congregation_id !== congregation_id) {
+    if (profileData.congregation_id && profileData.congregation_id !== congregation_id) {
+        console.log(`Congregation mismatch: profile.congregation_id=${profileData.congregation_id}, requested congregation_id=${congregation_id}`);
         return new Response(JSON.stringify({ error: "O betelita deve pertencer à mesma congregação" }), {
             headers: { "Content-Type": "application/json", ...corsHeaders },
             status: 400,
