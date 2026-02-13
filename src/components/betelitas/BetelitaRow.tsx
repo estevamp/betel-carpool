@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import { motion } from "framer-motion";
-import { Car, Mail, MoreVertical, Shield, CreditCard } from "lucide-react";
+import { Car, Mail, MoreVertical, Shield, CreditCard, UserPlus, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -10,6 +10,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Betelita } from "@/hooks/useBetelitas";
+import { useAuth } from "@/contexts/AuthContext";
+import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
+import { useCongregationAdmins } from "@/hooks/useCongregationAdmins";
 
 interface BetelitaRowProps {
   person: Betelita;
@@ -30,12 +33,38 @@ const MotionTr = motion.tr;
 
 export const BetelitaRow = forwardRef<HTMLTableRowElement, BetelitaRowProps>(
   function BetelitaRow({ person, onViewProfile, onEdit, onDelete }, ref) {
+    const { isAdmin, profile: currentUserProfile } = useAuth();
+    const { isSuperAdmin } = useIsSuperAdmin();
+    const { addAdmin, removeAdmin } = useCongregationAdmins(person.congregation_id || undefined);
+
     const initials = person.full_name
       .split(" ")
       .map((n) => n[0])
       .join("")
       .slice(0, 2)
       .toUpperCase();
+
+    const canManageAdmin = (isSuperAdmin || (isAdmin && currentUserProfile?.congregation_id === person.congregation_id)) && person.user_id;
+
+    const handleToggleAdmin = async () => {
+      if (!person.congregation_id) return;
+
+      if (person.is_admin) {
+        if (confirm(`Tem certeza que deseja remover os privilégios de administrador de ${person.full_name}?`)) {
+          await removeAdmin.mutateAsync({
+            profileId: person.id,
+            congregation_id: person.congregation_id
+          });
+        }
+      } else {
+        if (confirm(`Deseja tornar ${person.full_name} um administrador da congregação?`)) {
+          await addAdmin.mutateAsync({
+            profileId: person.id,
+            congregation_id: person.congregation_id
+          });
+        }
+      }
+    };
 
     return (
       <MotionTr
@@ -111,6 +140,23 @@ export const BetelitaRow = forwardRef<HTMLTableRowElement, BetelitaRowProps>(
               <DropdownMenuItem onClick={() => onEdit(person)}>
                 Editar
               </DropdownMenuItem>
+              
+              {canManageAdmin && (
+                <DropdownMenuItem onClick={handleToggleAdmin}>
+                  {person.is_admin ? (
+                    <>
+                      <UserMinus className="mr-2 h-4 w-4" />
+                      Remover Admin
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Tornar Admin
+                    </>
+                  )}
+                </DropdownMenuItem>
+              )}
+
               <DropdownMenuItem
                 onClick={() => onDelete(person)}
                 className="text-destructive focus:text-destructive"

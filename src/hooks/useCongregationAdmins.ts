@@ -50,28 +50,22 @@ export const useCongregationAdmins = (congregationId?: string) => {
   const addAdmin = useMutation({
     mutationFn: async ({ profileId, congregationId }: { profileId: string; congregationId: string }) => {
       try {
-        // Usar a Edge Function que tem a lógica correta e permissões adequadas
         const response = await supabase.functions.invoke('assign-congregation-admin', {
           body: {
             profile_id: profileId,
             congregation_id: congregationId,
+            action: 'assign'
           },
         });
-
-        console.log('Edge Function full response:', response);
 
         const { data, error } = response;
 
         if (error) {
-          console.error('Edge Function error object:', error);
-          
-          // Se for um erro de status (como 400), tentar ler o corpo da resposta
           if (error instanceof Error && 'context' in error) {
             const context = (error as any).context;
             if (context instanceof Response) {
               try {
                 const body = await context.clone().json();
-                console.error('Edge Function error body:', body);
                 if (body.error) throw new Error(body.error);
               } catch (e) {
                 console.error('Could not parse error body as JSON', e);
@@ -82,56 +76,65 @@ export const useCongregationAdmins = (congregationId?: string) => {
         }
         
         if (data?.error) {
-          console.error('Edge Function returned error in data:', data);
           throw new Error(data.error);
         }
         
         return data;
       } catch (err: any) {
-        console.error('Caught error in mutationFn:', err);
         throw err;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['congregation-admins'] });
+      queryClient.invalidateQueries({ queryKey: ['betelitas'] });
       toast.success('Administrador adicionado com sucesso!');
     },
     onError: (error: any) => {
-      console.error('Full error object:', error);
-      
-      // Tentar extrair a mensagem de erro mais específica
-      let errorMessage = 'Erro desconhecido ao adicionar administrador';
-      
-      if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.error) {
-        errorMessage = error.error;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
-      
-      toast.error(errorMessage, {
-        duration: 5000,
-      });
+      toast.error(error.message || 'Erro ao adicionar administrador');
     },
   });
 
-  // Remover administrador
+  // Remover administrador (por ID da tabela congregation_administrators)
   const removeAdmin = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('congregation_administrators')
-        .delete()
-        .eq('id', id);
+    mutationFn: async ({ id, profileId, congregationId }: { id?: string; profileId: string; congregationId: string }) => {
+      const response = await supabase.functions.invoke('assign-congregation-admin', {
+        body: {
+          profile_id: profileId,
+          congregation_id: congregationId,
+          action: 'remove'
+        },
+      });
+
+      const { data, error } = response;
+
+      if (error) {
+        if (error instanceof Error && 'context' in error) {
+          const context = (error as any).context;
+          if (context instanceof Response) {
+            try {
+              const body = await context.clone().json();
+              if (body.error) throw new Error(body.error);
+            } catch (e) {
+              console.error('Could not parse error body as JSON', e);
+            }
+          }
+        }
+        throw error;
+      }
       
-      if (error) throw error;
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+      
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['congregation-admins'] });
+      queryClient.invalidateQueries({ queryKey: ['betelitas'] });
       toast.success('Administrador removido com sucesso!');
     },
     onError: (error: Error) => {
-      toast.error('Erro ao remover administrador: ' + error.message);
+      toast.error(error.message || 'Erro ao remover administrador');
     },
   });
 

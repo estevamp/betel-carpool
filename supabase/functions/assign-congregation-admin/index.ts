@@ -7,12 +7,10 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // This is needed for CORS support
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Extract and validate auth token
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -22,11 +20,8 @@ serve(async (req) => {
   }
 
   const token = authHeader.replace("Bearer ", "");
+  const { profile_id, congregation_id, action = 'assign' } = await req.json();
 
-  const { profile_id, congregation_id } = await req.json();
-  console.log(`Assigning admin: profile_id=${profile_id}, congregation_id=${congregation_id}`);
-
-  // Create admin client with service role key to bypass RLS after authorization
   const adminClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -38,7 +33,6 @@ serve(async (req) => {
     }
   );
 
-  // Check if the user is a super_admin - pass token explicitly for Lovable Cloud
   const { data: { user }, error: authError } = await adminClient.auth.getUser(token);
   if (authError || !user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -47,54 +41,74 @@ serve(async (req) => {
     });
   }
 
-  const { data: roleData, error: roleError } = await adminClient
+  // Check if requester is super_admin or admin of the target congregation
+  const { data: requesterRoles } = await adminClient
     .from("user_roles")
     .select("role")
-    .eq("user_id", user.id)
-    .eq("role", "super_admin")
-    .single();
+    .eq("user_id", user.id);
+  
+  const isSuperAdmin = requesterRoles?.some(r => r.role === 'super_admin');
+  const isAdmin = requesterRoles?.some(r => r.role === 'admin');
 
-  if (roleError || !roleData) {
-    return new Response(JSON.stringify({ error: "Forbidden: Not a super admin" }), {
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-      status: 403,
-    });
-  }
-
-  // Get the user_id from the profile_id
-  const { data: profileData, error: profileError } = await adminClient
-    .from("profiles")
-    .select("user_id, full_name, email")
-    .eq("id", profile_id)
-    .single();
-
-  if (profileError) {
-    return new Response(JSON.stringify({ error: "Perfil não encontrado" }), {
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-      status: 404,
-    });
-  }
-
-  // CRITICAL: Validate that the profile has a linked user_id (user has logged in at least once)
-  if (!profileData?.user_id) {
-    return new Response(
-      JSON.stringify({
-        error: "Não é possível designar um administrador para um perfil que ainda não fez login. O usuário deve fazer login pelo menos uma vez antes de ser designado como administrador.",
-        profile_email: profileData?.email,
-        profile_name: profileData?.full_name
-      }),
-      {
+  if (!isSuperAdmin) {
+    if (!isAdmin) {
+      return new Response(JSON.stringify({ error: "Forbidden: Not an admin" }), {
         headers: { "Content-Type": "application/json", ...corsHeaders },
-        status: 400,
-      }
-    );
+        status: 403,
+      });
+    }
+
+    // Check if admin belongs to the congregation
+    const { data: requesterProfile } = await adminClient
+      .from("profiles")
+      .select("congregation_id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (requesterProfile?.congregation_id !== congregation_id) {
+      return new Response(JSON.stringify({ error: "Forbidden: Not an admin of this congregation" }), {
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+        status: 403,
+      });
+    }
   }
 
-  // Add 'admin' role to the user (they have a user_id, so they've logged in)
-  if (profileData.user_id) {
-    console.log(`Adding 'admin' role to user_id=${profileData.user_id}`);
-    
-    // First check if the role already exists to avoid conflict
+  if (action === 'assign') {
+    // Get the user_id from the profile_id
+    const { data: profileData, error: profileError } = await adminClient
+      .from("profiles")
+      .select("user_id, full_name, email, congregation_id")
+      .eq("id", profile_id)
+      .single();
+
+    if (profileError) {
+      return new Response(JSON.stringify({ error: "Perfil não encontrado" }), {
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+        status: 404,
+      });
+    }
+
+    // Ensure the profile belongs to the same congregation
+    if (profileData.congregation_id !== congregation_id) {
+        return new Response(JSON.stringify({ error: "O betelita deve pertencer à mesma congregação" }), {
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+            status: 400,
+        });
+    }
+
+    if (!profileData?.user_id) {
+      return new Response(
+        JSON.stringify({
+          error: "Não é possível designar um administrador para um perfil que ainda não fez login.",
+        }),
+        {
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+          status: 400,
+        }
+      );
+    }
+
+    // Add 'admin' role
     const { data: existingRole } = await adminClient
       .from("user_roles")
       .select("id")
@@ -103,58 +117,96 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!existingRole) {
-      const { error: insertRoleError } = await adminClient
-        .from("user_roles")
-        .insert({ user_id: profileData.user_id, role: "admin" });
-
-      if (insertRoleError) {
-        console.error(`Error assigning 'admin' role to user ${profileData.user_id}: ${insertRoleError.message}`);
-      } else {
-        console.log(`Successfully assigned 'admin' role to user ${profileData.user_id}`);
-      }
-    } else {
-      console.log(`User ${profileData.user_id} already has 'admin' role`);
+      await adminClient.from("user_roles").insert({ user_id: profileData.user_id, role: "admin" });
     }
-  }
 
-  // Assign the profile as a congregation administrator
-  console.log(`Inserting into congregation_administrators: profile_id=${profile_id}, congregation_id=${congregation_id}`);
-  
-  // Check if already an administrator for this congregation
-  const { data: existingAdmin } = await adminClient
-    .from("congregation_administrators")
-    .select("id")
-    .eq("profile_id", profile_id)
-    .eq("congregation_id", congregation_id)
-    .maybeSingle();
-
-  let insertError = null;
-  if (!existingAdmin) {
-    const { error } = await adminClient
+    // Assign as congregation administrator
+    const { data: existingAdmin } = await adminClient
       .from("congregation_administrators")
-      .insert({ profile_id, congregation_id });
-    insertError = error;
-  }
+      .select("id")
+      .eq("profile_id", profile_id)
+      .eq("congregation_id", congregation_id)
+      .maybeSingle();
 
-  if (insertError) {
-    return new Response(JSON.stringify({ error: insertError.message }), {
+    if (!existingAdmin) {
+      const { error: insertError } = await adminClient
+        .from("congregation_administrators")
+        .insert({ profile_id, congregation_id });
+      
+      if (insertError) {
+        return new Response(JSON.stringify({ error: insertError.message }), {
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+          status: 400,
+        });
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true, message: "Administrador designado com sucesso" }), {
       headers: { "Content-Type": "application/json", ...corsHeaders },
-      status: 400,
+      status: 200,
+    });
+
+  } else if (action === 'remove') {
+    // Check if it's the last admin
+    const { count, error: countError } = await adminClient
+      .from("congregation_administrators")
+      .select("*", { count: 'exact', head: true })
+      .eq("congregation_id", congregation_id);
+
+    if (countError) throw countError;
+    if (count && count <= 1) {
+      return new Response(JSON.stringify({ error: "A congregação deve ter pelo menos um administrador." }), {
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+        status: 400,
+      });
+    }
+
+    // Remove from congregation_administrators
+    const { error: deleteError } = await adminClient
+      .from("congregation_administrators")
+      .delete()
+      .eq("profile_id", profile_id)
+      .eq("congregation_id", congregation_id);
+
+    if (deleteError) {
+      return new Response(JSON.stringify({ error: deleteError.message }), {
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+        status: 400,
+      });
+    }
+
+    // Check if user is admin in ANY other congregation
+    const { data: otherAdmins } = await adminClient
+      .from("congregation_administrators")
+      .select("id")
+      .eq("profile_id", profile_id)
+      .limit(1);
+
+    if (!otherAdmins || otherAdmins.length === 0) {
+      // Remove 'admin' role if not admin anywhere else
+      const { data: profileData } = await adminClient
+        .from("profiles")
+        .select("user_id")
+        .eq("id", profile_id)
+        .single();
+
+      if (profileData?.user_id) {
+        await adminClient
+          .from("user_roles")
+          .delete()
+          .eq("user_id", profileData.user_id)
+          .eq("role", "admin");
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true, message: "Administrador removido com sucesso" }), {
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+      status: 200,
     });
   }
 
-  // Return a simple success message as we are not selecting the data anymore.
-  console.log(`Successfully completed assignment for profile_id=${profile_id}`);
-  return new Response(JSON.stringify({
-    success: true,
-    message: "Administrador designado com sucesso",
-    details: {
-      profile_id,
-      congregation_id,
-      user_id: profileData.user_id
-    }
-  }), {
+  return new Response(JSON.stringify({ error: "Invalid action" }), {
     headers: { "Content-Type": "application/json", ...corsHeaders },
-    status: 200,
+    status: 400,
   });
 });
