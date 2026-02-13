@@ -25,31 +25,55 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    
+    // Create admin client for manual verification and DB operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+
     // Get the authorization header
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("Missing authorization header");
+    let user = null;
+
+    if (authHeader) {
+      const token = authHeader.replace("Bearer ", "");
+      
+      // Verify JWT manually using the service role client
+      // This is the most robust way when "Verify JWT" is off
+      const { data: { user: verifiedUser }, error: userError } = await supabaseAdmin.auth.getUser(token);
+      
+      if (userError) {
+        console.error("Auth error:", userError.message, userError.status);
+        
+        // Fallback: check if it's the service role key being passed as a token
+        if (token === supabaseServiceKey) {
+          console.log("Authenticated via Service Key in Auth header");
+        } else {
+          return new Response(
+            JSON.stringify({ success: false, error: "Authentication failed", details: userError.message }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+      user = verifiedUser;
     }
 
-    // Create Supabase client to verify the user
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
+    // Fallback to apikey header if no user found via auth header
+    if (!user) {
+      const apiKey = req.headers.get("apikey");
+      if (apiKey !== supabaseServiceKey) {
+        console.error("Unauthorized: No valid authentication provided");
+        return new Response(
+          JSON.stringify({ success: false, error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-    );
-
-    // Verify the user is authenticated
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseClient.auth.getUser();
-
-    if (userError || !user) {
-      throw new Error("Unauthorized");
+      console.log("Authenticated via apikey header");
     }
 
     // Parse the request body
@@ -61,15 +85,15 @@ serve(async (req) => {
       throw new Error("Title and message are required");
     }
 
-    if (!userId && !userIds) {
+    if (!userId && (!userIds || userIds.length === 0)) {
       throw new Error("Either userId or userIds must be provided");
     }
 
     // Prepare the OneSignal notification payload
     const notificationPayload: any = {
       app_id: ONESIGNAL_APP_ID,
-      headings: { en: title },
-      contents: { en: message },
+      headings: { en: title, pt: title },
+      contents: { en: message, pt: message },
     };
 
     // Add target users
@@ -119,18 +143,16 @@ serve(async (req) => {
         status: 200,
       }
     );
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error("Error sending push notification:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-
     return new Response(
       JSON.stringify({
         success: false,
-        error: message,
+        error: error.message,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: message === "Unauthorized" ? 401 : 500,
+        status: error.message === "Unauthorized" ? 401 : 400,
       }
     );
   }

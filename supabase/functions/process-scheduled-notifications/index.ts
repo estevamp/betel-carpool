@@ -10,24 +10,46 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   try {
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+
+    // Authentication check for the scheduler
+    // Since this is usually called by pg_cron, we check for the service role key
+    const authHeader = req.headers.get("Authorization");
+    const apiKey = req.headers.get("apikey");
+    const isServiceRole = 
+      apiKey === supabaseServiceKey || 
+      authHeader?.replace("Bearer ", "") === supabaseServiceKey;
+
+    if (!isServiceRole) {
+      console.error("Unauthorized: Scheduler must be called with service role key");
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Get current day (0-6) and time (HH:mm)
     const now = new Date();
-    // Adjust to UTC-3 (Brazil) if needed, or use UTC. 
-    // For simplicity and consistency with DB 'TIME' type, we'll use the current hour/min.
     const currentDay = now.getDay();
     const currentTime = now.toTimeString().split(' ')[0]; // HH:mm:ss
 
     console.log(`Running scheduler at ${currentTime}, day ${currentDay}`);
 
     // Find settings that match today and are enabled
-    // We check if currentDay is in scheduled_days and if scheduled_time is <= currentTime
-    // and if it hasn't run today yet.
     const { data: settings, error: settingsError } = await supabaseAdmin
       .from('notification_settings')
       .select('*, congregations(name)')
@@ -52,7 +74,7 @@ serve(async (req) => {
           .eq('congregation_id', setting.congregation_id)
           .not('user_id', 'is', null);
 
-        const userIds = members?.map(m => m.user_id) || [];
+        const userIds = members?.map((m: any) => m.user_id) || [];
 
         if (userIds.length > 0) {
           const response = await fetch("https://onesignal.com/api/v1/notifications", {
@@ -86,12 +108,12 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ success: true }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Scheduler error:", error);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
   }

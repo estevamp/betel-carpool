@@ -18,7 +18,6 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     
-    // Create admin client
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         persistSession: false,
@@ -32,23 +31,31 @@ serve(async (req) => {
     if (authHeader) {
       const token = authHeader.replace("Bearer ", "");
       
-      // Verify JWT manually using the service role client
-      // This is the most robust way when "Verify JWT" is off
+      // The invocation log shows a valid ES256 JWT with subject (user_id)
+      // We use the admin client to get the user from this token
       const { data: { user: verifiedUser }, error: userError } = await supabaseAdmin.auth.getUser(token);
       
       if (userError) {
         console.error("Auth error:", userError.message, userError.status);
-        return new Response(
-          JSON.stringify({ success: false, error: "Authentication failed", details: userError.message }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        // If it fails, we check if it's the service key
+        if (token === supabaseServiceKey) {
+           console.log("Authenticated via Service Key");
+        } else {
+          return new Response(
+            JSON.stringify({ success: false, error: "Authentication failed", details: userError.message }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
       user = verifiedUser;
     }
 
+    // Fallback to apikey header if no auth header
     if (!user) {
       const apiKey = req.headers.get("apikey");
-      if (apiKey !== supabaseServiceKey) {
+      if (apiKey === supabaseServiceKey) {
+        console.log("Authenticated via apikey header");
+      } else if (!authHeader) {
         return new Response(
           JSON.stringify({ success: false, error: "Unauthorized" }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -60,15 +67,12 @@ serve(async (req) => {
     if (!message || !congregationId) throw new Error("Message and congregationId are required");
 
     if (user) {
-      // Check permissions using the admin client but passing the user's token for the RPC
-      // Or just use the admin client to check roles directly to avoid RPC context issues
       const { data: profile } = await supabaseAdmin
         .from('profiles')
         .select('id')
         .eq('user_id', user.id)
         .single();
 
-      // Check super admin role directly from user_roles table
       const { data: superAdminRole } = await supabaseAdmin
         .from('user_roles')
         .select('id')
@@ -84,7 +88,10 @@ serve(async (req) => {
         .maybeSingle();
 
       if (!superAdminRole && !isAdmin) {
-        throw new Error("Forbidden: You are not an admin of this congregation");
+        return new Response(
+          JSON.stringify({ success: false, error: "Forbidden: You are not an admin of this congregation" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
     }
 
