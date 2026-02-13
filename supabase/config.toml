@@ -5,3 +5,12 @@ verify_jwt = false
 
 [functions.delete-profile]
 verify_jwt = false
+
+[functions.assign-congregation-admin]
+verify_jwt = false
+
+[functions.send-broadcast-notification]
+verify_jwt = false
+
+[functions.send-push-notification]
+verify_jwt = false
