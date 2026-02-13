@@ -102,7 +102,7 @@ export function useBetelitas(options?: { congregationId?: string }) {
           spouse_name: profile.spouse_id
             ? profileNameMap.get(profile.spouse_id) ?? null
             : null,
-          is_admin: hasAdminRole && isAdminOfOwnCongregation, // Usa AND
+          is_admin: !!isAdminOfOwnCongregation, // Use the table congregation_administrators as source of truth
           user_id: userId ?? null,
         };
       });
