@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface Betelita {
   id: string;
@@ -23,10 +24,13 @@ import { useSelectedCongregation } from "@/contexts/CongregationContext";
 export function useBetelitas(options?: { congregationId?: string }) {
   const { isSuperAdmin } = useIsSuperAdmin();
   const { selectedCongregationId } = useSelectedCongregation();
+  const { profile } = useAuth();
 
   // Prioritize explicitly passed congregationId over context selectedCongregationId
   // This allows administrative pages to fetch betelitas from specific congregations
-  const effectiveCongregationId = options?.congregationId ?? (isSuperAdmin ? selectedCongregationId : undefined);
+  const effectiveCongregationId = options?.congregationId ?? (
+    isSuperAdmin ? selectedCongregationId : profile?.congregation_id
+  );
 
   return useQuery({
     queryKey: ["betelitas", effectiveCongregationId],
@@ -54,9 +58,15 @@ export function useBetelitas(options?: { congregationId?: string }) {
       if (rolesError) throw rolesError;
 
       // Fetch congregation administrators (profile-based admin designation)
-      const { data: congAdmins, error: congAdminsError } = await supabase
+      let congAdminsQuery = supabase
         .from("congregation_administrators")
         .select("profile_id, congregation_id"); // Incluir congregation_id
+
+      if (effectiveCongregationId) {
+        congAdminsQuery = congAdminsQuery.eq("congregation_id", effectiveCongregationId);
+      }
+
+      const { data: congAdmins, error: congAdminsError } = await congAdminsQuery;
 
       if (congAdminsError) throw congAdminsError;
 
@@ -70,9 +80,15 @@ export function useBetelitas(options?: { congregationId?: string }) {
       });
 
       // Fetch user_id mapping from profiles
-      const { data: profilesWithUserId, error: userIdError } = await supabase
+      let profilesWithUserIdQuery = supabase
         .from("profiles")
         .select("id, user_id");
+
+      if (effectiveCongregationId) {
+        profilesWithUserIdQuery = profilesWithUserIdQuery.eq("congregation_id", effectiveCongregationId);
+      }
+
+      const { data: profilesWithUserId, error: userIdError } = await profilesWithUserIdQuery;
 
       if (userIdError) throw userIdError;
 
