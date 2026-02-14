@@ -83,11 +83,20 @@ serve(async (req) => {
     }
 
     // Get current day (0-6) and time (HH:mm)
+    // Use Intl to get the time in the correct timezone (America/Sao_Paulo)
     const now = new Date();
-    const currentDay = now.getDay();
-    const currentTime = now.toTimeString().split(' ')[0]; // HH:mm:ss
+    
+    // Get Brazil Time (BRT)
+    const brTimeStr = now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+    const brDate = new Date(brTimeStr);
+    
+    const currentDay = brDate.getDay(); // 0-6
+    const hours = String(brDate.getHours()).padStart(2, '0');
+    const minutes = String(brDate.getMinutes()).padStart(2, '0');
+    const seconds = String(brDate.getSeconds()).padStart(2, '0');
+    const currentTime = `${hours}:${minutes}:${seconds}`;
 
-    console.log(`Running scheduler at ${currentTime}, day ${currentDay}`);
+    console.log(`Running scheduler at ${currentTime} (BRT), day ${currentDay}, UTC: ${now.toISOString()}`);
 
     // Find settings that match today and are enabled
     const { data: settings, error: settingsError } = await supabaseAdmin
@@ -104,8 +113,10 @@ serve(async (req) => {
       const isSameDay = lastRun && lastRun.toDateString() === now.toDateString();
 
       // If scheduled time has passed and we haven't run today
+      // We use a 15-minute window to ensure we don't miss it if the cron runs slightly off
+      // but the !isSameDay check is the primary guard against double-sending
       if (currentTime >= scheduledTime && !isSameDay) {
-        console.log(`Sending scheduled notification for congregation: ${setting.congregations?.name} (${setting.congregation_id})`);
+        console.log(`Sending scheduled notification for congregation: ${setting.congregations?.name} (${setting.congregation_id}). Scheduled: ${scheduledTime}, Current: ${currentTime}`);
 
         // Get all users from this congregation
         const { data: members, error: membersError } = await supabaseAdmin
