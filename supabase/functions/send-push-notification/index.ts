@@ -96,9 +96,9 @@ serve(async (req) => {
     // Prepare the OneSignal notification payload
     const notificationPayload: any = {
       app_id: ONESIGNAL_APP_ID,
+      target_channel: "push",
       headings: { en: title, pt: title },
       contents: { en: message, pt: message },
-      channel_for_external_user_ids: "push",
     };
 
     // Add target users

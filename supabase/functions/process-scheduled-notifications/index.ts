@@ -117,20 +117,30 @@ serve(async (req) => {
         const userIds = members?.map((m: any) => m.user_id) || [];
 
         if (userIds.length > 0) {
+          const payload = {
+            app_id: ONESIGNAL_APP_ID,
+            target_channel: "push",
+            headings: { en: "Lembrete da Congregação", pt: "Lembrete da Congregação" },
+            contents: { en: setting.message, pt: setting.message },
+            include_aliases: {
+              external_id: userIds
+            }
+          };
+
+          console.log(`Sending scheduled notification to ${userIds.length} users for congregation ${setting.congregation_id}`);
+          console.log("Payload:", JSON.stringify(payload, null, 2));
+
           const response = await fetch("https://onesignal.com/api/v1/notifications", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
             },
-            body: JSON.stringify({
-              app_id: ONESIGNAL_APP_ID,
-              channel_for_external_user_ids: "push",
-              headings: { en: "Lembrete da Congregação", pt: "Lembrete da Congregação" },
-              contents: { en: setting.message, pt: setting.message },
-              include_external_user_ids: userIds,
-            }),
+            body: JSON.stringify(payload),
           });
+
+          const result = await response.json();
+          console.log("OneSignal response:", JSON.stringify(result, null, 2));
 
           if (response.ok) {
             // Update last_run_at
@@ -139,10 +149,9 @@ serve(async (req) => {
               .update({ last_run_at: now.toISOString() })
               .eq('id', setting.id);
             
-            console.log(`Notification sent to ${userIds.length} users`);
+            console.log(`Notification sent successfully to ${userIds.length} users, recipients: ${result.recipients}`);
           } else {
-            const err = await response.json();
-            console.error(`OneSignal error for ${setting.congregation_id}:`, err);
+            console.error(`OneSignal error for ${setting.congregation_id}:`, result);
           }
         }
       }

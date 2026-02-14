@@ -112,7 +112,7 @@ serve(async (req) => {
 
     const primaryPayload = {
       app_id: ONESIGNAL_APP_ID,
-      channel_for_external_user_ids: "push",
+      target_channel: "push",
       headings: { en: "Aviso da Congregação", pt: "Aviso da Congregação" },
       contents: { en: message, pt: message },
       include_aliases: {
