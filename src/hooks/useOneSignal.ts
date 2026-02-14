@@ -27,13 +27,16 @@ export function useOneSignal() {
           await oneSignalService.setExternalUserId(user.id);
           
           // Add tags for user segmentation
-          if (profile) {
-            await oneSignalService.addTags({
-              congregation_id: profile.congregation_id || 'unknown',
-              user_role: 'betelita',
-              full_name: profile.full_name || 'Unknown',
-            });
+        if (profile) {
+          const tags: Record<string, string> = {
+            user_role: 'betelita',
+            full_name: profile.full_name || 'Unknown',
+          };
+          if (profile.congregation_id) {
+            tags.congregation_id = profile.congregation_id;
           }
+          await oneSignalService.addTags(tags);
+        }
         }
       } catch (error) {
         console.error('Error initializing OneSignal:', error);
@@ -53,11 +56,14 @@ export function useOneSignal() {
       await oneSignalService.setExternalUserId(user.id);
 
       if (profile) {
-        await oneSignalService.addTags({
-          congregation_id: profile.congregation_id || 'unknown',
+        const tags: Record<string, string> = {
           user_role: 'betelita',
           full_name: profile.full_name || 'Unknown',
-        });
+        };
+        if (profile.congregation_id) {
+          tags.congregation_id = profile.congregation_id;
+        }
+        await oneSignalService.addTags(tags);
       }
     }
 

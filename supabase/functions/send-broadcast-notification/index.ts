@@ -110,25 +110,63 @@ serve(async (req) => {
       });
     }
 
+    const primaryPayload = {
+      app_id: ONESIGNAL_APP_ID,
+      target_channel: "push",
+      headings: { en: "Aviso da Congregação", pt: "Aviso da Congregação" },
+      contents: { en: message, pt: message },
+      include_aliases: { external_id: userIds },
+    };
+
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
       },
-      body: JSON.stringify({
+      body: JSON.stringify(primaryPayload),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) throw new Error(result.errors?.[0] || "OneSignal error");
+
+    // Fallback: if aliases are not linked yet, send by congregation tag
+    const primaryRecipients = Number(result?.recipients ?? 0);
+    if (primaryRecipients === 0) {
+      const fallbackPayload = {
         app_id: ONESIGNAL_APP_ID,
         target_channel: "push",
         headings: { en: "Aviso da Congregação", pt: "Aviso da Congregação" },
         contents: { en: message, pt: message },
-        include_aliases: { external_id: userIds },
-      }),
-    });
+        filters: [
+          { field: "tag", key: "congregation_id", relation: "=", value: congregationId },
+        ],
+      };
 
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.errors?.[0] || "OneSignal error");
+      const fallbackResponse = await fetch("https://onesignal.com/api/v1/notifications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
+        },
+        body: JSON.stringify(fallbackPayload),
+      });
 
-    return new Response(JSON.stringify({ success: true, result }), {
+      const fallbackResult = await fallbackResponse.json();
+      if (!fallbackResponse.ok) throw new Error(fallbackResult.errors?.[0] || "OneSignal fallback error");
+
+      return new Response(JSON.stringify({
+        success: true,
+        result: fallbackResult,
+        delivery_mode: "tag_fallback",
+        primary_result: result,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true, result, delivery_mode: "external_id" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
