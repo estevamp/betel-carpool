@@ -23,8 +23,8 @@
     <!-- OneSignal Web Push SDK -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
-      // Enable OneSignal for both Lovable and Vercel domains
-      const allowedHostnames = ['betel-carpool.lovable.app', 'betel-carpool.vercel.app'];
+      // Enable OneSignal for Vercel domains
+      const allowedHostnames = ['betel-carpool.vercel.app'];
       if (allowedHostnames.includes(window.location.hostname) || window.location.hostname.endsWith('.vercel.app')) {
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         OneSignalDeferred.push(async function(OneSignal) {
