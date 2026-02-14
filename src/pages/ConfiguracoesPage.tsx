@@ -45,7 +45,6 @@ export default function ConfiguracoesPage() {
     );
   }
   
-  const [congregationName, setCongregationName] = useState("");
   const [defaultCongregationId, setDefaultCongregationId] = useState("");
   
   // Notification Settings
@@ -54,36 +53,71 @@ export default function ConfiguracoesPage() {
   const [notifTime, setNotifTime] = useState("08:00");
   const [notifEnabled, setNotifEnabled] = useState(false);
 
+  // Congregation-specific settings
+  const [tripValue, setTripValue] = useState("15.00");
+  const [showTransportHelp, setShowTransportHelp] = useState(true);
+  const [maxPassengers, setMaxPassengers] = useState("4");
+
   const { profile } = useAuth();
   // Use selectedCongregationId from context for super-admin, profile congregation for regular admin
   const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : profile?.congregation_id;
 
+  // Load congregation-specific settings
   const {
     data: settings,
     isLoading
   } = useQuery({
-    queryKey: ["settings"],
+    queryKey: ["settings", effectiveCongregationId],
     queryFn: async () => {
+      if (!effectiveCongregationId) return null;
       const {
         data,
         error
-      } = await supabase.from("settings").select("*");
+      } = await supabase
+        .from("settings")
+        .select("*")
+        .eq("congregation_id", effectiveCongregationId);
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!effectiveCongregationId,
   });
+
+  // Load default congregation for super-admin
+  useEffect(() => {
+    if (isSuperAdmin) {
+      const loadDefaultCong = async () => {
+        const { data } = await supabase
+          .from("settings")
+          .select("value")
+          .eq("key", "default_congregation_id")
+          .limit(1)
+          .maybeSingle();
+        if (data?.value) {
+          setDefaultCongregationId(data.value);
+        }
+      };
+      loadDefaultCong();
+    }
+  }, [isSuperAdmin]);
+
   useEffect(() => {
     if (settings) {
-      const congregation = settings.find(s => s.key === "congregation_name");
-      if (congregation) {
-        setCongregationName(congregation.value);
-      }
-      const defaultCong = settings.find(s => s.key === "default_congregation_id");
-      if (defaultCong) {
-        setDefaultCongregationId(defaultCong.value);
-      }
+      const tripVal = settings.find(s => s.key === "trip_value");
+      if (tripVal) setTripValue(tripVal.value);
+      
+      const showTransport = settings.find(s => s.key === "show_transport_help");
+      if (showTransport) setShowTransportHelp(showTransport.value === "true");
+      
+      const maxPass = settings.find(s => s.key === "max_passengers");
+      if (maxPass) setMaxPassengers(maxPass.value);
+    } else if (effectiveCongregationId) {
+      // Reset to defaults when switching congregation
+      setTripValue("15.00");
+      setShowTransportHelp(true);
+      setMaxPassengers("4");
     }
-  }, [settings]);
+  }, [settings, effectiveCongregationId]);
 
   const { data: notificationSettings, isLoading: isLoadingNotif } = useQuery({
     queryKey: ["notification-settings", effectiveCongregationId],
@@ -117,53 +151,74 @@ export default function ConfiguracoesPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Save congregation name
-      const {
-        data: existing
-      } = await supabase.from("settings").select("id").eq("key", "congregation_name").maybeSingle();
-      if (existing) {
-        const {
-          error
-        } = await supabase.from("settings").update({
-          value: congregationName
-        }).eq("key", "congregation_name");
-        if (error) throw error;
-      } else {
-        const {
-          error
-        } = await supabase.from("settings").insert({
-          key: "congregation_name",
-          value: congregationName,
-          type: "string"
-        });
-        if (error) throw error;
+      if (!effectiveCongregationId) {
+        throw new Error("Nenhuma congregação selecionada");
       }
 
-      // Save default congregation ID
-      const {
-        data: existingDefault
-      } = await supabase.from("settings").select("id").eq("key", "default_congregation_id").maybeSingle();
-      if (existingDefault) {
-        const {
-          error
-        } = await supabase.from("settings").update({
-          value: defaultCongregationId
-        }).eq("key", "default_congregation_id");
-        if (error) throw error;
-      } else if (defaultCongregationId) {
-        const {
-          error
-        } = await supabase.from("settings").insert({
-          key: "default_congregation_id",
-          value: defaultCongregationId,
-          type: "string"
-        });
-        if (error) throw error;
+      // Helper function to upsert a setting
+      const upsertSetting = async (key: string, value: string, type: string) => {
+        const { data: existing } = await supabase
+          .from("settings")
+          .select("id")
+          .eq("key", key)
+          .eq("congregation_id", effectiveCongregationId)
+          .maybeSingle();
+
+        if (existing) {
+          const { error } = await supabase
+            .from("settings")
+            .update({ value })
+            .eq("key", key)
+            .eq("congregation_id", effectiveCongregationId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("settings")
+            .insert({
+              key,
+              value,
+              type,
+              congregation_id: effectiveCongregationId,
+            });
+          if (error) throw error;
+        }
+      };
+
+      // Save all congregation-specific settings
+      await upsertSetting("trip_value", tripValue, "decimal");
+      await upsertSetting("show_transport_help", showTransportHelp.toString(), "boolean");
+      await upsertSetting("max_passengers", maxPassengers, "integer");
+
+      // Save default congregation ID for super-admin (global setting)
+      if (isSuperAdmin && defaultCongregationId) {
+        const { data: existingDefault } = await supabase
+          .from("settings")
+          .select("id")
+          .eq("key", "default_congregation_id")
+          .limit(1)
+          .maybeSingle();
+
+        if (existingDefault) {
+          await supabase
+            .from("settings")
+            .update({ value: defaultCongregationId })
+            .eq("key", "default_congregation_id")
+            .limit(1);
+        } else {
+          await supabase
+            .from("settings")
+            .insert({
+              key: "default_congregation_id",
+              value: defaultCongregationId,
+              type: "string",
+              congregation_id: effectiveCongregationId,
+            });
+        }
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["settings"]
+        queryKey: ["settings", effectiveCongregationId]
       });
       toast.success("Configurações salvas com sucesso!");
     },
@@ -335,17 +390,38 @@ export default function ConfiguracoesPage() {
       {/* Admin Only */}
       {(isAdmin || isSuperAdmin) && <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
           <div className="p-5 space-y-6">
+            {!effectiveCongregationId && isSuperAdmin && (
+              <div className="p-4 bg-warning/10 border border-warning/20 rounded-lg mb-6">
+                <p className="text-sm text-warning-foreground">
+                  Selecione uma congregação no topo da página para configurar.
+                </p>
+              </div>
+            )}
+            
             {/* Transport Settings */}
             <div className="space-y-4 pb-6 border-b border-border">
               <div className="flex items-center gap-2">
                 <Wallet className="h-4 w-4 text-success" />
                 <h3 className="font-semibold text-foreground">Ajuda de Transporte</h3>
+                {isSuperAdmin && effectiveCongregationId && (
+                  <span className="text-xs text-muted-foreground">
+                    ({congregations?.find(c => c.id === effectiveCongregationId)?.name})
+                  </span>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="tripValue">Valor por viagem (Ida e Volta)</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
-                  <Input id="tripValue" type="number" defaultValue="15.00" step="0.50" className="pl-10" />
+                  <Input
+                    id="tripValue"
+                    type="number"
+                    value={tripValue}
+                    onChange={(e) => setTripValue(e.target.value)}
+                    step="0.50"
+                    className="pl-10"
+                    disabled={!effectiveCongregationId}
+                  />
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Viagens apenas de ida ou volta custam metade deste valor
@@ -356,7 +432,11 @@ export default function ConfiguracoesPage() {
                   <Label>Exibir módulo de ajuda de transporte</Label>
                   <p className="text-sm text-muted-foreground">Mostrar seção financeira para todos os usuários</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={showTransportHelp}
+                  onCheckedChange={setShowTransportHelp}
+                  disabled={!effectiveCongregationId}
+                />
               </div>
             </div>
 
@@ -368,7 +448,15 @@ export default function ConfiguracoesPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="maxPassengers">Máximo de passageiros por viagem</Label>
-                <Input id="maxPassengers" type="number" defaultValue="4" min="1" max="10" />
+                <Input
+                  id="maxPassengers"
+                  type="number"
+                  value={maxPassengers}
+                  onChange={(e) => setMaxPassengers(e.target.value)}
+                  min="1"
+                  max="10"
+                  disabled={!effectiveCongregationId}
+                />
               </div>
               
               {isSuperAdmin && (
@@ -408,7 +496,11 @@ export default function ConfiguracoesPage() {
         </div>}
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button className="bg-primary hover:bg-primary/90" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+        <Button
+          className="bg-primary hover:bg-primary/90"
+          onClick={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending || !effectiveCongregationId}
+        >
           {saveMutation.isPending ? "Salvando..." : "Salvar Alterações"}
         </Button>
       </div>
