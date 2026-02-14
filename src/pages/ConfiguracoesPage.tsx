@@ -181,9 +181,26 @@ export default function ConfiguracoesPage() {
 
       console.log("Saving notification settings:", payload);
 
-      const { error } = await supabase
+      // Check if settings exist for this congregation
+      const { data: existing } = await supabase
         .from("notification_settings")
-        .upsert(payload, { onConflict: 'congregation_id' });
+        .select("id")
+        .eq("congregation_id", effectiveCongregationId)
+        .maybeSingle();
+
+      let error;
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from("notification_settings")
+          .update(payload)
+          .eq("congregation_id", effectiveCongregationId);
+        error = updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from("notification_settings")
+          .insert(payload);
+        error = insertError;
+      }
 
       if (error) throw error;
     },

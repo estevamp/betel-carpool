@@ -105,22 +105,30 @@ serve(async (req) => {
 
       // If scheduled time has passed and we haven't run today
       if (currentTime >= scheduledTime && !isSameDay) {
-        console.log(`Sending scheduled notification for congregation: ${setting.congregations?.name}`);
+        console.log(`Sending scheduled notification for congregation: ${setting.congregations?.name} (${setting.congregation_id})`);
 
         // Get all users from this congregation
-        const { data: members } = await supabaseAdmin
+        const { data: members, error: membersError } = await supabaseAdmin
           .from('profiles')
           .select('user_id')
           .eq('congregation_id', setting.congregation_id)
           .not('user_id', 'is', null);
 
-        const userIds = members?.map((m: any) => m.user_id) || [];
+        if (membersError) {
+          console.error(`Error fetching members for congregation ${setting.congregation_id}:`, membersError);
+          continue;
+        }
+
+        const userIds = members?.map((m: any) => m.user_id).filter(Boolean) || [];
 
         if (userIds.length > 0) {
           const payload = {
             app_id: ONESIGNAL_APP_ID,
             target_channel: "push",
-            headings: { en: "Lembrete da Congregação", pt: "Lembrete da Congregação" },
+            headings: {
+              en: `Lembrete: ${setting.congregations?.name || 'Congregação'}`,
+              pt: `Lembrete: ${setting.congregations?.name || 'Congregação'}`
+            },
             contents: { en: setting.message, pt: setting.message },
             include_aliases: {
               external_id: userIds
@@ -128,7 +136,6 @@ serve(async (req) => {
           };
 
           console.log(`Sending scheduled notification to ${userIds.length} users for congregation ${setting.congregation_id}`);
-          console.log("Payload:", JSON.stringify(payload, null, 2));
 
           const response = await fetch("https://onesignal.com/api/v1/notifications", {
             method: "POST",
@@ -140,8 +147,7 @@ serve(async (req) => {
           });
 
           const result = await response.json();
-          console.log("OneSignal response:", JSON.stringify(result, null, 2));
-
+          
           if (response.ok) {
             // Update last_run_at
             await supabaseAdmin
@@ -149,10 +155,17 @@ serve(async (req) => {
               .update({ last_run_at: now.toISOString() })
               .eq('id', setting.id);
             
-            console.log(`Notification sent successfully to ${userIds.length} users, recipients: ${result.recipients}`);
+            console.log(`Notification sent successfully for ${setting.congregations?.name}. Recipients: ${result.recipients || 'unknown'}`);
           } else {
             console.error(`OneSignal error for ${setting.congregation_id}:`, result);
           }
+        } else {
+          console.log(`No users found for congregation ${setting.congregation_id}, skipping notification.`);
+          // Still update last_run_at to avoid re-checking this congregation until tomorrow
+          await supabaseAdmin
+            .from('notification_settings')
+            .update({ last_run_at: now.toISOString() })
+            .eq('id', setting.id);
         }
       }
     }
