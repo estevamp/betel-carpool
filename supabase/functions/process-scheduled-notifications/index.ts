@@ -135,15 +135,12 @@ serve(async (req) => {
         if (userIds.length > 0) {
           const payload = {
             app_id: ONESIGNAL_APP_ID,
-            target_channel: "push",
             headings: {
               en: `Lembrete: ${setting.congregations?.name || 'Congregação'}`,
               pt: `Lembrete: ${setting.congregations?.name || 'Congregação'}`
             },
             contents: { en: setting.message, pt: setting.message },
-            include_aliases: {
-              external_id: userIds
-            }
+            include_external_user_ids: userIds
           };
 
           console.log(`Sending scheduled notification to ${userIds.length} users for congregation ${setting.congregation_id}`);
@@ -158,6 +155,7 @@ serve(async (req) => {
           });
 
           const result = await response.json();
+          console.log(`OneSignal response for ${setting.congregations?.name}:`, JSON.stringify(result));
           
           if (response.ok) {
             // Update last_run_at
@@ -166,7 +164,7 @@ serve(async (req) => {
               .update({ last_run_at: now.toISOString() })
               .eq('id', setting.id);
             
-            console.log(`Notification sent successfully for ${setting.congregations?.name}. Recipients: ${result.recipients || 'unknown'}`);
+            console.log(`Notification sent successfully for ${setting.congregations?.name}. Result ID: ${result.id}`);
           } else {
             console.error(`OneSignal error for ${setting.congregation_id}:`, result);
           }
