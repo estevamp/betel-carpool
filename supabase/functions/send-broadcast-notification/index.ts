@@ -115,8 +115,13 @@ serve(async (req) => {
       channel_for_external_user_ids: "push",
       headings: { en: "Aviso da Congregação", pt: "Aviso da Congregação" },
       contents: { en: message, pt: message },
-      include_external_user_ids: userIds,
+      include_aliases: {
+        external_id: userIds
+      }
     };
+
+    console.log("Sending broadcast notification to", userIds.length, "users");
+    console.log("Payload:", JSON.stringify(primaryPayload, null, 2));
 
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
@@ -129,9 +134,20 @@ serve(async (req) => {
 
     const result = await response.json();
 
-    if (!response.ok) throw new Error(result.errors?.[0] || "OneSignal error");
+    console.log("OneSignal response:", JSON.stringify(result, null, 2));
 
-    return new Response(JSON.stringify({ success: true, result, delivery_mode: "external_user_ids" }), {
+    if (!response.ok) {
+      console.error("OneSignal API error:", result);
+      throw new Error(result.errors?.[0] || "OneSignal error");
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      result,
+      delivery_mode: "external_user_ids",
+      recipients: result.recipients,
+      userIds: userIds.length
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {

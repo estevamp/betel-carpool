@@ -121,11 +121,27 @@ class OneSignalService {
         const currentExternalId = await OneSignal.User.externalId;
         if (currentExternalId === userId) {
           console.log('OneSignal: Already logged in with external ID:', userId);
+          
+          // Log subscription details for debugging
+          const pushSubscriptionId = await OneSignal.User.PushSubscription.id;
+          const pushToken = await OneSignal.User.PushSubscription.token;
+          console.log('OneSignal Debug - Subscription ID:', pushSubscriptionId);
+          console.log('OneSignal Debug - Push Token:', pushToken);
+          console.log('OneSignal Debug - External ID:', currentExternalId);
+          
           return true;
         }
         
         console.log('OneSignal: Logging in with external ID:', userId);
         await OneSignal.login(userId);
+        
+        // Log subscription details after login
+        const pushSubscriptionId = await OneSignal.User.PushSubscription.id;
+        const pushToken = await OneSignal.User.PushSubscription.token;
+        console.log('OneSignal Debug - Subscription ID after login:', pushSubscriptionId);
+        console.log('OneSignal Debug - Push Token after login:', pushToken);
+        console.log('OneSignal Debug - External ID after login:', userId);
+        
         return true;
       });
     } catch (error) {

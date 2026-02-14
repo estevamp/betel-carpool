@@ -96,18 +96,20 @@ serve(async (req) => {
     // Prepare the OneSignal notification payload
     const notificationPayload: any = {
       app_id: ONESIGNAL_APP_ID,
-      target_channel: "push",
-      headings: { en: title, pt: title, "pt-BR": title },
-      contents: { en: message, pt: message, "pt-BR": message },
-      isAnyWeb: true,
-      web_buttons: url ? [{ id: "open-url", text: "Abrir", icon: "", url }] : undefined,
+      headings: { en: title, pt: title },
+      contents: { en: message, pt: message },
+      channel_for_external_user_ids: "push",
     };
 
     // Add target users
     if (userId) {
-      notificationPayload.include_external_user_ids = [userId];
+      notificationPayload.include_aliases = {
+        external_id: [userId]
+      };
     } else if (userIds && userIds.length > 0) {
-      notificationPayload.include_external_user_ids = userIds;
+      notificationPayload.include_aliases = {
+        external_id: userIds
+      };
     }
 
     // Add optional fields
@@ -118,6 +120,8 @@ serve(async (req) => {
     if (data) {
       notificationPayload.data = data;
     }
+
+    console.log("Sending notification with payload:", JSON.stringify(notificationPayload, null, 2));
 
     // Send notification via OneSignal REST API
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
