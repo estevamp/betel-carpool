@@ -89,8 +89,8 @@ const secondaryNavItems = [
     icon: Settings,
     label: "Configurações",
     path: "/configuracoes",
-    adminOnly: false,
-    superAdminOnly: true,
+    adminOnly: true,
+    superAdminOnly: false,
   },
 ];
 interface AppSidebarProps {
