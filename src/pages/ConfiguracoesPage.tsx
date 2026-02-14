@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
 import { useCongregations } from "@/hooks/useCongregations";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
 export default function ConfiguracoesPage() {
   const queryClient = useQueryClient();
   const {
@@ -29,6 +30,7 @@ export default function ConfiguracoesPage() {
   } = useAuth();
   const { isSuperAdmin } = useIsSuperAdmin();
   const { congregations } = useCongregations();
+  const { selectedCongregationId } = useSelectedCongregation();
   
   // Se não for admin nem super-admin, mostrar mensagem de acesso negado
   if (!isAdmin && !isSuperAdmin) {
@@ -53,7 +55,8 @@ export default function ConfiguracoesPage() {
   const [notifEnabled, setNotifEnabled] = useState(false);
 
   const { profile } = useAuth();
-  const effectiveCongregationId = isSuperAdmin ? defaultCongregationId : profile?.congregation_id;
+  // Use selectedCongregationId from context for super-admin, profile congregation for regular admin
+  const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : profile?.congregation_id;
 
   const {
     data: settings,
@@ -103,8 +106,14 @@ export default function ConfiguracoesPage() {
       setNotifDays(notificationSettings.scheduled_days?.map(String) || []);
       setNotifTime(notificationSettings.scheduled_time?.substring(0, 5) || "08:00");
       setNotifEnabled(notificationSettings.is_enabled);
+    } else if (effectiveCongregationId) {
+      // Reset to defaults when no settings exist for this congregation
+      setNotifMessage("Não se esqueça de informar seus arranjos de transporte para a congregação.");
+      setNotifDays([]);
+      setNotifTime("08:00");
+      setNotifEnabled(false);
     }
-  }, [notificationSettings]);
+  }, [notificationSettings, effectiveCongregationId]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -230,12 +239,23 @@ export default function ConfiguracoesPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
               <Calendar className="h-5 w-5 text-primary" />
             </div>
-            <div>
+            <div className="flex-1">
               <h2 className="font-semibold text-foreground">Notificações Automáticas</h2>
-              <p className="text-sm text-muted-foreground">Lembrete semanal para a congregação</p>
+              <p className="text-sm text-muted-foreground">
+                {isSuperAdmin && effectiveCongregationId
+                  ? `Configurando: ${congregations?.find(c => c.id === effectiveCongregationId)?.name || 'Congregação'}`
+                  : 'Lembrete semanal para a congregação'}
+              </p>
             </div>
           </div>
           <div className="p-5 space-y-6">
+            {!effectiveCongregationId && isSuperAdmin && (
+              <div className="p-4 bg-warning/10 border border-warning/20 rounded-lg">
+                <p className="text-sm text-warning-foreground">
+                  Selecione uma congregação no topo da página para configurar as notificações.
+                </p>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <div>
                 <Label>Ativar envio automático</Label>
@@ -244,6 +264,7 @@ export default function ConfiguracoesPage() {
               <Switch
                 checked={notifEnabled}
                 onCheckedChange={setNotifEnabled}
+                disabled={!effectiveCongregationId}
               />
             </div>
 
@@ -257,6 +278,7 @@ export default function ConfiguracoesPage() {
                 onChange={(e) => setNotifMessage(e.target.value)}
                 placeholder="Digite a mensagem que será enviada..."
                 className="min-h-[100px]"
+                disabled={!effectiveCongregationId}
               />
             </div>
 
@@ -270,14 +292,15 @@ export default function ConfiguracoesPage() {
                 value={notifDays}
                 onValueChange={setNotifDays}
                 className="justify-start flex-wrap"
+                disabled={!effectiveCongregationId}
               >
-                <ToggleGroupItem value="0" aria-label="Domingo" className="w-10 h-10">D</ToggleGroupItem>
-                <ToggleGroupItem value="1" aria-label="Segunda" className="w-10 h-10">S</ToggleGroupItem>
-                <ToggleGroupItem value="2" aria-label="Terça" className="w-10 h-10">T</ToggleGroupItem>
-                <ToggleGroupItem value="3" aria-label="Quarta" className="w-10 h-10">Q</ToggleGroupItem>
-                <ToggleGroupItem value="4" aria-label="Quinta" className="w-10 h-10">Q</ToggleGroupItem>
-                <ToggleGroupItem value="5" aria-label="Sexta" className="w-10 h-10">S</ToggleGroupItem>
-                <ToggleGroupItem value="6" aria-label="Sábado" className="w-10 h-10">S</ToggleGroupItem>
+                <ToggleGroupItem value="0" aria-label="Domingo" className="w-10 h-10" disabled={!effectiveCongregationId}>D</ToggleGroupItem>
+                <ToggleGroupItem value="1" aria-label="Segunda" className="w-10 h-10" disabled={!effectiveCongregationId}>S</ToggleGroupItem>
+                <ToggleGroupItem value="2" aria-label="Terça" className="w-10 h-10" disabled={!effectiveCongregationId}>T</ToggleGroupItem>
+                <ToggleGroupItem value="3" aria-label="Quarta" className="w-10 h-10" disabled={!effectiveCongregationId}>Q</ToggleGroupItem>
+                <ToggleGroupItem value="4" aria-label="Quinta" className="w-10 h-10" disabled={!effectiveCongregationId}>Q</ToggleGroupItem>
+                <ToggleGroupItem value="5" aria-label="Sexta" className="w-10 h-10" disabled={!effectiveCongregationId}>S</ToggleGroupItem>
+                <ToggleGroupItem value="6" aria-label="Sábado" className="w-10 h-10" disabled={!effectiveCongregationId}>S</ToggleGroupItem>
               </ToggleGroup>
             </div>
 
@@ -291,6 +314,7 @@ export default function ConfiguracoesPage() {
                 value={notifTime}
                 onChange={(e) => setNotifTime(e.target.value)}
                 className="max-w-[150px]"
+                disabled={!effectiveCongregationId}
               />
             </div>
 
@@ -299,7 +323,7 @@ export default function ConfiguracoesPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => saveNotificationMutation.mutate()}
-                disabled={saveNotificationMutation.isPending}
+                disabled={saveNotificationMutation.isPending || !effectiveCongregationId}
               >
                 {saveNotificationMutation.isPending ? "Salvando..." : "Salvar Configurações de Notificação"}
               </Button>
