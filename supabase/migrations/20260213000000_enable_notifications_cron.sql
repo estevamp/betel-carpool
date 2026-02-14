@@ -60,9 +60,15 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 4. Schedule the cron job (every 1 minute)
--- We use cron.unschedule first to ensure we can update the frequency if it already exists
-SELECT cron.unschedule('process-notifications') WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'process-notifications');
-SELECT cron.schedule('process-notifications', '* * * * *', 'SELECT public.trigger_process_scheduled_notifications()');
+-- We use a more robust way to ensure the job is updated
+DO $$
+BEGIN
+    -- Remove if exists
+    PERFORM cron.unschedule(jobid) FROM cron.job WHERE jobname = 'process-notifications';
+    
+    -- Schedule new
+    PERFORM cron.schedule('process-notifications', '* * * * *', 'SELECT public.trigger_process_scheduled_notifications()');
+END $$;
 
 -- 5. Insert placeholder settings if they don't exist
 -- We use a simpler approach to avoid ON CONFLICT issues if the table was created without PK initially

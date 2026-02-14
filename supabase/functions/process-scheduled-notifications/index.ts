@@ -63,10 +63,18 @@ serve(async (req) => {
       // Check if this is an internal request from pg_net/pg_cron
       // These requests come from within the Supabase infrastructure
       const userAgent = req.headers.get("user-agent") || "";
-      const isInternalRequest = userAgent.includes("pg_net") || userAgent.includes("supabase");
+      const host = req.headers.get("host") || "";
+      
+      // pg_net uses "node" as user-agent and requests come from localhost or internal network
+      const isInternalRequest =
+        userAgent.includes("pg_net") ||
+        userAgent.includes("supabase") ||
+        userAgent.includes("node") ||
+        host.includes("localhost");
       
       console.log("Internal request check:", {
         userAgent,
+        host,
         isInternalRequest
       });
       
