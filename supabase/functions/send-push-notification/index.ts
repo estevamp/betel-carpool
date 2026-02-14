@@ -92,15 +92,16 @@ serve(async (req) => {
     // Prepare the OneSignal notification payload
     const notificationPayload: any = {
       app_id: ONESIGNAL_APP_ID,
+      target_channel: "push",
       headings: { en: title, pt: title },
       contents: { en: message, pt: message },
     };
 
     // Add target users
     if (userId) {
-      notificationPayload.include_external_user_ids = [userId];
+      notificationPayload.include_aliases = { external_id: [userId] };
     } else if (userIds && userIds.length > 0) {
-      notificationPayload.include_external_user_ids = userIds;
+      notificationPayload.include_aliases = { external_id: userIds };
     }
 
     // Add optional fields

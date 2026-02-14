@@ -46,8 +46,26 @@ export function useOneSignal() {
     }
   }, [user, profile]);
 
+  const requestPermission = async () => {
+    const permissionGranted = await oneSignalService.requestPermission();
+
+    if (permissionGranted && user?.id) {
+      await oneSignalService.setExternalUserId(user.id);
+
+      if (profile) {
+        await oneSignalService.addTags({
+          congregation_id: profile.congregation_id || 'unknown',
+          user_role: 'betelita',
+          full_name: profile.full_name || 'Unknown',
+        });
+      }
+    }
+
+    return permissionGranted;
+  };
+
   return {
-    requestPermission: oneSignalService.requestPermission.bind(oneSignalService),
+    requestPermission,
     isSubscribed: oneSignalService.isSubscribed.bind(oneSignalService),
   };
 }

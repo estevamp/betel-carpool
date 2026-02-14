@@ -118,9 +118,10 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         app_id: ONESIGNAL_APP_ID,
+        target_channel: "push",
         headings: { en: "Aviso da Congregação", pt: "Aviso da Congregação" },
         contents: { en: message, pt: message },
-        include_external_user_ids: userIds,
+        include_aliases: { external_id: userIds },
       }),
     });
 
