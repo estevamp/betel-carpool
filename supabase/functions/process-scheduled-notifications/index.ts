@@ -9,6 +9,35 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const BRT_TIMEZONE = "America/Sao_Paulo";
+
+function toBrtDateKey(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: BRT_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function toHHMMSS(value: string): string {
+  const [rawHours = "0", rawMinutes = "0", rawSeconds = "0"] = value.split(":");
+  const hours = rawHours.padStart(2, "0");
+  const minutes = rawMinutes.padStart(2, "0");
+  const seconds = rawSeconds.padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+}
+
+function toBrtTimeKey(date: Date): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: BRT_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -90,40 +119,72 @@ serve(async (req) => {
       console.log("Authorized via service role key");
     }
 
-    // Get current day (0-6) and time (HH:mm)
-    // Use Intl to get the time in the correct timezone (America/Sao_Paulo)
+    // Get current day (0-6) and time in BRT
     const now = new Date();
     
     // Get Brazil Time (BRT)
-    const brTimeStr = now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+    const brTimeStr = now.toLocaleString("en-US", { timeZone: BRT_TIMEZONE });
     const brDate = new Date(brTimeStr);
     
     const currentDay = brDate.getDay(); // 0-6
     const hours = String(brDate.getHours()).padStart(2, '0');
     const minutes = String(brDate.getMinutes()).padStart(2, '0');
     const seconds = String(brDate.getSeconds()).padStart(2, '0');
-    const currentTime = `${hours}:${minutes}:${seconds}`;
+    const currentTime = toHHMMSS(`${hours}:${minutes}:${seconds}`);
+    const currentDateKey = toBrtDateKey(now);
 
-    console.log(`Running scheduler at ${currentTime} (BRT), day ${currentDay}, UTC: ${now.toISOString()}`);
+    console.log(`Running scheduler at ${currentTime} (BRT), day ${currentDay}, date ${currentDateKey}, UTC: ${now.toISOString()}`);
+
+    if (!ONESIGNAL_REST_API_KEY) {
+      throw new Error("ONESIGNAL_REST_API_KEY is not set");
+    }
 
     // Find settings that match today and are enabled
+    // We need to check if the scheduled_days array contains the current day
+    // Using a raw query because Supabase client doesn't have a good way to check array membership
     const { data: settings, error: settingsError } = await supabaseAdmin
       .from('notification_settings')
       .select('*, congregations(name)')
-      .eq('is_enabled', true)
-      .contains('scheduled_days', [currentDay]);
+      .eq('is_enabled', true);
 
     if (settingsError) throw settingsError;
 
-    for (const setting of settings) {
-      const scheduledTime = setting.scheduled_time;
+    // Filter settings to only those that include today in their scheduled_days
+    const todaySettings = (settings || []).filter(setting =>
+      setting.scheduled_days && setting.scheduled_days.includes(currentDay)
+    );
+
+    console.log(`Found ${todaySettings.length} notification settings for day ${currentDay} (${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][currentDay]})`);
+
+    for (const setting of todaySettings) {
+      const scheduledTime = toHHMMSS(String(setting.scheduled_time));
       const lastRun = setting.last_run_at ? new Date(setting.last_run_at) : null;
-      const isSameDay = lastRun && lastRun.toDateString() === now.toDateString();
+      const lastRunDateKey = lastRun ? toBrtDateKey(lastRun) : null;
+      const lastRunTimeKey = lastRun ? toBrtTimeKey(lastRun) : null;
+      const alreadyRanForThisSchedule =
+        lastRunDateKey === currentDateKey &&
+        !!lastRunTimeKey &&
+        lastRunTimeKey >= scheduledTime;
+      const shouldRun = currentTime >= scheduledTime && !alreadyRanForThisSchedule;
+
+      console.log("Schedule check:", {
+        settingId: setting.id,
+        congregationId: setting.congregation_id,
+        scheduledTimeRaw: setting.scheduled_time,
+        scheduledTime,
+        currentTime,
+        currentDateKey,
+        lastRunAt: setting.last_run_at,
+        lastRunDateKey,
+        lastRunTimeKey,
+        alreadyRanForThisSchedule,
+        shouldRun,
+      });
 
       // If scheduled time has passed and we haven't run today
       // We use a 15-minute window to ensure we don't miss it if the cron runs slightly off
       // but the !isSameDay check is the primary guard against double-sending
-      if (currentTime >= scheduledTime && !isSameDay) {
+      if (shouldRun) {
         console.log(`Sending scheduled notification for congregation: ${setting.congregations?.name} (${setting.congregation_id}). Scheduled: ${scheduledTime}, Current: ${currentTime}`);
 
         // Get all users from this congregation
@@ -184,6 +245,10 @@ serve(async (req) => {
             .update({ last_run_at: now.toISOString() })
             .eq('id', setting.id);
         }
+      } else {
+        console.log(
+          `Skipping setting ${setting.id}: scheduled=${scheduledTime}, current=${currentTime}, alreadyRanForThisSchedule=${alreadyRanForThisSchedule}, lastRun=${setting.last_run_at ?? "null"}`
+        );
       }
     }
 
