@@ -16,6 +16,10 @@ interface NotificationRequest {
   message: string;
   url?: string;
   data?: Record<string, any>;
+  ios_attachments?: Record<string, string>;
+  android_accent_color?: string;
+  small_icon?: string;
+  large_icon?: string;
 }
 
 serve(async (req) => {
@@ -93,15 +97,17 @@ serve(async (req) => {
     const notificationPayload: any = {
       app_id: ONESIGNAL_APP_ID,
       target_channel: "push",
-      headings: { en: title, pt: title },
-      contents: { en: message, pt: message },
+      headings: { en: title, pt: title, "pt-BR": title },
+      contents: { en: message, pt: message, "pt-BR": message },
+      isAnyWeb: true,
+      web_buttons: url ? [{ id: "open-url", text: "Abrir", icon: "", url }] : undefined,
     };
 
     // Add target users
     if (userId) {
-      notificationPayload.include_aliases = { external_id: [userId] };
+      notificationPayload.include_external_user_ids = [userId];
     } else if (userIds && userIds.length > 0) {
-      notificationPayload.include_aliases = { external_id: userIds };
+      notificationPayload.include_external_user_ids = userIds;
     }
 
     // Add optional fields
@@ -158,3 +164,4 @@ serve(async (req) => {
     );
   }
 });
+

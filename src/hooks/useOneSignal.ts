@@ -12,7 +12,7 @@ export function useOneSignal() {
     const initializeOneSignal = async () => {
       const hostname = window.location.hostname;
       const isVercelHost =
-        hostname === 'betel-carpool.vercel.app' || hostname.endsWith('.vercel.app');
+        hostname === 'betel-carpool.vercel.app' || hostname.endsWith('.vercel.app') || hostname === 'localhost';
 
       if (!isVercelHost) {
         console.log('OneSignal disabled in non-production environment');

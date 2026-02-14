@@ -125,10 +125,10 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               app_id: ONESIGNAL_APP_ID,
-              target_channel: "push",
+              channel_for_external_user_ids: "push",
               headings: { en: "Lembrete da Congregação", pt: "Lembrete da Congregação" },
               contents: { en: setting.message, pt: setting.message },
-              include_aliases: { external_id: userIds },
+              include_external_user_ids: userIds,
             }),
           });
 
@@ -159,3 +159,4 @@ serve(async (req) => {
     });
   }
 });
+

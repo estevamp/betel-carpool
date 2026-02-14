@@ -117,10 +117,17 @@ class OneSignalService {
   async setExternalUserId(userId: string): Promise<void> {
     try {
       await this.withOneSignal(async (OneSignal) => {
+        // Check if already logged in with this ID to avoid redundant calls
+        const currentExternalId = await OneSignal.User.externalId;
+        if (currentExternalId === userId) {
+          console.log('OneSignal: Already logged in with external ID:', userId);
+          return true;
+        }
+        
+        console.log('OneSignal: Logging in with external ID:', userId);
         await OneSignal.login(userId);
         return true;
       });
-      console.log('OneSignal: External user ID set:', userId);
     } catch (error) {
       console.error('Error setting external user ID:', error);
     }
