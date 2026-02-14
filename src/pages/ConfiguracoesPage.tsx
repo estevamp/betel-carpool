@@ -292,16 +292,7 @@ export default function ConfiguracoesPage() {
       )}
 
       {/* Admin Only */}
-      {(isAdmin || isSuperAdmin) && <div className="bg-card rounded-xl border border-warning/30 shadow-card overflow-hidden">
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-warning/5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
-              <Shield className="h-5 w-5 text-warning" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-foreground">Área Administrativa</h2>
-              <p className="text-sm text-muted-foreground">Apenas administradores</p>
-            </div>
-          </div>
+      {(isAdmin || isSuperAdmin) && <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
           <div className="p-5 space-y-6">
             {/* Transport Settings */}
             <div className="space-y-4 pb-6 border-b border-border">
@@ -338,30 +329,42 @@ export default function ConfiguracoesPage() {
                 <Label htmlFor="maxPassengers">Máximo de passageiros por viagem</Label>
                 <Input id="maxPassengers" type="number" defaultValue="4" min="1" max="10" />
               </div>
+              
               {isSuperAdmin && (
-                <div className="grid gap-2 pt-4 border-t border-border">
-                  <Label htmlFor="defaultCongregation">Congregação Padrão para Super-Admin</Label>
-                  <Select value={defaultCongregationId} onValueChange={setDefaultCongregationId}>
-                    <SelectTrigger id="defaultCongregation">
-                      <SelectValue placeholder="Selecione uma congregação..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {congregations && congregations.map((cong) => (
-                        <SelectItem key={cong.id} value={cong.id}>
-                          {cong.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Esta congregação será selecionada automaticamente ao fazer login
-                  </p>
+                <div className="mt-6 pt-6 border-t border-border space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
+                      <Shield className="h-5 w-5 text-warning" />
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-foreground">Área Administrativa</h2>
+                      <p className="text-sm text-muted-foreground">Apenas para super-admins</p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="defaultCongregation">Congregação Padrão para Super-Admin</Label>
+                    <Select value={defaultCongregationId} onValueChange={setDefaultCongregationId}>
+                      <SelectTrigger id="defaultCongregation">
+                        <SelectValue placeholder="Selecione uma congregação..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {congregations && congregations.map((cong) => (
+                          <SelectItem key={cong.id} value={cong.id}>
+                            {cong.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Esta congregação será selecionada automaticamente ao fazer login
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>}
-
       {/* Save Button */}
       <div className="flex justify-end">
         <Button className="bg-primary hover:bg-primary/90" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
