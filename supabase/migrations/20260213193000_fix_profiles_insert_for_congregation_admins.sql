@@ -3,6 +3,7 @@
 
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Profiles can be inserted by super admins" ON public.profiles;
+DROP POLICY IF EXISTS "Authorized users can insert profiles" ON public.profiles;
 
 CREATE POLICY "Authorized users can insert profiles"
     ON public.profiles FOR INSERT
