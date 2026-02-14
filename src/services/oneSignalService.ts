@@ -17,6 +17,31 @@ export interface OneSignalNotificationOptions {
 
 class OneSignalService {
   private isInitialized = false;
+  
+  private async withOneSignal<T>(callback: (oneSignal: any) => Promise<T>): Promise<T | null> {
+    try {
+      if ((window as any).OneSignal) {
+        return await callback((window as any).OneSignal);
+      }
+
+      if (window.OneSignalDeferred) {
+        return await new Promise<T>((resolve, reject) => {
+          window.OneSignalDeferred!.push(async (OneSignal: any) => {
+            try {
+              const result = await callback(OneSignal);
+              resolve(result);
+            } catch (error) {
+              reject(error);
+            }
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Error waiting for OneSignal:', error);
+    }
+
+    return null;
+  }
 
   /**
    * Initialize OneSignal and get user permission
@@ -46,13 +71,10 @@ class OneSignalService {
    */
   async requestPermission(): Promise<boolean> {
     try {
-      if (!window.OneSignal) {
-        console.warn('OneSignal not loaded yet');
-        return false;
-      }
-
-      const permission = await window.OneSignal.Notifications.requestPermission();
-      return permission;
+      const permission = await this.withOneSignal(async (OneSignal) => {
+        return await OneSignal.Notifications.requestPermission();
+      });
+      return !!permission;
     } catch (error) {
       console.error('Error requesting notification permission:', error);
       return false;
@@ -64,10 +86,10 @@ class OneSignalService {
    */
   async isSubscribed(): Promise<boolean> {
     try {
-      if (!window.OneSignal) return false;
-      
-      const permission = await window.OneSignal.Notifications.permission;
-      return permission;
+      const permission = await this.withOneSignal(async (OneSignal) => {
+        return await OneSignal.Notifications.permission;
+      });
+      return !!permission;
     } catch (error) {
       console.error('Error checking subscription status:', error);
       return false;
@@ -79,9 +101,9 @@ class OneSignalService {
    */
   async getPlayerId(): Promise<string | null> {
     try {
-      if (!window.OneSignal) return null;
-      
-      const userId = await window.OneSignal.User.PushSubscription.id;
+      const userId = await this.withOneSignal(async (OneSignal) => {
+        return await OneSignal.User.PushSubscription.id;
+      });
       return userId;
     } catch (error) {
       console.error('Error getting player ID:', error);
@@ -94,9 +116,10 @@ class OneSignalService {
    */
   async setExternalUserId(userId: string): Promise<void> {
     try {
-      if (!window.OneSignal) return;
-      
-      await window.OneSignal.login(userId);
+      await this.withOneSignal(async (OneSignal) => {
+        await OneSignal.login(userId);
+        return true;
+      });
       console.log('OneSignal: External user ID set:', userId);
     } catch (error) {
       console.error('Error setting external user ID:', error);
@@ -108,9 +131,10 @@ class OneSignalService {
    */
   async addTags(tags: Record<string, string>): Promise<void> {
     try {
-      if (!window.OneSignal) return;
-      
-      await window.OneSignal.User.addTags(tags);
+      await this.withOneSignal(async (OneSignal) => {
+        await OneSignal.User.addTags(tags);
+        return true;
+      });
       console.log('OneSignal: Tags added:', tags);
     } catch (error) {
       console.error('Error adding tags:', error);
