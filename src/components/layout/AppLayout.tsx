@@ -18,7 +18,7 @@ export function AppLayout() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background">
+      <div className="flex min-h-screen w-full overflow-x-hidden bg-background">
         {/* Desktop Sidebar */}
         <AppSidebar />
 
@@ -41,7 +41,7 @@ export function AppLayout() {
         </div>
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col min-h-screen">
+        <main className="flex min-h-screen min-w-0 flex-1 flex-col">
           <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
           {showCongregationSelector && (
             <div className="flex items-center gap-2 p-4 lg:p-6 border-b border-border">
@@ -49,7 +49,7 @@ export function AppLayout() {
               <CongregationSelector value={selectedCongregationId} onChange={setSelectedCongregationId} />
             </div>
           )}
-          <div className="flex-1 p-4 lg:p-6 overflow-auto custom-scrollbar">
+          <div className="custom-scrollbar flex-1 min-w-0 overflow-auto p-4 lg:p-6">
             <Outlet />
           </div>
         </main>

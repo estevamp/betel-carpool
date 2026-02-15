@@ -127,6 +127,14 @@
     @apply border-border;
   }
 
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   html {
     font-family: 'Inter', system-ui, sans-serif;
   }
