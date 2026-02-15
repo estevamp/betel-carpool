@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
+import { oneSignalService } from "@/services/oneSignalService";
 
 type TripType = Database["public"]["Enums"]["trip_type"];
 
@@ -141,14 +142,56 @@ export function useTrips() {
   const reserveSeatMutation = useMutation({
     mutationFn: async ({ tripId, tripType, passengerId }: { tripId: string; tripType: TripType; passengerId?: string }) => {
       if (!profile) throw new Error("Usuário não autenticado");
+      const targetPassengerId = passengerId || profile.id;
 
       const { error } = await supabase.from("trip_passengers").insert({
         trip_id: tripId,
-        passenger_id: passengerId || profile.id,
+        passenger_id: targetPassengerId,
         trip_type: tripType,
       });
 
       if (error) throw error;
+
+      // Notify the driver when someone else adds a passenger to their trip.
+      try {
+        const { data: tripData, error: tripError } = await supabase
+          .from("trips")
+          .select("id, driver_id, departure_at, driver:profiles!trips_driver_id_fkey(user_id)")
+          .eq("id", tripId)
+          .single();
+
+        if (tripError) throw tripError;
+        if (!tripData) return;
+
+        // Skip notification when the driver performed the change.
+        if (profile.id === tripData.driver_id) return;
+
+        const { data: passengerProfile, error: passengerError } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", targetPassengerId)
+          .single();
+
+        if (passengerError) throw passengerError;
+
+        const driverUserId = (tripData.driver as { user_id?: string } | null)?.user_id;
+        const passengerName = passengerProfile?.full_name || "Um passageiro";
+
+        if (driverUserId) {
+          await oneSignalService.sendNotificationToUser(driverUserId, {
+            title: "Novo Passageiro na Viagem",
+            message: `${passengerName} foi adicionado à sua viagem.`,
+            url: "/viagens",
+            data: {
+              type: "trip_passenger_added",
+              tripId: tripData.id,
+              passengerName,
+            },
+          });
+        }
+      } catch (notificationError) {
+        console.error("Error sending trip passenger notification to driver:", notificationError);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["trips"] });
@@ -182,12 +225,50 @@ export function useTrips() {
 
   const deleteTripMutation = useMutation({
     mutationFn: async (tripId: string) => {
+      let passengerUserIds: string[] = [];
+
+      try {
+        const { data: passengersData, error: passengersError } = await supabase
+          .from("trip_passengers")
+          .select("profile:profiles!trip_passengers_passenger_id_fkey(user_id)")
+          .eq("trip_id", tripId);
+
+        if (passengersError) throw passengersError;
+
+        passengerUserIds = Array.from(
+          new Set(
+            (passengersData || [])
+              .map((row: any) => row.profile?.user_id)
+              .filter((userId: string | null | undefined): userId is string => !!userId)
+          )
+        );
+      } catch (fetchPassengersError) {
+        console.error("Error loading passengers for trip cancel notification:", fetchPassengersError);
+      }
+
       const { error } = await supabase
         .from("trips")
         .update({ is_active: false })
         .eq("id", tripId);
 
       if (error) throw error;
+
+      // Notify all passengers that the trip was canceled.
+      if (passengerUserIds.length > 0) {
+        try {
+          await oneSignalService.sendNotificationToUsers(passengerUserIds, {
+            title: "Viagem Cancelada",
+            message: "A viagem em que você estava inscrito foi cancelada.",
+            url: "/viagens",
+            data: {
+              type: "trip_canceled",
+              tripId,
+            },
+          });
+        } catch (notificationError) {
+          console.error("Error sending trip canceled notifications to passengers:", notificationError);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["trips"] });
