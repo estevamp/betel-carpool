@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Wallet,
   HelpCircle,
+  Info,
   Settings,
   LogOut,
   X,
@@ -19,7 +20,17 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
-const mainNavItems = [
+import { APP_INFO } from "@/lib/appInfo";
+
+interface NavItemConfig {
+  icon: typeof Home;
+  label: string;
+  path: string;
+  adminOnly: boolean;
+  superAdminOnly?: boolean;
+}
+
+const mainNavItems: NavItemConfig[] = [
   {
     icon: Home,
     label: "Início",
@@ -70,7 +81,7 @@ const mainNavItems = [
     superAdminOnly: true,
   },
 ];
-const secondaryNavItems = [
+const secondaryNavItems: NavItemConfig[] = [
   {
     icon: User,
     label: "Perfil",
@@ -90,6 +101,13 @@ const secondaryNavItems = [
     label: "Configurações",
     path: "/configuracoes",
     adminOnly: true,
+    superAdminOnly: false,
+  },
+  {
+    icon: Info,
+    label: "Sobre",
+    path: "/sobre",
+    adminOnly: false,
     superAdminOnly: false,
   },
 ];
@@ -122,7 +140,7 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
       .slice(0, 2)
       .toUpperCase();
   };
-  const NavItem = ({ item }: { item: (typeof mainNavItems)[0] }) => {
+  const NavItem = ({ item }: { item: NavItemConfig }) => {
     const isActive = location.pathname === item.path;
     return (
       <NavLink
@@ -230,6 +248,9 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
+        <p className="mt-2 text-center text-xs text-sidebar-foreground/50">
+          v{APP_INFO.version} ({APP_INFO.commit})
+        </p>
       </div>
     </div>
   );

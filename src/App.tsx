@@ -22,6 +22,7 @@ import AuthPage from "./pages/AuthPage";
 import CongregationsPage from "./pages/CongregationsPage";
 import DebugProfilesPage from "./pages/DebugProfilesPage";
 import TestNotificationsPage from "./pages/TestNotificationsPage";
+import AboutPage from "./pages/AboutPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ const AppContent = () => {
         <Route path="/congregacoes" element={<CongregationsPage />} />
         <Route path="/debug-profiles" element={<DebugProfilesPage />} />
         <Route path="/test-notifications" element={<TestNotificationsPage />} />
+        <Route path="/sobre" element={<AboutPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
