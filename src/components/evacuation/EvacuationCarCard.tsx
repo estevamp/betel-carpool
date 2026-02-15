@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
-import { Car, MapPin, Trash2, X } from "lucide-react";
+import { Car, MapPin, Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEvacuation, EvacuationCar } from "@/hooks/useEvacuation";
 import { AddPassengerPopover } from "./AddPassengerPopover";
+import { EditEvacuationCarDialog } from "./EditEvacuationCarDialog";
 
 interface EvacuationCarCardProps {
   car: EvacuationCar;
@@ -67,15 +68,26 @@ export function EvacuationCarCard({ car }: EvacuationCarCardProps) {
               {car.passengers.length}/{car.max_seats}
             </span>
             {canManage && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={handleDeleteCar}
-                disabled={isDeletingCar}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <>
+                <EditEvacuationCarDialog car={car}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </EditEvacuationCarDialog>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={handleDeleteCar}
+                  disabled={isDeletingCar}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </>
             )}
           </div>
         </div>

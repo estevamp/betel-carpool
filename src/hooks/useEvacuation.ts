@@ -31,6 +31,12 @@ export interface CreateEvacuationCarData {
   congregation_id?: string; // Adicionar para super-admin
 }
 
+export interface UpdateEvacuationCarData {
+  id: string;
+  destination?: string;
+  notes?: string;
+}
+
 export function useEvacuation() {
   const { profile, isAdmin } = useAuth();
   const queryClient = useQueryClient();
@@ -124,20 +130,16 @@ export function useEvacuation() {
 
   const deleteCarMutation = useMutation({
     mutationFn: async (carId: string) => {
-      // First delete all passengers associated with this car
-      const { error: passengersError } = await supabase
-        .from("evacuation_passengers")
-        .delete()
-        .eq("evacuation_car_id", carId);
-
-      if (passengersError) throw passengersError;
-
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("evacuation_cars")
         .delete()
-        .eq("id", carId);
+        .eq("id", carId)
+        .select("id");
 
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Sem permissão para remover este carro");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["evacuation"] });
@@ -146,6 +148,32 @@ export function useEvacuation() {
     onError: (error: Error) => {
       console.error("Error deleting evacuation car:", error);
       toast.error("Erro ao remover carro: " + error.message);
+    },
+  });
+
+  const updateCarMutation = useMutation({
+    mutationFn: async (data: UpdateEvacuationCarData) => {
+      const { data: updatedCars, error } = await supabase
+        .from("evacuation_cars")
+        .update({
+          destination: data.destination || null,
+          notes: data.notes || null,
+        })
+        .eq("id", data.id)
+        .select("id");
+
+      if (error) throw error;
+      if (!updatedCars || updatedCars.length === 0) {
+        throw new Error("Sem permissão para editar este carro");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["evacuation"] });
+      toast.success("Carro atualizado!");
+    },
+    onError: (error: Error) => {
+      console.error("Error updating evacuation car:", error);
+      toast.error("Erro ao atualizar carro: " + error.message);
     },
   });
 
@@ -250,6 +278,8 @@ export function useEvacuation() {
     error: evacuationQuery.error,
     createCar: createCarMutation.mutate,
     isCreatingCar: createCarMutation.isPending,
+    updateCar: updateCarMutation.mutate,
+    isUpdatingCar: updateCarMutation.isPending,
     deleteCar: deleteCarMutation.mutate,
     isDeletingCar: deleteCarMutation.isPending,
     addPassenger: addPassengerMutation.mutate,
