@@ -230,18 +230,35 @@ export function useTrips() {
       try {
         const { data: passengersData, error: passengersError } = await supabase
           .from("trip_passengers")
-          .select("profile:profiles!trip_passengers_passenger_id_fkey(user_id)")
+          .select("passenger_id")
           .eq("trip_id", tripId);
 
         if (passengersError) throw passengersError;
 
-        passengerUserIds = Array.from(
+        const passengerProfileIds = Array.from(
           new Set(
             (passengersData || [])
-              .map((row: any) => row.profile?.user_id)
-              .filter((userId: string | null | undefined): userId is string => !!userId)
+              .map((row) => row.passenger_id)
+              .filter((id): id is string => !!id)
           )
         );
+
+        if (passengerProfileIds.length > 0) {
+          const { data: profilesData, error: profilesError } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .in("id", passengerProfileIds);
+
+          if (profilesError) throw profilesError;
+
+          passengerUserIds = Array.from(
+            new Set(
+              (profilesData || [])
+                .map((row) => row.user_id)
+                .filter((userId): userId is string => !!userId)
+            )
+          );
+        }
       } catch (fetchPassengersError) {
         console.error("Error loading passengers for trip cancel notification:", fetchPassengersError);
       }
