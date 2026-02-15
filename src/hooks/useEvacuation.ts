@@ -130,6 +130,13 @@ export function useEvacuation() {
 
   const deleteCarMutation = useMutation({
     mutationFn: async (carId: string) => {
+      const { error: passengersError } = await supabase
+        .from("evacuation_passengers")
+        .delete()
+        .eq("evacuation_car_id", carId);
+
+      if (passengersError) throw passengersError;
+
       const { data, error } = await supabase
         .from("evacuation_cars")
         .delete()
