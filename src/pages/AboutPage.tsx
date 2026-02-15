@@ -65,7 +65,7 @@ export default function AboutPage() {
           Doações
         </h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          A manutenção e desenvolvimento gera alguns custos. Se vocêquiser me pagar um café, fique à vontade pra fazer um PIX para{" "}
+          A manutenção e desenvolvimento gera alguns custos. Se você quiser me pagar um café, fique à vontade pra fazer um PIX para{" "}
           <span className="font-medium text-foreground">estevamp@gmail.com</span> ;-).
         </p>
       </section>
