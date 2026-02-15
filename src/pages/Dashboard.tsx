@@ -121,6 +121,45 @@ export default function Dashboard() {
     },
   });
 
+  const todayDateString = format(new Date(), "yyyy-MM-dd");
+
+  const { data: upcomingRideRequests = [] } = useQuery({
+    queryKey: ["ride_requests", "from_today", selectedCongregationId],
+    queryFn: async () => {
+      if (!selectedCongregationId) return [];
+
+      const { data, error } = await supabase
+        .from("ride_requests")
+        .select("id, requested_date, profile:profiles(full_name)")
+        .eq("is_fulfilled", false)
+        .eq("congregation_id", selectedCongregationId)
+        .gte("requested_date", todayDateString)
+        .order("requested_date", { ascending: true });
+
+      if (error) throw error;
+
+      return data ?? [];
+    },
+  });
+
+  const { data: activeAbsences = [] } = useQuery({
+    queryKey: ["absences", "ending_from_today", selectedCongregationId],
+    queryFn: async () => {
+      if (!selectedCongregationId) return [];
+
+      const { data, error } = await supabase
+        .from("absences")
+        .select("id, start_date, end_date, profile:profiles(full_name)")
+        .eq("congregation_id", selectedCongregationId)
+        .gte("end_date", todayDateString)
+        .order("end_date", { ascending: true });
+
+      if (error) throw error;
+
+      return data ?? [];
+    },
+  });
+
   const subtitle = "Sistema de transporte de betelitas | " + firstName;
   return (
     <motion.div className="space-y-8 max-w-4xl mx-auto" variants={containerVariants} initial="hidden" animate="visible">
@@ -219,6 +258,98 @@ export default function Dashboard() {
                   <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <p className="font-medium text-foreground">Sem viagens hoje</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Ride Requests */}
+      <motion.div variants={itemVariants}>
+        <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
+                <Search className="h-5 w-5 text-warning" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground">Procura de Vagas</h2>
+                <p className="text-sm text-muted-foreground">Solicitações com data a partir de hoje</p>
+              </div>
+            </div>
+            <Link to="/procura-vagas" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+              Ver todas
+            </Link>
+          </div>
+
+          <div className="divide-y divide-border">
+            {upcomingRideRequests.length > 0 ? (
+              upcomingRideRequests.map((request) => (
+                <Link
+                  key={request.id}
+                  to="/procura-vagas"
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning/10">
+                    <Search className="h-6 w-6 text-warning" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground">{request.profile?.full_name ?? "Desconhecido"}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(parseISO(request.requested_date), "dd/MM/yyyy")}
+                    </p>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <p className="font-medium text-foreground">Sem procura de vagas a partir de hoje</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Active Absences */}
+      <motion.div variants={itemVariants}>
+        <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <Plane className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground">Ausências Ativas</h2>
+                <p className="text-sm text-muted-foreground">Ausências com data de fim a partir de hoje</p>
+              </div>
+            </div>
+            <Link to="/ausencia" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+              Ver todas
+            </Link>
+          </div>
+
+          <div className="divide-y divide-border">
+            {activeAbsences.length > 0 ? (
+              activeAbsences.map((absence) => (
+                <Link
+                  key={absence.id}
+                  to="/ausencia"
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                    <Plane className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground">{absence.profile?.full_name ?? "Desconhecido"}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(parseISO(absence.start_date), "dd/MM/yyyy")} - {format(parseISO(absence.end_date), "dd/MM/yyyy")}
+                    </p>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <p className="font-medium text-foreground">Sem ausências com data de fim a partir de hoje</p>
               </div>
             )}
           </div>
