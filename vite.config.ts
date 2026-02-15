@@ -9,6 +9,22 @@ const packageJson = JSON.parse(readFileSync(new URL("./package.json", import.met
   version?: string;
 };
 
+const normalizeVersion = (value?: string): string | null => {
+  if (!value) return null;
+
+  const trimmed = value.trim();
+  if (!trimmed || /^0\.0\.0(?:[-+].*)?$/.test(trimmed)) {
+    return null;
+  }
+
+  // Accept "major.minor" and normalize to valid semver for native build tooling.
+  if (/^\d+\.\d+$/.test(trimmed)) {
+    return `${trimmed}.0`;
+  }
+
+  return trimmed;
+};
+
 const getGitCommit = () => {
   try {
     return execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] })
@@ -35,7 +51,9 @@ export default defineConfig(({ mode }) => ({
     },
   },
   define: {
-    __APP_VERSION__: JSON.stringify(process.env.VITE_APP_VERSION ?? packageJson.version ?? "0.0.0"),
+    __APP_VERSION__: JSON.stringify(
+      normalizeVersion(process.env.VITE_APP_VERSION) ?? normalizeVersion(packageJson.version) ?? "0.0.0"
+    ),
     __APP_COMMIT__: JSON.stringify(process.env.VITE_APP_COMMIT ?? getGitCommit()),
     __APP_BUILD_DATE__: JSON.stringify(process.env.VITE_APP_BUILD_DATE ?? new Date().toISOString()),
   },
