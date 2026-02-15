@@ -58,17 +58,6 @@ export default function AboutPage() {
           fins.
         </p>
       </section>
-
-      <section className="rounded-xl border border-border bg-card p-5 shadow-card">
-        <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
-          <HeartHandshake className="h-4 w-4 text-primary" />
-          Doações
-        </h2>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          A manutenção e desenvolvimento gera alguns custos. Se você quiser me pagar um café, fique à vontade pra fazer um PIX para{" "}
-          <span className="font-medium text-foreground">estevamp@gmail.com</span> ;-).
-        </p>
-      </section>
     </div>
   );
 }
