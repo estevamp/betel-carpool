@@ -33,6 +33,9 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
   const [isUrgent, setIsUrgent] = useState(false);
   const [isBetelCar, setIsBetelCar] = useState(false);
   const [notes, setNotes] = useState("");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!date) return;
@@ -105,7 +108,7 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
                     mode="single"
                     selected={date}
                     onSelect={setDate}
-                    disabled={(date) => date < new Date()}
+                    disabled={(selectedDate) => selectedDate < today}
                     initialFocus
                     className="pointer-events-auto"
                   />
