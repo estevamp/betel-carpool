@@ -40,7 +40,7 @@ export default function AboutPage() {
           Suporte
         </h2>
         <p className="text-sm text-muted-foreground">
-          Para suporte, entre em contato pelo e-mail{" "}
+          Se quiser reclamar, sugerir alguma coisa ou pedir uma ajuda, é só mandar um e-mail para {" "}
           <a className="font-medium text-primary underline underline-offset-4" href="mailto:estevamp@gmail.com">
             estevamp@gmail.com
           </a>
@@ -54,8 +54,8 @@ export default function AboutPage() {
           Aviso de Uso
         </h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Esse aplicativo foi desenvolvido apenas para uso da família de Betel. Não deve ser distribuído para outros
-          usos.
+          Esse aplicativo foi desenvolvido apenas para uso da família de Betel. Não deve ser usado para outros
+          fins.
         </p>
       </section>
 
@@ -65,8 +65,8 @@ export default function AboutPage() {
           Doações
         </h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          A manutenção e desenvolvimento gera alguns custos. Se quiser me pagar um café, pode fazer um PIX para{" "}
-          <span className="font-medium text-foreground">estevamp@gmail.com</span>.
+          A manutenção e desenvolvimento gera alguns custos. Se vocêquiser me pagar um café, fique à vontade pra fazer um PIX para{" "}
+          <span className="font-medium text-foreground">estevamp@gmail.com</span> ;-).
         </p>
       </section>
     </div>
