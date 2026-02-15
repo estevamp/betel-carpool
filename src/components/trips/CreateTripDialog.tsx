@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Plus, Car } from "lucide-react";
+import { CalendarIcon, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,16 +18,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import type { CreateTripData } from "@/hooks/useTrips";
 interface CreateTripDialogProps {
   onCreateTrip: (data: CreateTripData) => void;
   isCreating?: boolean;
-  isDriver?: boolean;
 }
-export function CreateTripDialog({ onCreateTrip, isCreating, isDriver }: CreateTripDialogProps) {
-  const navigate = useNavigate();
+export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogProps) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date>();
   const [departureTime, setDepartureTime] = useState("18:30");
@@ -69,20 +65,6 @@ export function CreateTripDialog({ onCreateTrip, isCreating, isDriver }: CreateT
     setNotes("");
     setOpen(false);
   };
-  if (!isDriver) {
-    return (
-      <Alert className="border-muted">
-        <Car className="h-4 w-4" />
-        <AlertTitle>Você não é motorista</AlertTitle>
-        <AlertDescription className="flex flex-col gap-2">
-          <span>Para criar viagens, ative a opção "Sou motorista" no seu perfil.</span>
-          <Button variant="outline" size="sm" className="w-fit" onClick={() => navigate("/perfil")}>
-            Ir para Perfil
-          </Button>
-        </AlertDescription>
-      </Alert>
-    );
-  }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -96,7 +78,7 @@ export function CreateTripDialog({ onCreateTrip, isCreating, isDriver }: CreateT
           <DialogHeader>
             <DialogTitle>Criar Nova Viagem</DialogTitle>
             <DialogDescription>
-              Preencha os dados da viagem. Passageiros poderão reservar vagas disponíveis.
+              Preencha os dados da viagem. Em carro de Betel, passageiros ficam isentos de pagamento.
             </DialogDescription>
           </DialogHeader>
 

@@ -326,6 +326,14 @@ export function TripCard({
         </div>
 
         {/* Notes */}
+        {trip.is_betel_car && (
+          <div className="mt-4 p-3 rounded-lg bg-info/10">
+            <p className="text-sm text-info">
+              Passageiros desta viagem são isentos de pagamento.
+            </p>
+          </div>
+        )}
+
         {trip.notes && (
           <div className="mt-4 p-3 rounded-lg bg-muted/50">
             <p className="text-sm text-muted-foreground">

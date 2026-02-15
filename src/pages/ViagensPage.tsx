@@ -80,7 +80,6 @@ export default function ViagensPage() {
         <CreateTripDialog
           onCreateTrip={createTrip}
           isCreating={isCreating}
-          isDriver={profile?.is_driver ?? false}
         />
       </div>
 
@@ -153,9 +152,9 @@ export default function ViagensPage() {
           <p className="text-sm text-muted-foreground mt-1">
             {searchTerm
               ? "Tente ajustar os filtros de busca"
-              : profile?.is_driver
+              : profile
               ? "Crie uma nova viagem para começar"
-              : "Aguarde motoristas criarem viagens"}
+              : "Aguarde betelitas criarem viagens"}
           </p>
         </div>
       )}
