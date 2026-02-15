@@ -87,14 +87,21 @@ export default function ConfiguracoesPage() {
   useEffect(() => {
     if (isSuperAdmin) {
       const loadDefaultCong = async () => {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("settings")
-          .select("value")
+          .select("value, congregation_id, updated_at")
           .eq("key", "default_congregation_id")
-          .limit(1)
-          .maybeSingle();
-        if (data?.value) {
-          setDefaultCongregationId(data.value);
+          .order("updated_at", { ascending: false });
+
+        if (error) {
+          console.error("Erro ao carregar congregação padrão:", error);
+          return;
+        }
+
+        // Prefer rows in the new format: value === congregation_id
+        const defaultRow = (data ?? []).find((row) => row.value === row.congregation_id) ?? data?.[0];
+        if (defaultRow?.value) {
+          setDefaultCongregationId(defaultRow.value);
         }
       };
       loadDefaultCong();
@@ -191,28 +198,25 @@ export default function ConfiguracoesPage() {
 
       // Save default congregation ID for super-admin (global setting)
       if (isSuperAdmin && defaultCongregationId) {
-        const { data: existingDefault } = await supabase
+        // Keep a single row for this key to avoid ambiguous reads after per-congregation settings migration
+        const { error: deleteDefaultError } = await supabase
           .from("settings")
-          .select("id")
           .eq("key", "default_congregation_id")
-          .limit(1)
-          .maybeSingle();
+          .delete();
 
-        if (existingDefault) {
-          await supabase
-            .from("settings")
-            .update({ value: defaultCongregationId })
-            .eq("key", "default_congregation_id")
-            .limit(1);
-        } else {
-          await supabase
-            .from("settings")
-            .insert({
-              key: "default_congregation_id",
-              value: defaultCongregationId,
-              type: "string",
-              congregation_id: effectiveCongregationId,
-            });
+        if (deleteDefaultError) throw deleteDefaultError;
+
+        const { error: insertDefaultError } = await supabase
+          .from("settings")
+          .insert({
+            key: "default_congregation_id",
+            value: defaultCongregationId,
+            type: "string",
+            congregation_id: defaultCongregationId,
+          });
+
+        if (insertDefaultError) {
+          throw insertDefaultError;
         }
       }
     },

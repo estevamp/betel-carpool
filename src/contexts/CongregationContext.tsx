@@ -25,14 +25,22 @@ export const CongregationProvider = ({ children }: { children: ReactNode }) => {
     if (isSuperAdmin && !selectedCongregationId) {
       const loadDefaultCongregation = async () => {
         try {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('settings')
-            .select('value')
+            .select('value, congregation_id, updated_at')
             .eq('key', 'default_congregation_id')
-            .maybeSingle();
+            .order('updated_at', { ascending: false });
 
-          if (data?.value && congregations.some((c) => c.id === data.value)) {
-            setSelectedCongregationId(data.value);
+          if (error) {
+            throw error;
+          }
+
+          // Prefer rows in the new format: value === congregation_id
+          const defaultRow = (data ?? []).find((row) => row.value === row.congregation_id) ?? data?.[0];
+          const defaultCongregationId = defaultRow?.value;
+
+          if (defaultCongregationId && congregations.some((c) => c.id === defaultCongregationId)) {
+            setSelectedCongregationId(defaultCongregationId);
           } else {
             setSelectedCongregationId(congregations[0].id);
           }
