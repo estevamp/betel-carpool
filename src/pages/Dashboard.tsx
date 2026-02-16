@@ -30,7 +30,7 @@ const quickAccessItems = [
   },
   {
     icon: Search,
-    label: "Procura de Vagas",
+    label: "Preciso de Carona",
     path: "/procura-vagas",
     color: "bg-warning",
   },
@@ -278,7 +278,7 @@ export default function Dashboard() {
                 <Search className="h-5 w-5 text-warning" />
               </div>
               <div>
-                <h2 className="font-semibold text-foreground">Procura de Vagas</h2>
+                <h2 className="font-semibold text-foreground">Preciso de Carona</h2>
               </div>
             </div>
             <Link to="/procura-vagas" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
@@ -307,7 +307,7 @@ export default function Dashboard() {
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-10 text-center">
-                <p className="font-medium text-foreground">Sem procura de vagas a partir de hoje</p>
+                <p className="font-medium text-foreground">Ninguém procurando carona :-)</p>
               </div>
             )}
           </div>

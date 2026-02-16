@@ -57,7 +57,7 @@ const mainNavItems: NavItemConfig[] = [
   },
   {
     icon: Search,
-    label: "Procura de Vagas",
+    label: "Preciso de Carona",
     path: "/procura-vagas",
     adminOnly: false,
   },

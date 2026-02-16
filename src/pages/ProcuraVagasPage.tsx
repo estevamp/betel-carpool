@@ -32,7 +32,7 @@ export default function ProcuraVagasPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Procura de Vagas</h1>
+          <h1 className="text-2xl font-bold text-foreground">Preciso de Carona</h1>
           <p className="text-muted-foreground">
             {isLoading
               ? "Carregando..."
@@ -72,7 +72,7 @@ export default function ProcuraVagasPage() {
           </div>
           <h3 className="font-semibold text-foreground">Parece que está tudo certo!</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Ninguém está procurando carona no momento
+            Ninguém está procurando carona no momento :-)
           </p>
         </div>
       )}
