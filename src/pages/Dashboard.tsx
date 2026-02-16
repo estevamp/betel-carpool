@@ -75,7 +75,7 @@ const itemVariants = {
       duration: 0.4,
       ease: [0.25, 0.1, 0.25, 1] as const,
     },
-  },
+  }, 
 };
 export default function Dashboard() {
   const { profile } = useAuth();
@@ -262,7 +262,7 @@ export default function Dashboard() {
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
                   <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <p className="font-medium text-foreground">Sem viagens programadas</p>
+                <p className="font-medium text-foreground">Nenhuma viagem programada :-(</p>
               </div>
             )}
           </div>
@@ -323,7 +323,7 @@ export default function Dashboard() {
                 <Plane className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h2 className="font-semibold text-foreground">Ausências Ativas</h2>
+                <h2 className="font-semibold text-foreground">Ausências</h2>
               </div>
             </div>
             <Link to="/ausencia" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
@@ -352,7 +352,7 @@ export default function Dashboard() {
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-10 text-center">
-                <p className="font-medium text-foreground">Nenhuma ausência ativa</p>
+                <p className="font-medium text-foreground">Ninguém está ausente</p>
               </div>
             )}
           </div>
