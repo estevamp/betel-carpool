@@ -92,7 +92,7 @@ export default function Dashboard() {
 
   // Fetch today's trips
   const { data: todayTrips = [] } = useQuery({
-    queryKey: ["trips", "today", selectedCongregationId], // Add selectedCongregationId to queryKey
+    queryKey: ["trips", "from_today", selectedCongregationId], // Add selectedCongregationId to queryKey
     queryFn: async () => {
       if (!selectedCongregationId) return []; // Don't fetch if no congregation is selected
 
@@ -274,7 +274,6 @@ export default function Dashboard() {
               </div>
               <div>
                 <h2 className="font-semibold text-foreground">Procura de Vagas</h2>
-                <p className="text-sm text-muted-foreground">Solicitações com data a partir de hoje</p>
               </div>
             </div>
             <Link to="/procura-vagas" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
@@ -320,7 +319,6 @@ export default function Dashboard() {
               </div>
               <div>
                 <h2 className="font-semibold text-foreground">Ausências Ativas</h2>
-                <p className="text-sm text-muted-foreground">Ausências com data de fim a partir de hoje</p>
               </div>
             </div>
             <Link to="/ausencia" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
@@ -349,7 +347,7 @@ export default function Dashboard() {
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-10 text-center">
-                <p className="font-medium text-foreground">Sem ausências com data de fim a partir de hoje</p>
+                <p className="font-medium text-foreground">Nenhuma ausência ativa</p>
               </div>
             )}
           </div>
