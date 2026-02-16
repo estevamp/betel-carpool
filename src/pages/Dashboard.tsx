@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, isToday, parseISO } from "date-fns";
+import { format, isToday, parseISO, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
 import { useCongregations } from "@/hooks/useCongregations";
@@ -90,11 +90,13 @@ export default function Dashboard() {
 
   const congregationName = currentCongregation?.name;
 
-  // Fetch today's trips
+  // Fetch today's trips and future trips
   const { data: todayTrips = [] } = useQuery({
     queryKey: ["trips", "from_today", selectedCongregationId], // Add selectedCongregationId to queryKey
     queryFn: async () => {
       if (!selectedCongregationId) return []; // Don't fetch if no congregation is selected
+
+      const todayStart = startOfDay(new Date()).toISOString();
 
       const { data, error } = await supabase
         .from("trips")
@@ -107,17 +109,13 @@ export default function Dashboard() {
         )
         .eq("is_active", true)
         .eq("congregation_id", selectedCongregationId) // Filter by congregation_id
+        .gte("departure_at", todayStart) // Get trips from today onwards
         .order("departure_at", {
           ascending: true,
         });
       if (error) throw error;
 
-      // Filter trips that depart today
-      const today = new Date();
-      return (data ?? []).filter((trip) => {
-        const departureDate = parseISO(trip.departure_at);
-        return isToday(departureDate);
-      });
+      return data ?? [];
     },
   });
 
@@ -193,7 +191,7 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* Today's Trips */}
+      {/* Today's Trips and Future Trips */}
       <motion.div variants={itemVariants}>
         <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -202,9 +200,9 @@ export default function Dashboard() {
                 <Calendar className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h2 className="font-semibold text-foreground">Viagens de Hoje</h2>
+                <h2 className="font-semibold text-foreground">Viagens de Hoje e Futuras</h2>
                 <p className="text-sm text-muted-foreground">
-                  {format(new Date(), "EEEE, d 'de' MMMM", {
+                  A partir de {format(new Date(), "d 'de' MMMM", {
                     locale: ptBR,
                   })}
                 </p>
@@ -221,7 +219,11 @@ export default function Dashboard() {
                 const passengerCount = trip.passengers?.length || 0;
                 const maxPassengers = trip.max_passengers || 4;
                 const availableSeats = maxPassengers - passengerCount;
-                const departureTime = format(parseISO(trip.departure_at), "HH:mm");
+                const departureDate = parseISO(trip.departure_at);
+                const departureTime = format(departureDate, "HH:mm");
+                const departureDateStr = format(departureDate, "dd/MM/yyyy");
+                const isTodayTrip = isToday(departureDate);
+                
                 return (
                   <Link
                     key={trip.id}
@@ -239,7 +241,10 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      <span className="font-medium">{departureTime}</span>
+                      <div className="flex flex-col items-end">
+                        <span className="font-medium">{departureTime}</span>
+                        {!isTodayTrip && <span className="text-xs">{departureDateStr}</span>}
+                      </div>
                     </div>
                     <span
                       className={cn(
@@ -257,7 +262,7 @@ export default function Dashboard() {
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
                   <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <p className="font-medium text-foreground">Sem viagens hoje</p>
+                <p className="font-medium text-foreground">Sem viagens programadas</p>
               </div>
             )}
           </div>
