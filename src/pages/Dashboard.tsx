@@ -200,7 +200,7 @@ export default function Dashboard() {
                 <Calendar className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h2 className="font-semibold text-foreground">Viagens de Hoje e Futuras</h2>
+                <h2 className="font-semibold text-foreground">Próximas Viagens</h2>
                 <p className="text-sm text-muted-foreground">
                   A partir de {format(new Date(), "d 'de' MMMM", {
                     locale: ptBR,
