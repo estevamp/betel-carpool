@@ -74,7 +74,7 @@ export default function ViagensPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Viagens</h1>
           <p className="text-muted-foreground">
-            Gerencie as viagens e reserve vagas
+            Coloque seu carro à disposição ou reserve uma vaga pra você em um dos carros. 
           </p>
         </div>
         <CreateTripDialog
@@ -147,7 +147,7 @@ export default function ViagensPage() {
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Car className="h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="font-semibold text-foreground">
-            Nenhuma viagem encontrada
+            Não há viagens no momento.
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
             {searchTerm
