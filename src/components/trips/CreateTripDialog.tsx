@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Plus } from "lucide-react";
@@ -20,6 +20,10 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { CreateTripData } from "@/hooks/useTrips";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
+import { useAuth } from "@/contexts/AuthContext";
 interface CreateTripDialogProps {
   onCreateTrip: (data: CreateTripData) => void;
   isCreating?: boolean;
@@ -35,6 +39,37 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
   const [notes, setNotes] = useState("");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  const { profile, isSuperAdmin } = useAuth();
+  const { selectedCongregationId } = useSelectedCongregation();
+  
+  // Determine the effective congregation ID
+  const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : profile?.congregation_id;
+
+  // Fetch congregation settings to get default max_passengers
+  const { data: settings } = useQuery({
+    queryKey: ["settings", effectiveCongregationId],
+    queryFn: async () => {
+      if (!effectiveCongregationId) return null;
+      const { data, error } = await supabase
+        .from("settings")
+        .select("*")
+        .eq("congregation_id", effectiveCongregationId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!effectiveCongregationId,
+  });
+
+  // Update maxPassengers when settings are loaded
+  useEffect(() => {
+    if (settings) {
+      const maxPassSetting = settings.find(s => s.key === "max_passengers");
+      if (maxPassSetting) {
+        setMaxPassengers(Number(maxPassSetting.value));
+      }
+    }
+  }, [settings]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,11 +93,12 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
       notes: notes || undefined,
     });
 
-    // Reset form
+    // Reset form - use default from settings
+    const defaultMaxPassengers = settings?.find(s => s.key === "max_passengers")?.value || "4";
     setDate(undefined);
     setDepartureTime("18:30");
     setReturnTime("21:30");
-    setMaxPassengers(4);
+    setMaxPassengers(Number(defaultMaxPassengers));
     setIsUrgent(false);
     setIsBetelCar(false);
     setNotes("");
