@@ -78,6 +78,8 @@ export function useTrips() {
 
       if (isSuperAdmin && selectedCongregationId) {
         query = query.eq("congregation_id", selectedCongregationId);
+      } else if (!isSuperAdmin && profile?.congregation_id) {
+        query = query.eq("congregation_id", profile.congregation_id);
       }
 
       const { data: trips, error } = await query;
