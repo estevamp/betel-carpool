@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
@@ -21,6 +21,16 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CreateAbsenceData } from "@/hooks/useAbsences";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBetelitas } from "@/hooks/useBetelitas";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CreateAbsenceDialogProps {
   open: boolean;
@@ -38,6 +48,18 @@ export function CreateAbsenceDialog({
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState("");
+  const [profileId, setProfileId] = useState<string>("");
+
+  const { profile, isSuperAdmin } = useAuth();
+  const { selectedCongregationId } = useSelectedCongregation();
+  const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : profile?.congregation_id;
+  const { data: betelitas } = useBetelitas({ congregationId: effectiveCongregationId || undefined });
+
+  useEffect(() => {
+    if (profile && !profileId) {
+      setProfileId(profile.id);
+    }
+  }, [profile]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,12 +70,14 @@ export function CreateAbsenceDialog({
       start_date: startDate.toISOString(),
       end_date: endDate.toISOString(),
       notes: notes.trim() || undefined,
+      profile_id: profileId !== profile?.id ? profileId : undefined,
     });
 
     // Reset form
     setStartDate(undefined);
     setEndDate(undefined);
     setNotes("");
+    setProfileId(profile?.id || "");
     onOpenChange(false);
   };
 
@@ -70,6 +94,25 @@ export function CreateAbsenceDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
+            {/* User Selection (Admins only) */}
+            {(isSuperAdmin || profile?.is_admin) && (
+              <div className="grid gap-2">
+                <Label htmlFor="profile">Betelita</Label>
+                <Select value={profileId} onValueChange={setProfileId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o betelita" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {betelitas?.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Start Date */}
             <div className="grid gap-2">
               <Label>Data de Início</Label>

@@ -24,6 +24,15 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBetelitas } from "@/hooks/useBetelitas";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 interface CreateTripDialogProps {
   onCreateTrip: (data: CreateTripData) => void;
   isCreating?: boolean;
@@ -37,6 +46,7 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
   const [isUrgent, setIsUrgent] = useState(false);
   const [isBetelCar, setIsBetelCar] = useState(false);
   const [notes, setNotes] = useState("");
+  const [driverId, setDriverId] = useState<string>("");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -45,6 +55,16 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
   
   // Determine the effective congregation ID
   const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : profile?.congregation_id;
+
+  const { data: betelitas } = useBetelitas({ congregationId: effectiveCongregationId || undefined });
+  const drivers = betelitas?.filter(b => b.is_driver) || [];
+
+  // Set default driver when profile is loaded or when it's an admin
+  useEffect(() => {
+    if (profile && !driverId) {
+      setDriverId(profile.id);
+    }
+  }, [profile]);
 
   // Fetch congregation settings to get default max_passengers
   const { data: settings } = useQuery({
@@ -91,6 +111,7 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
       is_urgent: isUrgent,
       is_betel_car: isBetelCar,
       notes: notes || undefined,
+      driver_id: driverId !== profile?.id ? driverId : undefined,
     });
 
     // Reset form - use default from settings
@@ -102,6 +123,7 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
     setIsUrgent(false);
     setIsBetelCar(false);
     setNotes("");
+    setDriverId(profile?.id || "");
     setOpen(false);
   };
   return (
@@ -122,6 +144,25 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            {/* Driver Selection (Admins only) */}
+            {(isSuperAdmin || profile?.is_admin) && (
+              <div className="grid gap-2">
+                <Label htmlFor="driver">Motorista</Label>
+                <Select value={driverId} onValueChange={setDriverId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o motorista" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {drivers.map((driver) => (
+                      <SelectItem key={driver.id} value={driver.id}>
+                        {driver.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Date */}
             <div className="grid gap-2">
               <Label>Data da Viagem</Label>

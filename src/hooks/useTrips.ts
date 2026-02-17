@@ -46,6 +46,7 @@ export interface CreateTripData {
   is_betel_car: boolean;
   notes?: string;
   congregation_id?: string; // Adicionar para super-admin
+  driver_id?: string; // Adicionar para admin/super-admin criar em nome de outros
 }
 
 export interface UpdateTripData extends CreateTripData {
@@ -94,7 +95,7 @@ export function useTrips() {
       if (!profile) throw new Error("Usuário não autenticado");
       
       const { error } = await supabase.from("trips").insert({
-        driver_id: profile.id,
+        driver_id: data.driver_id || profile.id,
         departure_at: data.departure_at,
         return_at: data.return_at || null,
         max_passengers: data.max_passengers,
@@ -120,6 +121,7 @@ export function useTrips() {
       const { error } = await supabase
         .from("trips")
         .update({
+          driver_id: data.driver_id || undefined,
           departure_at: data.departure_at,
           return_at: data.return_at || null,
           max_passengers: data.max_passengers,

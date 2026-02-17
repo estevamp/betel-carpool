@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
@@ -22,6 +22,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useRideRequests } from "@/hooks/useRideRequests";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBetelitas } from "@/hooks/useBetelitas";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CreateRideRequestDialogProps {
   children: React.ReactNode;
@@ -31,6 +41,18 @@ export function CreateRideRequestDialog({ children }: CreateRideRequestDialogPro
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date>();
   const [notes, setNotes] = useState("");
+  const [profileId, setProfileId] = useState<string>("");
+
+  const { profile, isSuperAdmin } = useAuth();
+  const { selectedCongregationId } = useSelectedCongregation();
+  const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : profile?.congregation_id;
+  const { data: betelitas } = useBetelitas({ congregationId: effectiveCongregationId || undefined });
+
+  useEffect(() => {
+    if (profile && !profileId) {
+      setProfileId(profile.id);
+    }
+  }, [profile]);
 
   const { createRideRequest, isCreating } = useRideRequests();
 
@@ -41,12 +63,14 @@ export function CreateRideRequestDialog({ children }: CreateRideRequestDialogPro
       {
         requested_date: date.toISOString(),
         notes: notes.trim() || undefined,
+        profile_id: profileId !== profile?.id ? profileId : undefined,
       },
       {
         onSuccess: () => {
           setOpen(false);
           setDate(undefined);
           setNotes("");
+          setProfileId(profile?.id || "");
         },
       }
     );
@@ -65,6 +89,25 @@ export function CreateRideRequestDialog({ children }: CreateRideRequestDialogPro
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
+          {/* User Selection (Admins only) */}
+          {(isSuperAdmin || profile?.is_admin) && (
+            <div className="grid gap-2">
+              <Label htmlFor="profile">Betelita</Label>
+              <Select value={profileId} onValueChange={setProfileId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o betelita" />
+                </SelectTrigger>
+                <SelectContent>
+                  {betelitas?.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="grid gap-2">
             <Label>Data da Carona *</Label>
             <Popover>

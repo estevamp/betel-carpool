@@ -22,6 +22,7 @@ export interface CreateAbsenceData {
   end_date: string;
   notes?: string;
   congregation_id?: string; // Adicionar para super-admin
+  profile_id?: string; // Adicionar para admin/super-admin criar em nome de outros
 }
 
 export function useAbsences() {
@@ -59,7 +60,7 @@ export function useAbsences() {
       if (!profile?.id) throw new Error("Usuário não autenticado");
 
       const { error } = await supabase.from("absences").insert({
-        profile_id: profile.id,
+        profile_id: data.profile_id || profile.id,
         start_date: data.start_date,
         end_date: data.end_date,
         notes: data.notes || null,

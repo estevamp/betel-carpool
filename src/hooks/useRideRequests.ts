@@ -21,6 +21,7 @@ export interface CreateRideRequestData {
   requested_date: string;
   notes?: string;
   congregation_id?: string; // Adicionar para super-admin
+  profile_id?: string; // Adicionar para admin/super-admin criar em nome de outros
 }
 
 export function useRideRequests() {
@@ -61,7 +62,7 @@ export function useRideRequests() {
       if (!profile?.id) throw new Error("Usuário não autenticado");
 
       const { error } = await supabase.from("ride_requests").insert({
-        profile_id: profile.id,
+        profile_id: data.profile_id || profile.id,
         requested_date: data.requested_date,
         notes: data.notes || null,
         congregation_id: isSuperAdmin && selectedCongregationId ? selectedCongregationId : profile.congregation_id,
