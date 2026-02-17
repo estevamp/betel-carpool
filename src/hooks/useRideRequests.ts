@@ -40,6 +40,8 @@ export function useRideRequests() {
 
       if (isSuperAdmin && selectedCongregationId) {
         query = query.eq("congregation_id", selectedCongregationId);
+      } else if (!isSuperAdmin && profile?.congregation_id) {
+        query = query.eq("congregation_id", profile.congregation_id);
       }
 
       // Fetch ride requests that are not fulfilled
