@@ -45,6 +45,7 @@ const itemVariants = {
 interface TripCardProps {
   trip: Trip;
   currentUserId?: string;
+  isAdmin?: boolean;
   profiles?: Profile[];
   onReserveSeat: (data: { tripId: string; tripType: TripType; passengerId?: string }) => void;
   onCancelReservation: (tripId: string) => void;
@@ -59,6 +60,7 @@ interface TripCardProps {
 export function TripCard({
   trip,
   currentUserId,
+  isAdmin,
   profiles,
   onReserveSeat,
   onCancelReservation,
@@ -79,6 +81,7 @@ export function TripCard({
   const availableSeats = (trip.max_passengers ?? 4) - trip.passengers.length;
   const isFull = availableSeats <= 0;
   const isDriver = trip.driver_id === currentUserId;
+  const canManageTrip = isDriver || isAdmin;
   const isPassenger = trip.passengers.some((p) => p.passenger_id === currentUserId);
 
   const departureDate = new Date(trip.departure_at);
@@ -172,7 +175,7 @@ export function TripCard({
             </div>
           </div>
 
-          {isDriver && (
+          {canManageTrip && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="shrink-0">
@@ -216,7 +219,7 @@ export function TripCard({
                 Passageiros ({trip.passengers.length}/{trip.max_passengers ?? 4})
               </span>
             </div>
-            {isDriver && !isFull && (
+            {canManageTrip && !isFull && (
               <Dialog open={addPassengerDialogOpen} onOpenChange={setAddPassengerDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1">

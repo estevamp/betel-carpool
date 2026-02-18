@@ -22,7 +22,7 @@ const containerVariants = {
 
 export default function ViagensPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const { data: profiles } = useProfiles();
   const {
     trips,
@@ -132,6 +132,7 @@ export default function ViagensPage() {
               key={trip.id}
               trip={trip}
               currentUserId={profile?.id}
+              isAdmin={isAdmin}
               profiles={congregationProfiles}
               onReserveSeat={reserveSeat}
               onCancelReservation={cancelReservation}
