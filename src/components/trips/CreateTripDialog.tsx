@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
-import { useIsCongregationAdmin } from "@/hooks/useIsCongregationAdmin";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBetelitas } from "@/hooks/useBetelitas";
+import { useIsCongregationAdmin } from "@/hooks/useIsCongregationAdmin";
 import {
   Select,
   SelectContent,
@@ -147,7 +147,7 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
 
           <div className="grid gap-4 py-4">
             {/* Driver Selection (Admins only) */}
-            {(isSuperAdmin || profile?.is_admin) && (
+            {(isSuperAdmin || isCongregationAdmin) && (
               <div className="grid gap-2">
                 <Label htmlFor="driver">Motorista</Label>
                 <Select value={driverId} onValueChange={setDriverId}>

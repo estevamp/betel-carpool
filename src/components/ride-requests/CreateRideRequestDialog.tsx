@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { useRideRequests } from "@/hooks/useRideRequests";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBetelitas } from "@/hooks/useBetelitas";
+import { useIsCongregationAdmin } from "@/hooks/useIsCongregationAdmin";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
 import {
   Select,
@@ -44,6 +45,7 @@ export function CreateRideRequestDialog({ children }: CreateRideRequestDialogPro
   const [profileId, setProfileId] = useState<string>("");
 
   const { profile, isSuperAdmin } = useAuth();
+  const { isCongregationAdmin } = useIsCongregationAdmin();
   const { selectedCongregationId } = useSelectedCongregation();
   const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : profile?.congregation_id;
   const { data: betelitas } = useBetelitas({ congregationId: effectiveCongregationId || undefined });
@@ -90,7 +92,7 @@ export function CreateRideRequestDialog({ children }: CreateRideRequestDialogPro
 
         <div className="grid gap-4 py-4">
           {/* User Selection (Admins only) */}
-          {(isSuperAdmin || profile?.is_admin) && (
+          {(isSuperAdmin || isCongregationAdmin) && (
             <div className="grid gap-2">
               <Label htmlFor="profile">Betelita</Label>
               <Select value={profileId} onValueChange={setProfileId}>
