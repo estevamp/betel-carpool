@@ -39,6 +39,10 @@ export default function ViagensPage() {
     removePassenger,
   } = useTrips();
 
+  const congregationProfiles = profiles?.filter(
+    (p) => p.congregation_id === profile?.congregation_id,
+  );
+
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Set to start of day for comparison
 
@@ -128,7 +132,7 @@ export default function ViagensPage() {
               key={trip.id}
               trip={trip}
               currentUserId={profile?.id}
-              profiles={profiles}
+              profiles={congregationProfiles}
               onReserveSeat={reserveSeat}
               onCancelReservation={cancelReservation}
               onRemovePassenger={removePassenger}
