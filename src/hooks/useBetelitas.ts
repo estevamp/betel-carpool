@@ -18,18 +18,20 @@ export interface Betelita {
   user_id: string | null;
 }
 
+import { useIsCongregationAdmin } from "./useIsCongregationAdmin";
 import { useIsSuperAdmin } from "./useIsSuperAdmin";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
 
 export function useBetelitas(options?: { congregationId?: string }) {
   const { isSuperAdmin } = useIsSuperAdmin();
+  const { isCongregationAdmin } = useIsCongregationAdmin();
   const { selectedCongregationId } = useSelectedCongregation();
   const { profile } = useAuth();
 
   // Prioritize explicitly passed congregationId over context selectedCongregationId
   // This allows administrative pages to fetch betelitas from specific congregations
   const effectiveCongregationId = options?.congregationId ?? (
-    isSuperAdmin ? selectedCongregationId : profile?.congregation_id
+    (isSuperAdmin || isCongregationAdmin) ? selectedCongregationId : profile?.congregation_id
   );
 
   return useQuery({
