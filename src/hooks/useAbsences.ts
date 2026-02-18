@@ -39,8 +39,12 @@ export function useAbsences() {
         .select("*, profile:profiles(id, full_name)")
         .order("start_date", { ascending: true });
 
-      if (isSuperAdmin && selectedCongregationId) {
-        query = query.eq("congregation_id", selectedCongregationId);
+      if (isSuperAdmin) {
+        if (selectedCongregationId) {
+          query = query.eq("congregation_id", selectedCongregationId);
+        }
+      } else if (profile?.congregation_id) {
+        query = query.eq("congregation_id", profile.congregation_id);
       }
 
       // Fetch absences
