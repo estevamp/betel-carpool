@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
+import { useIsCongregationAdmin } from "@/hooks/useIsCongregationAdmin";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,7 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
   today.setHours(0, 0, 0, 0);
 
   const { profile, isSuperAdmin } = useAuth();
+  const { isCongregationAdmin } = useIsCongregationAdmin();
   const { selectedCongregationId } = useSelectedCongregation();
   
   // Determine the effective congregation ID

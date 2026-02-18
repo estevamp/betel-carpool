@@ -13,11 +13,11 @@ CREATE POLICY "Drivers can create trips"
             OR 
             -- User is an admin creating for someone else in the same congregation
             (
-                public.is_congregation_admin(public.get_current_congregation_id()) 
+                public.is_congregation_admin(trips.congregation_id)
                 AND EXISTS (
                     SELECT 1 FROM public.profiles p
                     WHERE p.id = trips.driver_id
-                    AND p.congregation_id = public.get_current_congregation_id()
+                    AND p.congregation_id = trips.congregation_id
                 )
             )
             OR
@@ -47,11 +47,11 @@ CREATE POLICY "Users can manage their own absences"
             profile_id = public.get_current_profile_id() 
             OR 
             (
-                public.is_congregation_admin(public.get_current_congregation_id())
+                public.is_congregation_admin(absences.congregation_id)
                 AND EXISTS (
                     SELECT 1 FROM public.profiles p
                     WHERE p.id = absences.profile_id
-                    AND p.congregation_id = public.get_current_congregation_id()
+                    AND p.congregation_id = absences.congregation_id
                 )
             )
             OR public.is_super_admin()
@@ -79,11 +79,11 @@ CREATE POLICY "Users can manage their own ride requests"
             profile_id = public.get_current_profile_id() 
             OR 
             (
-                public.is_congregation_admin(public.get_current_congregation_id())
+                public.is_congregation_admin(ride_requests.congregation_id)
                 AND EXISTS (
                     SELECT 1 FROM public.profiles p
                     WHERE p.id = ride_requests.profile_id
-                    AND p.congregation_id = public.get_current_congregation_id()
+                    AND p.congregation_id = ride_requests.congregation_id
                 )
             )
             OR public.is_super_admin()
