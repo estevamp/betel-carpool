@@ -10,10 +10,7 @@ export default function AboutPage() {
             <Info className="h-8 w-8 text-primary" />
           </div>
         </div>
-        <h1 className="text-2xl font-bold text-foreground">Sobre o App</h1>
-        <p className="mt-2 text-muted-foreground">
-          Informações de versão, suporte e uso do Carpool Betel.
-        </p>
+        <h1 className="text-2xl font-bold text-foreground">Sobre Betel Carpool</h1>
       </div>
 
       <section className="rounded-xl border border-border bg-card p-5 shadow-card">
