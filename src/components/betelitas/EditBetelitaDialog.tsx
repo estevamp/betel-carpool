@@ -179,9 +179,9 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-1.5">
+          <DialogTitle className="flex items-center gap-1.5 text-lg sm:text-xl">
             Editar Betelita
             {person.user_id && (
               <span title="Vinculado ao sistema">
@@ -191,9 +191,9 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-2">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1">
-            <Label htmlFor="full_name" className="text-xs">
+            <Label htmlFor="full_name" className="text-xs sm:text-sm">
               Nome completo
             </Label>
             <Input
@@ -201,12 +201,12 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
               required
-              className="text-sm h-8"
+              className="text-sm h-9"
             />
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="email" className="text-xs">
+            <Label htmlFor="email" className="text-xs sm:text-sm">
               Email
             </Label>
             <Input
@@ -214,19 +214,19 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="text-sm h-8"
+              className="text-sm h-9"
             />
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="sex" className="text-xs">
+            <Label htmlFor="sex" className="text-xs sm:text-sm">
               Sexo
             </Label>
             <Select
               value={formData.sex}
               onValueChange={(value: "Homem" | "Mulher") => setFormData({ ...formData, sex: value })}
             >
-              <SelectTrigger className="text-sm h-8">
+              <SelectTrigger className="text-sm h-9">
                 <SelectValue placeholder="Selecione o sexo" />
               </SelectTrigger>
               <SelectContent>
@@ -237,19 +237,19 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="pix_key" className="text-xs">
+            <Label htmlFor="pix_key" className="text-xs sm:text-sm">
               Chave PIX
             </Label>
             <Input
               id="pix_key"
               value={formData.pix_key}
               onChange={(e) => setFormData({ ...formData, pix_key: e.target.value })}
-              className="text-sm h-8"
+              className="text-sm h-9"
             />
           </div>
 
-          <div className="flex items-center justify-between py-1">
-            <Label htmlFor="is_driver" className="text-xs">
+          <div className="flex items-center justify-between py-1 px-1">
+            <Label htmlFor="is_driver" className="text-xs sm:text-sm">
               Motorista
             </Label>
             <Switch
@@ -259,8 +259,8 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
             />
           </div>
 
-          <div className="flex items-center justify-between py-1">
-            <Label htmlFor="is_exempt" className="text-xs">
+          <div className="flex items-center justify-between py-1 px-1">
+            <Label htmlFor="is_exempt" className="text-xs sm:text-sm">
               Isento de pagamento
             </Label>
             <Switch
@@ -270,8 +270,8 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
             />
           </div>
 
-          <div className="flex items-center justify-between py-1">
-            <Label htmlFor="is_married" className="text-xs">
+          <div className="flex items-center justify-between py-1 px-1">
+            <Label htmlFor="is_married" className="text-xs sm:text-sm">
               Casado(a)
             </Label>
             <Switch
@@ -289,14 +289,14 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
 
           {formData.is_married && (
             <div className="space-y-1">
-              <Label htmlFor="spouse_id" className="text-xs">
+              <Label htmlFor="spouse_id" className="text-xs sm:text-sm">
                 Cônjuge
               </Label>
               <Select
                 value={formData.spouse_id}
                 onValueChange={(value) => setFormData({ ...formData, spouse_id: value })}
               >
-                <SelectTrigger className="text-sm h-8">
+                <SelectTrigger className="text-sm h-9">
                   <SelectValue placeholder="Selecione o cônjuge" />
                 </SelectTrigger>
                 <SelectContent>
@@ -310,39 +310,45 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
             </div>
           )}
 
-          <DialogFooter className="flex-col-reverse sm:flex-row gap-1 pt-2">
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={updateMutation.isPending || isInviting}
-              size="sm"
+              className="w-full sm:w-auto order-last sm:order-first"
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={updateMutation.isPending || isInviting} size="sm">
-              {updateMutation.isPending ? "Salvando..." : "Salvar"}
-            </Button>
-            <Button
-              type="button"
-              disabled={updateMutation.isPending || isInviting || !formData.email}
-              onClick={handleSendInvite}
-              size="sm"
-            >
-              {isInviting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
-              Enviar Convite
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={updateMutation.isPending || isInviting}
-              onClick={handleCopyLink}
-              size="sm"
-              title="Copiar link do convite"
-            >
-              <Copy className="h-3 w-3" />
-              Copiar link
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button 
+                type="submit" 
+                disabled={updateMutation.isPending || isInviting} 
+                className="w-full sm:w-auto"
+              >
+                {updateMutation.isPending ? "Salvando..." : "Salvar"}
+              </Button>
+              <Button
+                type="button"
+                disabled={updateMutation.isPending || isInviting || !formData.email}
+                onClick={handleSendInvite}
+                className="w-full sm:w-auto"
+              >
+                {isInviting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
+                Convidar
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={updateMutation.isPending || isInviting}
+                onClick={handleCopyLink}
+                className="w-full sm:w-auto"
+                title="Copiar link do convite"
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copiar link
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -122,27 +122,27 @@ export default function BetelitasPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Betelitas</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Betelitas</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             {isLoading ? "Carregando..." : `${betelitas.length} membros cadastrados`}
           </p>
         </div>
         {isAdmin && (
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
               onClick={() => setShowBroadcastDialog(true)}
             >
               <Bell className="h-4 w-4" />
               Notificar Todos
             </Button>
             <CreateBetelitaDialog>
-              <Button className="gap-2 bg-primary hover:bg-primary/90">
+              <Button className="gap-2 bg-primary hover:bg-primary/90 w-full sm:w-auto">
                 <Plus className="h-4 w-4" />
                 Adicionar Betelita
               </Button>
@@ -158,15 +158,16 @@ export default function BetelitasPage() {
             placeholder="Buscar por nome..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 h-9 sm:h-10"
           />
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
           <Button
             variant={filter === "all" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("all")}
+            className="flex-1 sm:flex-none whitespace-nowrap"
           >
             Todos
           </Button>
@@ -174,7 +175,7 @@ export default function BetelitasPage() {
             variant={filter === "drivers" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("drivers")}
-            className="gap-1"
+            className="gap-1 flex-1 sm:flex-none whitespace-nowrap"
           >
             <Car className="h-4 w-4" />
             Motoristas
@@ -183,7 +184,7 @@ export default function BetelitasPage() {
             variant={filter === "admins" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("admins")}
-            className="gap-1"
+            className="gap-1 flex-1 sm:flex-none whitespace-nowrap"
           >
             <Shield className="h-4 w-4" />
             Admins
@@ -205,7 +206,7 @@ export default function BetelitasPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
+                  <th className="text-left px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium text-muted-foreground">
                     Nome
                   </th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground hidden md:table-cell">
@@ -214,10 +215,10 @@ export default function BetelitasPage() {
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground hidden lg:table-cell">
                     Sexo
                   </th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
+                  <th className="text-left px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium text-muted-foreground">
                     Status
                   </th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">
+                  <th className="text-right px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium text-muted-foreground">
                     Ações
                   </th>
                 </tr>
@@ -227,7 +228,7 @@ export default function BetelitasPage() {
                   <tr>
                     <td
                       colSpan={5}
-                      className="px-4 py-8 text-center text-muted-foreground"
+                      className="px-4 py-8 text-center text-muted-foreground text-sm"
                     >
                       {searchTerm || filter !== "all"
                         ? "Nenhum resultado encontrado"
@@ -265,18 +266,18 @@ export default function BetelitasPage() {
       />
 
       <AlertDialog open={!!deletePerson} onOpenChange={(open) => !open && setDeletePerson(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Betelita</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-sm">
               Tem certeza que deseja excluir <strong>{deletePerson?.full_name}</strong>? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto order-2 sm:order-1">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deletePerson && deleteMutation.mutate(deletePerson)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto order-1 sm:order-2"
             >
               {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
             </AlertDialogAction>
