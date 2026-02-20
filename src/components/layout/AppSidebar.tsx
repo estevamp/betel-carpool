@@ -175,7 +175,11 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
     >
       {/* Header */}
       <div className="flex items-center justify-between gap-2 px-4 py-5 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
+        <NavLink
+          to="/"
+          onClick={onClose}
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+        >
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary shadow-lg">
             <Car className="h-4 w-4 text-primary-foreground" />
           </div>
@@ -183,7 +187,7 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
             <span className="font-semibold text-sidebar-foreground">Carpool Betel</span>
             <span className="text-xs text-sidebar-foreground/60 truncate max-w-[120px]">{congregationName}</span>
           </div>
-        </div>
+        </NavLink>
         {mobile && (
           <Button
             variant="ghost"
