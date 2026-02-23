@@ -79,12 +79,19 @@ serve(async (req: Request): Promise<Response> => {
     // Check if profile already exists with this email
     const { data: existingProfile } = await adminClient
       .from("profiles")
-      .select("id, user_id, email")
+      .select("id, user_id, email, congregation_id")
       .ilike("email", normalizedEmail)
       .maybeSingle();
 
     if (existingProfile) {
       // Profile already exists - just update it, don't create duplicate
+      // Preserve current congregation_id unless a different congregation was explicitly provided.
+      // This avoids accidentally unlinking users when re-sending invites.
+      const nextCongregationId =
+        congregationId && congregationId !== existingProfile.congregation_id
+          ? congregationId
+          : existingProfile.congregation_id ?? null;
+
       const { error: updateError } = await adminClient
         .from("profiles")
         .update({
@@ -92,7 +99,7 @@ serve(async (req: Request): Promise<Response> => {
           sex: sex || null,
           is_driver: isDriver || false,
           is_exempt: isExempt || false,
-          congregation_id: congregationId || null,
+          congregation_id: nextCongregationId,
         })
         .eq("id", existingProfile.id);
 
@@ -117,7 +124,7 @@ serve(async (req: Request): Promise<Response> => {
             sex: sex || null,
             is_driver: isDriver || false,
             is_exempt: isExempt || false,
-            congregation_id: congregationId || null,
+            congregation_id: nextCongregationId,
           },
           redirectTo: `${req.headers.get("origin")}/`,
         });
