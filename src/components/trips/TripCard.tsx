@@ -306,7 +306,7 @@ export function TripCard({
                 {passenger.trip_type !== "Ida e Volta" && (
                   <span className="text-xs opacity-70">({passenger.trip_type === "Apenas Ida" ? "Ida" : "Volta"})</span>
                 )}
-                {onRemovePassenger && (
+                {onRemovePassenger && (canManageTrip || passenger.passenger_id === currentUserId) && (
                   <button
                     onClick={() => onRemovePassenger({ tripId: trip.id, passengerId: passenger.passenger_id })}
                     className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
