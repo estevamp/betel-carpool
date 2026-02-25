@@ -317,6 +317,19 @@ Deno.serve(async (req) => {
       .lt("month", cutoffMonth)
       .eq("congregation_id", targetCongregationId);
 
+    // Clean up old ride requests (before today) for this congregation
+    const today = new Date().toISOString().split('T')[0];
+    const { error: cleanupRideError } = await supabase
+      .from("ride_requests")
+      .delete()
+      .lt("requested_date", today)
+      .eq("congregation_id", targetCongregationId);
+
+    if (cleanupRideError) {
+      console.error("Error cleaning up ride requests:", cleanupRideError);
+      // We don't throw here to not fail the whole month closure if just this cleanup fails
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

@@ -33,10 +33,15 @@ export function useRideRequests() {
   const rideRequestsQuery = useQuery({
     queryKey: ["ride_requests", selectedCongregationId],
     queryFn: async (): Promise<RideRequest[]> => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayIso = today.toISOString().split('T')[0];
+
       let query = supabase
         .from("ride_requests")
         .select("*, profile:profiles(id, full_name)")
         .eq("is_fulfilled", false)
+        .gte("requested_date", todayIso)
         .order("requested_date", { ascending: true });
 
       if (isSuperAdmin && selectedCongregationId) {
