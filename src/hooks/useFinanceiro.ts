@@ -35,12 +35,19 @@ export interface Transfer {
   congregationId: string | null;
 }
 
+export interface MonthTripPassenger {
+  id: string;
+  name: string;
+  tripType: string;
+}
+
 export interface MonthTrip {
   id: string;
   driverName: string;
   departureAt: string;
   returnAt: string | null;
   passengerCount: number;
+  passengers: MonthTripPassenger[];
   congregationId: string | null;
 }
 
@@ -147,7 +154,12 @@ export function useFinanceiro(selectedMonth: string) {
           driver_id,
           departure_at,
           return_at,
-          trip_passengers (id),
+          trip_passengers (
+            id,
+            passenger_id,
+            trip_type,
+            profiles (full_name)
+          ),
           congregation_id
         `)
         .gte("departure_at", monthStart.toISOString())
@@ -240,6 +252,13 @@ export function useFinanceiro(selectedMonth: string) {
       departureAt: t.departure_at,
       returnAt: t.return_at,
       passengerCount: t.trip_passengers?.length ?? 0,
+      passengers: (t.trip_passengers as any[])?.map((tp) => ({
+        id: tp.id,
+        name: tp.passenger_id === '00000000-0000-0000-0000-000000000001'
+          ? "Visitante"
+          : tp.profiles?.full_name ?? "Passageiro",
+        tripType: tp.trip_type ?? "Ida e Volta"
+      })) ?? [],
       congregationId: t.congregation_id,
     }));
   })();

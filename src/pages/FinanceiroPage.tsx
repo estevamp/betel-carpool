@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, TrendingDown, Calendar, Check, Copy, Car, Users, Loader2, Lock } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, Calendar, Check, Copy, Car, Users, Loader2, Lock, ChevronDown, ChevronUp, ArrowRight, ArrowLeft, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -240,28 +240,86 @@ export default function FinanceiroPage() {
               <p className="text-sm text-muted-foreground mt-1">
                 Não há viagens registradas para este mês
               </p>
-            </div> : monthTrips.map(trip => <motion.div key={trip.id} variants={itemVariants} className="bg-card rounded-xl border border-border shadow-card p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                      <Car className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">{trip.driverName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(trip.departureAt), "dd/MM 'às' HH:mm", {
-                  locale: ptBR
-                })}
-                        {trip.returnAt && ` - ${format(new Date(trip.returnAt), "HH:mm")}`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>{trip.passengerCount}</span>
-                  </div>
-                </div>
-              </motion.div>)}
+            </div> : monthTrips.map(trip => <TripAccordionItem key={trip.id} trip={trip} formatCurrency={formatCurrency} />)}
         </motion.div>}
     </div>;
+}
+
+function TripAccordionItem({ trip, formatCurrency }: { trip: any, formatCurrency: (v: number) => string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const getTripTypeIcon = (type: string) => {
+    switch (type) {
+      case 'Só Ida': return <ArrowRight className="h-3 w-3" />;
+      case 'Só Volta': return <ArrowLeft className="h-3 w-3" />;
+      default: return <ArrowLeftRight className="h-3 w-3" />;
+    }
+  };
+
+  const getTripTypeColor = (type: string) => {
+    switch (type) {
+      case 'Só Ida': return "text-blue-500 bg-blue-500/10";
+      case 'Só Volta': return "text-orange-500 bg-orange-500/10";
+      default: return "text-success bg-success/10";
+    }
+  };
+
+  return (
+    <motion.div
+      variants={itemVariants}
+      className="bg-card rounded-xl border border-border shadow-card overflow-hidden"
+    >
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full text-left p-4 hover:bg-muted/30 transition-colors"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 shrink-0">
+              <Car className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">{trip.driverName}</p>
+              <p className="text-sm text-muted-foreground">
+                {format(new Date(trip.departureAt), "dd/MM 'às' HH:mm", {
+                  locale: ptBR
+                })}
+                {trip.returnAt && ` - ${format(new Date(trip.returnAt), "HH:mm")}`}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Users className="h-4 w-4" />
+              <span>{trip.passengerCount}</span>
+            </div>
+            {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </div>
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="px-4 pb-4 pt-0 border-t border-border/50 bg-muted/10">
+          <div className="mt-4 space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Passageiros</p>
+            {trip.passengers.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">Nenhum passageiro registrado</p>
+            ) : (
+              <div className="grid gap-2">
+                {trip.passengers.map((passenger: any) => (
+                  <div key={passenger.id} className="flex items-center justify-between bg-background/50 p-2 rounded-lg border border-border/50">
+                    <span className="text-sm font-medium text-foreground">{passenger.name}</span>
+                    <div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase", getTripTypeColor(passenger.tripType))}>
+                      {getTripTypeIcon(passenger.tripType)}
+                      {passenger.tripType}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
 }
