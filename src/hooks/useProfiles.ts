@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useIsSuperAdmin } from "./useIsSuperAdmin";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
 
 export interface Profile {
@@ -11,10 +10,10 @@ export interface Profile {
 }
 
 export function useProfiles(options?: { congregationId?: string }) {
-  const { isSuperAdmin } = useIsSuperAdmin();
   const { selectedCongregationId } = useSelectedCongregation();
 
-  const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : options?.congregationId;
+  const effectiveCongregationId =
+    options?.congregationId ?? selectedCongregationId;
 
   return useQuery({
     queryKey: ["profiles", effectiveCongregationId],

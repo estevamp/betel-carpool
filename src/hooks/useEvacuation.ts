@@ -29,6 +29,7 @@ export interface CreateEvacuationCarData {
   destination?: string;
   notes?: string;
   congregation_id?: string; // Adicionar para super-admin
+  driver_id?: string; // Admin pode criar carro em nome de outro motorista
 }
 
 export interface UpdateEvacuationCarData {
@@ -110,7 +111,7 @@ export function useEvacuation() {
       if (!profile?.id) throw new Error("Usuário não autenticado");
 
       const { error } = await supabase.from("evacuation_cars").insert({
-        driver_id: profile.id,
+        driver_id: data.driver_id || profile.id,
         destination: data.destination || null,
         notes: data.notes || null,
         congregation_id: selectedCongregationId || profile.congregation_id,
