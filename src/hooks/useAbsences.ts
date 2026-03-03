@@ -34,9 +34,12 @@ export function useAbsences() {
   const absencesQuery = useQuery({
     queryKey: ["absences", selectedCongregationId],
     queryFn: async (): Promise<Absence[]> => {
+      const today = new Date().toISOString().split("T")[0];
+
       let query = supabase
         .from("absences")
         .select("*, profile:profiles(id, full_name)")
+        .gt("end_date", today)
         .order("start_date", { ascending: true });
 
       if (isSuperAdmin) {

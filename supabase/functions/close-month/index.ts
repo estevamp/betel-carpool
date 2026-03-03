@@ -330,6 +330,18 @@ Deno.serve(async (req) => {
       // We don't throw here to not fail the whole month closure if just this cleanup fails
     }
 
+    // Clean up absences that have already ended (end_date <= today) for this congregation
+    const { error: cleanupAbsencesError } = await supabase
+      .from("absences")
+      .delete()
+      .lte("end_date", today)
+      .eq("congregation_id", targetCongregationId);
+
+    if (cleanupAbsencesError) {
+      console.error("Error cleaning up absences:", cleanupAbsencesError);
+      // We don't throw here to not fail the whole month closure if just this cleanup fails
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
