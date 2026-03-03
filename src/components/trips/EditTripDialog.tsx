@@ -14,10 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { Trip } from "@/hooks/useTrips";
+import { toast } from "sonner";
 
 interface EditTripDialogProps {
   trip: Trip;
@@ -40,6 +42,8 @@ export function EditTripDialog({ trip, open, onOpenChange, onUpdateTrip, isUpdat
   const returnDate = trip.return_at ? new Date(trip.return_at) : null;
 
   const [date, setDate] = useState<Date | undefined>(departureDate);
+  const [hasReturnTrip, setHasReturnTrip] = useState(Boolean(returnDate));
+  const [returnTripDate, setReturnTripDate] = useState<Date | undefined>(returnDate ?? undefined);
   const [departureTime, setDepartureTime] = useState(format(departureDate, "HH:mm"));
   const [returnTime, setReturnTime] = useState(returnDate ? format(returnDate, "HH:mm") : "");
   const [maxPassengers, setMaxPassengers] = useState(String(trip.max_passengers ?? 4));
@@ -53,6 +57,8 @@ export function EditTripDialog({ trip, open, onOpenChange, onUpdateTrip, isUpdat
     const retDate = trip.return_at ? new Date(trip.return_at) : null;
 
     setDate(depDate);
+    setHasReturnTrip(Boolean(retDate));
+    setReturnTripDate(retDate ?? depDate);
     setDepartureTime(format(depDate, "HH:mm"));
     setReturnTime(retDate ? format(retDate, "HH:mm") : "");
     setMaxPassengers(String(trip.max_passengers ?? 4));
@@ -60,6 +66,12 @@ export function EditTripDialog({ trip, open, onOpenChange, onUpdateTrip, isUpdat
     setIsBetelCar(trip.is_betel_car ?? false);
     setNotes(trip.notes ?? "");
   }, [trip]);
+
+  useEffect(() => {
+    if (hasReturnTrip && date && !returnTripDate) {
+      setReturnTripDate(date);
+    }
+  }, [hasReturnTrip, date, returnTripDate]);
 
   const handleSubmit = () => {
     if (!date) return;
@@ -69,10 +81,14 @@ export function EditTripDialog({ trip, open, onOpenChange, onUpdateTrip, isUpdat
     departureAt.setHours(depHours, depMinutes, 0, 0);
 
     let returnAt: Date | undefined;
-    if (returnTime) {
+    if (hasReturnTrip && returnTripDate && returnTime) {
       const [retHours, retMinutes] = returnTime.split(":").map(Number);
-      returnAt = new Date(date);
+      returnAt = new Date(returnTripDate);
       returnAt.setHours(retHours, retMinutes, 0, 0);
+      if (returnAt < departureAt) {
+        toast.error("A data/hora de volta não pode ser anterior à ida.");
+        return;
+      }
     }
 
     onUpdateTrip({
@@ -98,7 +114,7 @@ export function EditTripDialog({ trip, open, onOpenChange, onUpdateTrip, isUpdat
         <div className="grid gap-4 py-4">
           {/* Date */}
           <div className="grid gap-2">
-            <Label>Data</Label>
+            <Label>Data de Ida</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -115,8 +131,57 @@ export function EditTripDialog({ trip, open, onOpenChange, onUpdateTrip, isUpdat
             </Popover>
           </div>
 
+          <div className="flex items-center justify-between">
+            <Label htmlFor="edit-has-return">Incluir volta</Label>
+            <Switch id="edit-has-return" checked={hasReturnTrip} onCheckedChange={setHasReturnTrip} />
+          </div>
+
+          {hasReturnTrip && (
+            <div className="grid gap-2">
+              <Label>Data de Volta</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("justify-start text-left font-normal", !returnTripDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {returnTripDate ? format(returnTripDate, "dd/MM/yyyy") : "Selecione uma data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-popover" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={returnTripDate}
+                    onSelect={setReturnTripDate}
+                    disabled={(selectedDate) => {
+                      if (!date) return false;
+                      return selectedDate < date;
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+          
+          <div className="grid gap-2">
+            <Label htmlFor="edit-return">Horário de Volta</Label>
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="edit-return"
+                type="time"
+                value={returnTime}
+                onChange={(e) => setReturnTime(e.target.value)}
+                className="pl-10"
+                disabled={!hasReturnTrip}
+              />
+            </div>
+          </div>
+
           {/* Time */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-departure">Horário de Ida</Label>
               <div className="relative">
@@ -126,19 +191,6 @@ export function EditTripDialog({ trip, open, onOpenChange, onUpdateTrip, isUpdat
                   type="time"
                   value={departureTime}
                   onChange={(e) => setDepartureTime(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-return">Horário de Volta</Label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="edit-return"
-                  type="time"
-                  value={returnTime}
-                  onChange={(e) => setReturnTime(e.target.value)}
                   className="pl-10"
                 />
               </div>

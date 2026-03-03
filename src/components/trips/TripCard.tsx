@@ -87,7 +87,10 @@ export function TripCard({
   const departureDate = new Date(trip.departure_at);
   const formattedDate = format(departureDate, "dd/MM/yyyy", { locale: ptBR });
   const formattedTime = format(departureDate, "HH:mm");
-  const returnTime = trip.return_at ? format(new Date(trip.return_at), "HH:mm") : null;
+  const returnDate = trip.return_at ? new Date(trip.return_at) : null;
+  const returnTime = returnDate ? format(returnDate, "HH:mm") : null;
+  const formattedReturnDate = returnDate ? format(returnDate, "dd/MM/yyyy", { locale: ptBR }) : null;
+  const showReturnDate = formattedReturnDate && formattedReturnDate !== formattedDate;
 
   // Filter out profiles that are already passengers or the driver
   const existingPassengerIds = trip.passengers.map((p) => p.passenger_id);
@@ -165,6 +168,7 @@ export function TripCard({
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   {formattedDate}
+                  {showReturnDate && ` -> ${formattedReturnDate}`}
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="h-4 w-4" />

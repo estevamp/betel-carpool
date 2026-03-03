@@ -26,6 +26,7 @@ import { useSelectedCongregation } from "@/contexts/CongregationContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBetelitas } from "@/hooks/useBetelitas";
 import { useIsCongregationAdmin } from "@/hooks/useIsCongregationAdmin";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -41,6 +42,8 @@ interface CreateTripDialogProps {
 export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogProps) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date>();
+  const [hasReturnTrip, setHasReturnTrip] = useState(true);
+  const [returnDate, setReturnDate] = useState<Date>();
   const [departureTime, setDepartureTime] = useState("18:30");
   const [returnTime, setReturnTime] = useState("21:30");
   const [maxPassengers, setMaxPassengers] = useState(4);
@@ -93,18 +96,34 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
     }
   }, [settings]);
 
+  useEffect(() => {
+    if (!date || returnDate) return;
+    setReturnDate(date);
+  }, [date, returnDate]);
+
+  useEffect(() => {
+    if (hasReturnTrip && date && !returnDate) {
+      setReturnDate(date);
+    }
+  }, [hasReturnTrip, date, returnDate]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!date) return;
     const [depHour, depMin] = departureTime.split(":").map(Number);
     const departureAt = new Date(date);
     departureAt.setHours(depHour, depMin, 0, 0);
+
     let returnAt: string | undefined;
-    if (returnTime) {
+    if (hasReturnTrip && returnDate && returnTime) {
       const [retHour, retMin] = returnTime.split(":").map(Number);
-      const returnDate = new Date(date);
-      returnDate.setHours(retHour, retMin, 0, 0);
-      returnAt = returnDate.toISOString();
+      const returnAtDate = new Date(returnDate);
+      returnAtDate.setHours(retHour, retMin, 0, 0);
+      if (returnAtDate < departureAt) {
+        toast.error("A data/hora de volta não pode ser anterior à ida.");
+        return;
+      }
+      returnAt = returnAtDate.toISOString();
     }
     onCreateTrip({
       departure_at: departureAt.toISOString(),
@@ -119,6 +138,8 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
     // Reset form - use default from settings
     const defaultMaxPassengers = settings?.find(s => s.key === "max_passengers")?.value || "4";
     setDate(undefined);
+    setHasReturnTrip(true);
+    setReturnDate(undefined);
     setDepartureTime("18:30");
     setReturnTime("21:30");
     setMaxPassengers(Number(defaultMaxPassengers));
@@ -166,33 +187,78 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
             )}
 
             {/* Date */}
-            <div className="grid gap-2">
-              <Label>Data da Viagem</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date
-                      ? format(date, "PPP", {
-                          locale: ptBR,
-                        })
-                      : "Selecione a data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    disabled={(selectedDate) => selectedDate < today}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label>Data de Ida</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date
+                        ? format(date, "PPP", {
+                            locale: ptBR,
+                          })
+                        : "Selecione a data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      disabled={(selectedDate) => selectedDate < today}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Label htmlFor="has-return-trip">Incluir volta</Label>
+                <Switch
+                  id="has-return-trip"
+                  checked={hasReturnTrip}
+                  onCheckedChange={setHasReturnTrip}
+                />
+              </div>
+
+              {hasReturnTrip && (
+                <div className="grid gap-2">
+                  <Label>Data de Volta</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {returnDate
+                          ? format(returnDate, "PPP", {
+                              locale: ptBR,
+                            })
+                          : "Selecione a data de volta"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={returnDate}
+                        onSelect={setReturnDate}
+                        disabled={(selectedDate) => {
+                          if (!date) return selectedDate < today;
+                          return selectedDate < date;
+                        }}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
             </div>
 
             {/* Times */}
@@ -209,7 +275,13 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="return">Horário de Volta</Label>
-                <Input id="return" type="time" value={returnTime} onChange={(e) => setReturnTime(e.target.value)} />
+                <Input
+                  id="return"
+                  type="time"
+                  value={returnTime}
+                  onChange={(e) => setReturnTime(e.target.value)}
+                  disabled={!hasReturnTrip}
+                />
               </div>
             </div>
 
