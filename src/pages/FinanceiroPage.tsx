@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, TrendingDown, Calendar, Check, Copy, Car, Users, Loader2, Lock, ChevronDown, ChevronUp, ArrowRight, ArrowLeft, ArrowLeftRight, Trash2, UserPlus, X } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, Calendar, Check, Copy, Car, Users, Loader2, Lock, ChevronDown, ChevronUp, ArrowRight, ArrowLeft, ArrowLeftRight, Trash2, UserPlus, X, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -248,6 +248,12 @@ export default function FinanceiroPage() {
 
       {/* Trips Tab */}
       {!isLoading && activeTab === "trips" && <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-3">
+          {isAdmin && <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+              <AlertTriangle className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
+              <p className="text-sm text-amber-900/90">
+                Se editar ou excluir uma viagem deste mês, feche o mês novamente para recalcular os valores.
+              </p>
+            </div>}
           {monthTrips.length === 0 ? <div className="flex flex-col items-center justify-center py-12 text-center bg-card rounded-xl border border-border shadow-card">
               <Car className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="font-semibold text-foreground">Nenhuma viagem</h3>
