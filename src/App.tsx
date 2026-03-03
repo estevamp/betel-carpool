@@ -8,6 +8,7 @@ import { CongregationProvider } from "@/contexts/CongregationContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useOneSignal } from "@/hooks/useOneSignal";
+import { InstallBanner } from "@/components/InstallBanner";
 import Dashboard from "./pages/Dashboard";
 import ViagensPage from "./pages/ViagensPage";
 import BetelitasPage from "./pages/BetelitasPage";
@@ -24,6 +25,7 @@ import DebugProfilesPage from "./pages/DebugProfilesPage";
 import TestNotificationsPage from "./pages/TestNotificationsPage";
 import AboutPage from "./pages/AboutPage";
 import NotFound from "./pages/NotFound";
+
 
 const queryClient = new QueryClient();
 
@@ -71,6 +73,7 @@ const App = () => (
         <AuthProvider>
           <CongregationProvider>
             <AppContent />
+            <InstallBanner />
           </CongregationProvider>
         </AuthProvider>
       </BrowserRouter>
