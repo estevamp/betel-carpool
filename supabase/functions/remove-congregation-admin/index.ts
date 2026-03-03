@@ -4,9 +4,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.10.0";
 serve(async (req) => {
   const { admin_id } = await req.json(); // admin_id refers to the ID in congregation_administrators table
 
+  const supabasePublishableKey =
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+    Deno.env.get("SUPABASE_ANON_KEY") ??
+    "";
+
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    supabasePublishableKey,
     { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
   );
 
