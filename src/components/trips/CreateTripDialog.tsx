@@ -42,7 +42,7 @@ interface CreateTripDialogProps {
 export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogProps) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date>();
-  const [hasReturnTrip, setHasReturnTrip] = useState(true);
+  const [hasReturnTrip, setHasReturnTrip] = useState(false);
   const [returnDate, setReturnDate] = useState<Date>();
   const [departureTime, setDepartureTime] = useState("18:30");
   const [returnTime, setReturnTime] = useState("21:30");
@@ -138,7 +138,7 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
     // Reset form - use default from settings
     const defaultMaxPassengers = settings?.find(s => s.key === "max_passengers")?.value || "4";
     setDate(undefined);
-    setHasReturnTrip(true);
+    setHasReturnTrip(false);
     setReturnDate(undefined);
     setDepartureTime("18:30");
     setReturnTime("21:30");
@@ -217,52 +217,6 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
                 </Popover>
               </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="has-return-trip">Incluir volta</Label>
-                <Switch
-                  id="has-return-trip"
-                  checked={hasReturnTrip}
-                  onCheckedChange={setHasReturnTrip}
-                />
-              </div>
-
-              {hasReturnTrip && (
-                <div className="grid gap-2">
-                  <Label>Data de Volta</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {returnDate
-                          ? format(returnDate, "PPP", {
-                              locale: ptBR,
-                            })
-                          : "Selecione a data de volta"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={returnDate}
-                        onSelect={setReturnDate}
-                        disabled={(selectedDate) => {
-                          if (!date) return selectedDate < today;
-                          return selectedDate < date;
-                        }}
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              )}
-            </div>
-
-            {/* Times */}
-            <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="departure">Horário de Saída</Label>
                 <Input
@@ -273,16 +227,61 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
                   required
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="return">Horário de Volta</Label>
-                <Input
-                  id="return"
-                  type="time"
-                  value={returnTime}
-                  onChange={(e) => setReturnTime(e.target.value)}
-                  disabled={!hasReturnTrip}
+
+              <div className="flex items-center justify-between">
+                <Label htmlFor="has-return-trip">Incluir volta</Label>
+                <Switch
+                  id="has-return-trip"
+                  checked={hasReturnTrip}
+                  onCheckedChange={setHasReturnTrip}
                 />
               </div>
+
+              {hasReturnTrip && (
+                <>
+                  <div className="grid gap-2">
+                    <Label>Data de Volta</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {returnDate
+                            ? format(returnDate, "PPP", {
+                                locale: ptBR,
+                              })
+                            : "Selecione a data de volta"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={returnDate}
+                          onSelect={setReturnDate}
+                          disabled={(selectedDate) => {
+                            if (!date) return selectedDate < today;
+                            return selectedDate < date;
+                          }}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="return">Horário de Volta</Label>
+                    <Input
+                      id="return"
+                      type="time"
+                      value={returnTime}
+                      onChange={(e) => setReturnTime(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Max Passengers */}
