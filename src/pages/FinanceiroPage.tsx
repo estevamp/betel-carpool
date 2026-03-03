@@ -1,14 +1,21 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, TrendingDown, Calendar, Check, Copy, Car, Users, Loader2, Lock, ChevronDown, ChevronUp, ArrowRight, ArrowLeft, ArrowLeftRight } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, Calendar, Check, Copy, Car, Users, Loader2, Lock, ChevronDown, ChevronUp, ArrowRight, ArrowLeft, ArrowLeftRight, Trash2, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { useFinanceiro, getMonthOptions } from "@/hooks/useFinanceiro";
+import { useFinanceiro, getMonthOptions, VISITANTE_PROFILE_ID, type MonthTrip } from "@/hooks/useFinanceiro";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import type { Database } from "@/integrations/supabase/types";
+
+type TripType = Database["public"]["Enums"]["trip_type"];
 const containerVariants = {
   hidden: {
     opacity: 0
@@ -35,6 +42,7 @@ export default function FinanceiroPage() {
   const [selectedMonth, setSelectedMonth] = useState(months[0]?.id ?? "");
   const [activeTab, setActiveTab] = useState<"report" | "transfers" | "trips">("transfers");
   const {
+    profiles,
     profileBalances,
     transfers,
     monthTrips,
@@ -47,6 +55,12 @@ export default function FinanceiroPage() {
     isMarkingAsPaid,
     closeMonth,
     isClosingMonth,
+    deleteTrip,
+    isDeletingTrip,
+    addPassenger,
+    isAddingPassenger,
+    removePassenger,
+    isRemovingPassenger,
     isAdmin,
     currentProfileId
   } = useFinanceiro(selectedMonth);
@@ -240,28 +254,84 @@ export default function FinanceiroPage() {
               <p className="text-sm text-muted-foreground mt-1">
                 Não há viagens registradas para este mês
               </p>
-            </div> : monthTrips.map(trip => <TripAccordionItem key={trip.id} trip={trip} formatCurrency={formatCurrency} />)}
+            </div> : monthTrips.map(trip => <TripAccordionItem
+                key={trip.id}
+                trip={trip}
+                profiles={profiles}
+                isAdmin={isAdmin}
+                onDeleteTrip={deleteTrip}
+                onAddPassenger={addPassenger}
+                onRemovePassenger={removePassenger}
+                isDeletingTrip={isDeletingTrip}
+                isAddingPassenger={isAddingPassenger}
+                isRemovingPassenger={isRemovingPassenger}
+              />)}
         </motion.div>}
     </div>;
 }
 
-function TripAccordionItem({ trip, formatCurrency }: { trip: any, formatCurrency: (v: number) => string }) {
+function TripAccordionItem({
+  trip,
+  profiles,
+  isAdmin,
+  onDeleteTrip,
+  onAddPassenger,
+  onRemovePassenger,
+  isDeletingTrip,
+  isAddingPassenger,
+  isRemovingPassenger
+}: {
+  trip: MonthTrip;
+  profiles: Array<{ id: string; full_name: string }>;
+  isAdmin: boolean;
+  onDeleteTrip: (tripId: string) => void;
+  onAddPassenger: (data: { tripId: string; passengerId: string; tripType: TripType }) => void;
+  onRemovePassenger: (data: { tripId: string; passengerId: string }) => void;
+  isDeletingTrip: boolean;
+  isAddingPassenger: boolean;
+  isRemovingPassenger: boolean;
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [addPassengerDialogOpen, setAddPassengerDialogOpen] = useState(false);
+  const [selectedPassengerId, setSelectedPassengerId] = useState("");
+  const [selectedTripType, setSelectedTripType] = useState<TripType>("Ida e Volta");
+
+  const availableSeats = (trip.maxPassengers ?? 4) - trip.passengerCount;
+  const isFull = availableSeats <= 0;
+
+  const existingPassengerIds = new Set(trip.passengers.map((passenger) => passenger.passengerId));
+  const availableProfiles = profiles.filter((profile) => profile.id !== trip.driverId && !existingPassengerIds.has(profile.id));
 
   const getTripTypeIcon = (type: string) => {
     switch (type) {
-      case 'Só Ida': return <ArrowRight className="h-3 w-3" />;
-      case 'Só Volta': return <ArrowLeft className="h-3 w-3" />;
+      case "Apenas Ida": return <ArrowRight className="h-3 w-3" />;
+      case "Apenas Volta": return <ArrowLeft className="h-3 w-3" />;
       default: return <ArrowLeftRight className="h-3 w-3" />;
     }
   };
 
   const getTripTypeColor = (type: string) => {
     switch (type) {
-      case 'Só Ida': return "text-blue-500 bg-blue-500/10";
-      case 'Só Volta': return "text-orange-500 bg-orange-500/10";
+      case "Apenas Ida": return "text-blue-500 bg-blue-500/10";
+      case "Apenas Volta": return "text-orange-500 bg-orange-500/10";
       default: return "text-success bg-success/10";
     }
+  };
+
+  const handleAddPassenger = () => {
+    if (!selectedPassengerId) return;
+
+    const passengerId =
+      selectedPassengerId === "visitante" ? VISITANTE_PROFILE_ID : selectedPassengerId;
+
+    onAddPassenger({
+      tripId: trip.id,
+      passengerId,
+      tripType: selectedTripType,
+    });
+    setAddPassengerDialogOpen(false);
+    setSelectedPassengerId("");
+    setSelectedTripType("Ida e Volta");
   };
 
   return (
@@ -288,10 +358,104 @@ function TripAccordionItem({ trip, formatCurrency }: { trip: any, formatCurrency
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
+            {isAdmin && (
+              <div className="flex items-center gap-2">
+                {!isFull && (
+                  <Dialog open={addPassengerDialogOpen} onOpenChange={setAddPassengerDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <UserPlus className="h-3 w-3" />
+                        Adicionar
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent onClick={(event) => event.stopPropagation()}>
+                      <DialogHeader>
+                        <DialogTitle>Adicionar Passageiro</DialogTitle>
+                        <DialogDescription>Selecione um passageiro para adicionar à viagem.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="grid gap-2">
+                          <Label>Passageiro</Label>
+                          <Select value={selectedPassengerId} onValueChange={setSelectedPassengerId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um passageiro" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover">
+                              {availableProfiles.map((profile) => (
+                                <SelectItem key={profile.id} value={profile.id}>
+                                  {profile.full_name}
+                                </SelectItem>
+                              ))}
+                              <SelectItem value="visitante">Visitante</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Tipo de Viagem</Label>
+                          <RadioGroup
+                            value={selectedTripType}
+                            onValueChange={(value) => setSelectedTripType(value as TripType)}
+                            className="flex gap-4"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="Ida e Volta" id={`financeiro-ida-volta-${trip.id}`} />
+                              <Label htmlFor={`financeiro-ida-volta-${trip.id}`} className="font-normal">Ida e Volta</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="Apenas Ida" id={`financeiro-ida-${trip.id}`} />
+                              <Label htmlFor={`financeiro-ida-${trip.id}`} className="font-normal">Apenas Ida</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="Apenas Volta" id={`financeiro-volta-${trip.id}`} />
+                              <Label htmlFor={`financeiro-volta-${trip.id}`} className="font-normal">Apenas Volta</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setAddPassengerDialogOpen(false);
+                            setSelectedPassengerId("");
+                            setSelectedTripType("Ida e Volta");
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button onClick={handleAddPassenger} disabled={isAddingPassenger || !selectedPassengerId}>
+                          {isAddingPassenger ? "Adicionando..." : "Adicionar"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (window.confirm("Tem certeza que deseja excluir esta viagem?")) {
+                      onDeleteTrip(trip.id);
+                    }
+                  }}
+                  disabled={isDeletingTrip}
+                >
+                  {isDeletingTrip ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                  Excluir
+                </Button>
+              </div>
+            )}
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <Users className="h-4 w-4" />
-              <span>{trip.passengerCount}</span>
+              <span>{trip.passengerCount}/{trip.maxPassengers ?? 4}</span>
             </div>
             {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </div>
@@ -306,13 +470,27 @@ function TripAccordionItem({ trip, formatCurrency }: { trip: any, formatCurrency
               <p className="text-sm text-muted-foreground italic">Nenhum passageiro registrado</p>
             ) : (
               <div className="grid gap-2">
-                {trip.passengers.map((passenger: any) => (
+                {trip.passengers.map((passenger) => (
                   <div key={passenger.id} className="flex items-center justify-between bg-background/50 p-2 rounded-lg border border-border/50">
-                    <span className="text-sm font-medium text-foreground">{passenger.name}</span>
-                    <div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase", getTripTypeColor(passenger.tripType))}>
-                      {getTripTypeIcon(passenger.tripType)}
-                      {passenger.tripType}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">{passenger.name}</span>
+                      <div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase", getTripTypeColor(passenger.tripType))}>
+                        {getTripTypeIcon(passenger.tripType)}
+                        {passenger.tripType}
+                      </div>
                     </div>
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => onRemovePassenger({ tripId: trip.id, passengerId: passenger.passengerId })}
+                        disabled={isRemovingPassenger}
+                        title="Remover passageiro"
+                      >
+                        {isRemovingPassenger ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>

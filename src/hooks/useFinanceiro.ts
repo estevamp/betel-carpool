@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCallback } from "react";
+import type { Database } from "@/integrations/supabase/types";
 
 export interface MonthOption {
   id: string;
@@ -35,17 +36,24 @@ export interface Transfer {
   congregationId: string | null;
 }
 
+type TripType = Database["public"]["Enums"]["trip_type"];
+export const VISITANTE_PROFILE_ID = "00000000-0000-0000-0000-000000000001";
+
 export interface MonthTripPassenger {
   id: string;
+  passengerId: string;
   name: string;
-  tripType: string;
+  tripType: TripType;
 }
 
 export interface MonthTrip {
   id: string;
+  driverId: string;
   driverName: string;
   departureAt: string;
   returnAt: string | null;
+  maxPassengers: number | null;
+  isActive: boolean | null;
   passengerCount: number;
   passengers: MonthTripPassenger[];
   congregationId: string | null;
@@ -145,7 +153,7 @@ export function useFinanceiro(selectedMonth: string) {
 
   // Fetch trips for the month
   const tripsQuery = useQuery({
-    queryKey: ["trips-month", selectedMonth, selectedCongregationId],
+    queryKey: ["trips-month", selectedMonth, effectiveCongregationId],
     queryFn: async () => {
       let query = supabase
         .from("trips")
@@ -154,6 +162,8 @@ export function useFinanceiro(selectedMonth: string) {
           driver_id,
           departure_at,
           return_at,
+          max_passengers,
+          is_active,
           trip_passengers (
             id,
             passenger_id,
@@ -162,6 +172,7 @@ export function useFinanceiro(selectedMonth: string) {
           ),
           congregation_id
         `)
+        .eq("is_active", true)
         .gte("departure_at", monthStart.toISOString())
         .lte("departure_at", monthEnd.toISOString())
         .order("departure_at", { ascending: true });
@@ -248,16 +259,20 @@ export function useFinanceiro(selectedMonth: string) {
 
     return tripsQuery.data.map((t) => ({
       id: t.id,
+      driverId: t.driver_id,
       driverName: profileNameMap.get(t.driver_id) ?? "Desconhecido",
       departureAt: t.departure_at,
       returnAt: t.return_at,
+      maxPassengers: t.max_passengers,
+      isActive: t.is_active,
       passengerCount: t.trip_passengers?.length ?? 0,
       passengers: (t.trip_passengers as any[])?.map((tp) => ({
         id: tp.id,
+        passengerId: tp.passenger_id,
         name: tp.passenger_id === '00000000-0000-0000-0000-000000000001'
           ? "Visitante"
           : tp.profiles?.full_name ?? "Passageiro",
-        tripType: tp.trip_type ?? "Ida e Volta"
+        tripType: (tp.trip_type ?? "Ida e Volta") as TripType
       })) ?? [],
       congregationId: t.congregation_id,
     }));
@@ -267,6 +282,73 @@ export function useFinanceiro(selectedMonth: string) {
   const totalToPay = profileBalances.reduce((sum, b) => sum + b.toPay, 0);
   const totalToReceive = profileBalances.reduce((sum, b) => sum + b.toReceive, 0);
   const pendingTransfers = transfers.filter((t) => !t.isPaid).length;
+
+  const deleteTripMutation = useMutation({
+    mutationFn: async (tripId: string) => {
+      if (!isAdmin) throw new Error("Apenas administradores podem excluir viagens");
+      const { error } = await supabase
+        .from("trips")
+        .update({ is_active: false })
+        .eq("id", tripId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trips-month", selectedMonth, effectiveCongregationId] });
+      queryClient.invalidateQueries({ queryKey: ["trips"] });
+      toast.success("Viagem excluída com sucesso!");
+    },
+    onError: (error: Error) => {
+      toast.error("Erro ao excluir viagem: " + error.message);
+    },
+  });
+
+  const addPassengerMutation = useMutation({
+    mutationFn: async ({
+      tripId,
+      passengerId,
+      tripType,
+    }: {
+      tripId: string;
+      passengerId: string;
+      tripType: TripType;
+    }) => {
+      if (!isAdmin) throw new Error("Apenas administradores podem editar passageiros");
+      const { error } = await supabase.from("trip_passengers").insert({
+        trip_id: tripId,
+        passenger_id: passengerId,
+        trip_type: tripType,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trips-month", selectedMonth, effectiveCongregationId] });
+      queryClient.invalidateQueries({ queryKey: ["trips"] });
+      toast.success("Passageiro adicionado com sucesso!");
+    },
+    onError: (error: Error) => {
+      toast.error("Erro ao adicionar passageiro: " + error.message);
+    },
+  });
+
+  const removePassengerMutation = useMutation({
+    mutationFn: async ({ tripId, passengerId }: { tripId: string; passengerId: string }) => {
+      if (!isAdmin) throw new Error("Apenas administradores podem editar passageiros");
+      const { error } = await supabase
+        .from("trip_passengers")
+        .delete()
+        .eq("trip_id", tripId)
+        .eq("passenger_id", passengerId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trips-month", selectedMonth, effectiveCongregationId] });
+      queryClient.invalidateQueries({ queryKey: ["trips"] });
+      toast.success("Passageiro removido com sucesso!");
+    },
+    onError: (error: Error) => {
+      toast.error("Erro ao remover passageiro: " + error.message);
+    },
+  });
 
   // Mark transfer as paid mutation
   const markAsPaidMutation = useMutation({
@@ -332,6 +414,7 @@ export function useFinanceiro(selectedMonth: string) {
   );
 
   return {
+    profiles: profilesQuery.data ?? [],
     profileBalances,
     transfers: transfers,
     monthTrips,
@@ -352,6 +435,12 @@ export function useFinanceiro(selectedMonth: string) {
     isMarkingAsPaid: markAsPaidMutation.isPending,
     closeMonth,
     isClosingMonth: closeMonthMutation.isPending,
+    deleteTrip: deleteTripMutation.mutate,
+    isDeletingTrip: deleteTripMutation.isPending,
+    addPassenger: addPassengerMutation.mutate,
+    isAddingPassenger: addPassengerMutation.isPending,
+    removePassenger: removePassengerMutation.mutate,
+    isRemovingPassenger: removePassengerMutation.isPending,
     isAdmin,
     isSuperAdmin,
     currentProfileId: profile?.id,

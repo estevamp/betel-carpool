@@ -127,6 +127,7 @@ Deno.serve(async (req) => {
       .from("trips")
       .select("id, driver_id, is_betel_car, departure_at, congregation_id")
       .eq("congregation_id", targetCongregationId)
+      .eq("is_active", true)
       .gte("departure_at", monthStart.toISOString())
       .lte("departure_at", monthEnd.toISOString());
 
