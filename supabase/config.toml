@@ -1,5 +1,11 @@
 project_id = "lipkaxjfwwamwlscgujt"
 
+[functions.close-month]
+verify_jwt = false
+
+[functions.create-congregation]
+verify_jwt = false
+
 [functions.invite-user]
 verify_jwt = false
 
@@ -9,6 +15,9 @@ verify_jwt = false
 [functions.assign-congregation-admin]
 verify_jwt = false
 
+[functions.cremove-congregation-admin]
+verify_jwt = false
+
 [functions.send-broadcast-notification]
 verify_jwt = false
 
@@ -16,4 +25,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.process-scheduled-notifications]
+verify_jwt = false
+
+[functions.transfer-user-congregation]
 verify_jwt = false
