@@ -234,13 +234,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 ### Problema Identificado
 
 ```
-Error: Can only be used on: https://betel-carpool.lovable.app
+Error: Can only be used on: https://betel-carpool.vercel.app
 ```
 
 ### Causa Raiz
 
 O OneSignal está configurado para funcionar apenas no domínio de produção, mas a aplicação está sendo acessada via:
-- `https://072eb106-3197-4f9d-94b3-798fdd2a6cf4.lovableproject.com`
+- `https://072eb106-3197-4f9d-94b3-798fdd2a6cf4.vercel.app`
 - Ou localhost durante desenvolvimento
 
 ### Solução Proposta
@@ -249,8 +249,8 @@ O OneSignal está configurado para funcionar apenas no domínio de produção, m
 1. Acessar o dashboard do OneSignal
 2. Settings → Platforms → Web Push
 3. Adicionar domínios permitidos:
-   - `https://betel-carpool.lovable.app`
-   - `https://*.lovableproject.com`
+   - `https://betel-carpool.vercel.app`
+   - `https://*.vercel.app`
    - `http://localhost:*` (para desenvolvimento)
 
 **Opção 2: Desabilitar OneSignal em Ambientes Não-Produção**
@@ -260,7 +260,7 @@ Modificar [`index.html`](index.html:23):
 ```html
 <script>
   // Só inicializar OneSignal em produção
-  if (window.location.hostname === 'betel-carpool.lovable.app') {
+  if (window.location.hostname === 'betel-carpool.vercel.app') {
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
       await OneSignal.init({
@@ -281,7 +281,7 @@ E modificar [`useOneSignal.ts`](src/hooks/useOneSignal.ts:12):
 useEffect(() => {
     const initializeOneSignal = async () => {
         // Verificar se estamos em produção
-        if (window.location.hostname !== 'betel-carpool.lovable.app') {
+        if (window.location.hostname !== 'betel-carpool.vercel.app') {
             console.log('OneSignal disabled in non-production environment');
             return;
         }
@@ -319,7 +319,7 @@ Essas features foram **removidas da especificação Permissions Policy**:
 - `ambient-light-sensor` → removida
 - `battery` → removida (Battery Status API descontinuada)
 
-Provavelmente vêm de um iframe ou script externo (possivelmente Lovable ou OneSignal).
+Provavelmente vêm de um iframe ou script externo (possivelmente provedor externo ou OneSignal).
 
 ### Solução Proposta
 
@@ -592,3 +592,4 @@ Os erros identificados variam de **críticos** (que impedem o funcionamento) a *
 - Fase 3 (Melhorias): 1 hora
 
 **Total**: 4-7 horas de trabalho
+

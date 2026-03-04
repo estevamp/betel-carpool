@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-const ONESIGNAL_APP_ID = "cb24512d-c95a-4533-a08b-259a5e289e0e";
+const ONESIGNAL_APP_ID = Deno.env.get("ONESIGNAL_APP_ID") ?? "cb24512d-c95a-4533-a08b-259a5e289e0e";
 const ONESIGNAL_REST_API_KEY = Deno.env.get("ONESIGNAL_REST_API_KEY");
 
 const corsHeaders = {
@@ -155,6 +155,9 @@ serve(async (req) => {
 
     if (!oneSignalApiKey) {
       throw new Error("ONESIGNAL_REST_API_KEY is not set");
+    }
+    if (!ONESIGNAL_APP_ID) {
+      throw new Error("ONESIGNAL_APP_ID is not set");
     }
 
     // Find settings that match today and are enabled

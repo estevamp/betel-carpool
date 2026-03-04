@@ -46,10 +46,11 @@ After deployment, test by:
 ## Error Before Fix
 ```
 Access to fetch at 'https://lipkaxjfwwamwlscgujt.supabase.co/functions/v1/delete-profile' 
-from origin 'https://id-preview--072eb106-3197-4f9d-94b3-798fdd2a6cf4.lovable.app' 
+from origin 'https://id-preview--072eb106-3197-4f9d-94b3-798fdd2a6cf4.vercel.app' 
 has been blocked by CORS policy: Response to preflight request doesn't pass access control check: 
 It does not have HTTP ok status.
 ```
 
 ## Expected Result After Fix
 The delete operation should work without CORS errors, and proper error messages should be displayed to the user when applicable.
+

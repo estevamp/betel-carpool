@@ -69,7 +69,7 @@ export default function AuthPage() {
     console.log(`[AuthPage] Starting google sign in...`);
     
     try {
-      // Use Supabase directly instead of Lovable wrapper to avoid OAuth issues
+      // Use Supabase directly instead of legacy wrapper to avoid OAuth issues
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -263,3 +263,4 @@ export default function AuthPage() {
     </div>
   );
 }
+
