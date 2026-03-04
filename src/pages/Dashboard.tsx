@@ -10,7 +10,10 @@ import {
   Settings,
   Calendar,
   CheckCircle2,
+  List,
+  Hexagon,
 } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -88,6 +91,7 @@ export default function Dashboard() {
     : congregations?.find((c) => c.id === profile?.congregation_id);
 
   const congregationName = currentCongregation?.name;
+  const [viewMode, setViewMode] = useState<"agenda" | "timeline">("agenda");
 
   // Fetch today's trips and future trips
   const { data: todayTrips = [] } = useQuery({
@@ -207,9 +211,39 @@ export default function Dashboard() {
                 <p className="text-sm text-muted-foreground">Próximos 3 dias</p>
               </div>
             </div>
-            <Link to="/viagens" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
-              Ver todas
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link to="/viagens" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+                Ver todas
+              </Link>
+              <div className="inline-flex items-center rounded-full border border-border p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("agenda")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                    viewMode === "agenda"
+                      ? "bg-primary text-white"
+                      : "bg-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <List className="h-3.5 w-3.5" />
+                  Agenda
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("timeline")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                    viewMode === "timeline"
+                      ? "bg-primary text-white"
+                      : "bg-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Hexagon className="h-3.5 w-3.5" />
+                  Timeline
+                </button>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -222,115 +256,218 @@ export default function Dashboard() {
                 groups[key].push(trip);
               });
 
-              return Object.entries(groups).map(([dateKey, trips]) => {
-                const dateObj = new Date(dateKey + "T00:00:00");
-                const isTodayDate = isToday(dateObj);
-                const isTomorrowDate = isTomorrow(dateObj);
-                const dateLabel = isTodayDate
-                  ? "Hoje"
-                  : isTomorrowDate
-                  ? "Amanhã"
-                  : format(dateObj, "EEEE, d 'de' MMMM", { locale: ptBR });
+              if (viewMode === "agenda") {
+                return Object.entries(groups).map(([dateKey, trips]) => {
+                  const dateObj = new Date(dateKey + "T00:00:00");
+                  const isTodayDate = isToday(dateObj);
+                  const isTomorrowDate = isTomorrow(dateObj);
+                  const dateLabel = isTodayDate
+                    ? "Hoje"
+                    : isTomorrowDate
+                    ? "Amanhã"
+                    : format(dateObj, "EEEE, d 'de' MMMM", { locale: ptBR });
 
-                return (
-                  <div key={dateKey}>
-                    {/* Separador de data estilo agenda */}
-                    <div
-                      className={cn(
-                        "flex items-center gap-3 px-5 py-2 border-y border-border",
-                        isTodayDate ? "bg-primary/5" : "bg-muted/40",
-                      )}
-                    >
-                      <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
-                      <span className={cn(
-                        "text-xs font-semibold uppercase tracking-wide",
-                        isTodayDate ? "text-primary" : "text-muted-foreground",
-                      )}>
-                        {dateLabel}
-                      </span>
-                    </div>
+                  return (
+                    <div key={dateKey}>
+                      <div
+                        className={cn(
+                          "flex items-center gap-3 px-5 py-2 border-y border-border",
+                          isTodayDate ? "bg-primary/5" : "bg-muted/40",
+                        )}
+                      >
+                        <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                        <span className={cn(
+                          "text-xs font-semibold uppercase tracking-wide",
+                          isTodayDate ? "text-primary" : "text-muted-foreground",
+                        )}>
+                          {dateLabel}
+                        </span>
+                      </div>
 
-                    {/* Viagens do dia */}
-                    <div className="divide-y divide-border">
-                      {trips.map((trip) => {
-                        const departureDate = parseISO(trip.departure_at);
-                        const departureTime = format(departureDate, "HH:mm");
-                        const returnTime = trip.return_at
-                          ? format(parseISO(trip.return_at), "HH:mm")
-                          : null;
-                        const confirmedPassengers =
-                          trip.passengers
-                            ?.map((passenger) => passenger.profile?.full_name)
-                            .filter((name): name is string => Boolean(name)) ?? [];
-                        const passengerCount = trip.passengers?.length || 0;
-                        const maxPassengers = trip.max_passengers || 4;
-                        const availableSeats = maxPassengers - passengerCount;
-                        const isFull = availableSeats <= 0;
+                      <div className="divide-y divide-border">
+                        {trips.map((trip) => {
+                          const departureDate = parseISO(trip.departure_at);
+                          const departureTime = format(departureDate, "HH:mm");
+                          const returnTime = trip.return_at
+                            ? format(parseISO(trip.return_at), "HH:mm")
+                            : null;
+                          const confirmedPassengers =
+                            trip.passengers
+                              ?.map((passenger) => passenger.profile?.full_name)
+                              .filter((name): name is string => Boolean(name)) ?? [];
+                          const passengerCount = trip.passengers?.length || 0;
+                          const maxPassengers = trip.max_passengers || 4;
+                          const availableSeats = maxPassengers - passengerCount;
+                          const isFull = availableSeats <= 0;
 
-                        return (
-                          <Link
-                            key={trip.id}
-                            to={`/viagens/${trip.id}`}
-                            className="block px-5 py-4 hover:bg-muted/50 transition-colors"
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <p className="min-w-0 font-bold text-base text-foreground">
-                                {trip.driver?.full_name ?? "Motorista desconhecido"}
-                              </p>
-                              <div className="flex shrink-0 flex-col items-end gap-1">
-                                <p className="font-bold text-base text-foreground text-right">
-                                  {departureTime}
-                                  {returnTime && (
-                                    <span className="font-medium text-muted-foreground"> {"\u2192"} {returnTime}</span>
-                                  )}
+                          return (
+                            <Link
+                              key={trip.id}
+                              to={`/viagens/${trip.id}`}
+                              className="block px-5 py-4 hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <p className="min-w-0 font-bold text-base text-foreground">
+                                  {trip.driver?.full_name ?? "Motorista desconhecido"}
                                 </p>
-                                <span
-                                  className={cn(
-                                    "px-2.5 py-1 rounded-full text-xs font-medium",
-                                    isFull ? "bg-muted text-muted-foreground" : "bg-success/10 text-success",
-                                  )}
-                                >
-                                  {isFull ? "Completo" : `${availableSeats} vagas`}
-                                </span>
-                              </div>
-                            </div>
-
-                            {(trip.is_urgent || trip.is_betel_car) && (
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                                {trip.is_urgent && (
-                                  <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
-                                    {"\u26A0"} NECESSÁRIA
+                                <div className="flex shrink-0 flex-col items-end gap-1">
+                                  <p className="font-bold text-base text-foreground text-right">
+                                    {departureTime}
+                                    {returnTime && (
+                                      <span className="font-medium text-muted-foreground"> {"\u2192"} {returnTime}</span>
+                                    )}
+                                  </p>
+                                  <span
+                                    className={cn(
+                                      "px-2.5 py-1 rounded-full text-xs font-medium",
+                                      isFull ? "bg-muted text-muted-foreground" : "bg-success/10 text-success",
+                                    )}
+                                  >
+                                    {isFull ? "Completo" : `${availableSeats} vagas`}
                                   </span>
-                                )}
-                                {trip.is_betel_car && (
-                                  <span className="inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
-                                    {"\ud83c\udfe2"} BETEL
-                                  </span>
-                                )}
+                                </div>
                               </div>
-                            )}
 
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                              {confirmedPassengers.length > 0 ? (
-                                confirmedPassengers.map((name, index) => (
-                                  <div key={`${trip.id}-${name}-${index}`} className="flex items-center gap-1.5">
-                                    {index > 0 && <span className="text-xs text-muted-foreground/70">/</span>}
-                                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-foreground">
-                                      {name}
+                              {(trip.is_urgent || trip.is_betel_car) && (
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                  {trip.is_urgent && (
+                                    <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+                                      {"\u26A0"} NECESSÁRIA
                                     </span>
-                                  </div>
-                                ))
-                              ) : (
-                                <p className="text-sm italic text-muted-foreground/50">Nenhum passageiro</p>
+                                  )}
+                                  {trip.is_betel_car && (
+                                    <span className="inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
+                                      {"\ud83c\udfe2"} BETEL
+                                    </span>
+                                  )}
+                                </div>
                               )}
-                            </div>
-                          </Link>
-                        );
-                      })}
+
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                {confirmedPassengers.length > 0 ? (
+                                  confirmedPassengers.map((name, index) => (
+                                    <div key={`${trip.id}-${name}-${index}`} className="flex items-center gap-1.5">
+                                      {index > 0 && <span className="text-xs text-muted-foreground/70">/</span>}
+                                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-foreground">
+                                        {name}
+                                      </span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <p className="text-sm italic text-muted-foreground/50">Nenhum passageiro</p>
+                                )}
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              });
+                  );
+                });
+              }
+
+              return (
+                <div className="py-2">
+                  {Object.entries(groups).map(([dateKey, trips], groupIndex, allGroups) => {
+                    const dateObj = new Date(dateKey + "T00:00:00");
+                    const isTodayDate = isToday(dateObj);
+                    const weekDay = format(dateObj, "EEE", { locale: ptBR });
+                    const dayNumber = format(dateObj, "d");
+
+                    return (
+                      <div key={dateKey} className="flex gap-4 px-5 py-3">
+                        <div className="w-16 shrink-0 flex flex-col items-center">
+                          <div
+                            className={cn(
+                              "h-16 w-16 rounded-xl flex flex-col items-center justify-center",
+                              isTodayDate ? "bg-primary text-white" : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            <span className="text-xs font-semibold uppercase">{weekDay}</span>
+                            <span className="text-xl font-bold leading-none">{dayNumber}</span>
+                          </div>
+                          {groupIndex < allGroups.length - 1 && <div className="mt-2 w-0.5 flex-1 bg-primary/20" />}
+                        </div>
+
+                        <div className="flex-1 space-y-3">
+                          {trips.map((trip) => {
+                            const departureDate = parseISO(trip.departure_at);
+                            const departureTime = format(departureDate, "HH:mm");
+                            const returnTime = trip.return_at
+                              ? format(parseISO(trip.return_at), "HH:mm")
+                              : null;
+                            const passengerCount = trip.passengers?.length || 0;
+                            const maxPassengers = trip.max_passengers || 4;
+                            const availableSeats = maxPassengers - passengerCount;
+                            const isFull = availableSeats <= 0;
+                            const passengerNames = trip.passengers
+                              ?.map((passenger) => passenger.profile?.full_name)
+                              .filter((name): name is string => Boolean(name))
+                              .join(" / ");
+                            const leftBorderColor = isFull
+                              ? "border-l-muted"
+                              : trip.is_urgent
+                              ? "border-l-warning"
+                              : trip.is_betel_car
+                              ? "border-l-info"
+                              : "border-l-primary";
+
+                            return (
+                              <Link
+                                key={trip.id}
+                                to={`/viagens/${trip.id}`}
+                                className={cn(
+                                  "block rounded-xl border border-border border-l-2 bg-card px-4 py-3 hover:bg-muted/30 transition-colors",
+                                  leftBorderColor,
+                                )}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <p className="font-bold text-base text-foreground">
+                                    {departureTime}
+                                    {returnTime && (
+                                      <span className="font-medium text-muted-foreground"> {"\u2192"} {returnTime}</span>
+                                    )}
+                                  </p>
+                                  <span
+                                    className={cn(
+                                      "px-2.5 py-1 rounded-full text-xs font-medium",
+                                      isFull ? "bg-muted text-muted-foreground" : "bg-success/10 text-success",
+                                    )}
+                                  >
+                                    {isFull ? "Completo" : `${availableSeats} vagas`}
+                                  </span>
+                                </div>
+
+                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                  <p className="text-sm text-muted-foreground">
+                                    {trip.driver?.full_name ?? "Motorista desconhecido"}
+                                  </p>
+                                  {trip.is_urgent && (
+                                    <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+                                      {"\u26A0"} NECESSÁRIA
+                                    </span>
+                                  )}
+                                  {trip.is_betel_car && (
+                                    <span className="inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
+                                      {"\ud83c\udfe2"} BETEL
+                                    </span>
+                                  )}
+                                </div>
+
+                                {passengerNames ? (
+                                  <p className="mt-1 text-xs text-muted-foreground/70">{passengerNames}</p>
+                                ) : (
+                                  <p className="mt-1 text-xs italic text-muted-foreground/70">Nenhum passageiro</p>
+                                )}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
             })() : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
