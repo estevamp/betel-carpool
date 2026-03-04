@@ -9,7 +9,6 @@ import {
   HelpCircle,
   Settings,
   Calendar,
-  Clock,
   CheckCircle2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -256,32 +255,70 @@ export default function Dashboard() {
                       {trips.map((trip) => {
                         const departureDate = parseISO(trip.departure_at);
                         const departureTime = format(departureDate, "HH:mm");
-                        const passengerNames =
+                        const returnTime = trip.return_at
+                          ? format(parseISO(trip.return_at), "HH:mm")
+                          : null;
+                        const confirmedPassengers =
                           trip.passengers
                             ?.map((passenger) => passenger.profile?.full_name)
-                            .filter(Boolean)
-                            .join(" / ") || "";
+                            .filter((name): name is string => Boolean(name)) ?? [];
+                        const passengerCount = trip.passengers?.length || 0;
+                        const maxPassengers = trip.max_passengers || 4;
+                        const availableSeats = maxPassengers - passengerCount;
+                        const isFull = availableSeats <= 0;
 
                         return (
                           <Link
                             key={trip.id}
                             to={`/viagens/${trip.id}`}
-                            className="flex items-center gap-4 px-5 py-4 hover:bg-muted/50 transition-colors"
+                            className="block px-5 py-4 hover:bg-muted/50 transition-colors"
                           >
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                              <Car className="h-6 w-6 text-primary" />
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="min-w-0">
+                                <p className="font-bold text-base text-foreground">
+                                  {departureTime}
+                                  {returnTime && (
+                                    <span className="font-medium text-muted-foreground"> {"\u2192"} {returnTime}</span>
+                                  )}
+                                </p>
+                              </div>
+                              <span
+                                className={cn(
+                                  "shrink-0 px-2.5 py-1 rounded-full text-xs font-medium",
+                                  isFull ? "bg-muted text-muted-foreground" : "bg-success/10 text-success",
+                                )}
+                              >
+                                {isFull ? "Completo" : `${availableSeats} vagas`}
+                              </span>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-foreground">{trip.driver?.full_name}</p>
-                              {passengerNames ? (
-                                <p className="text-sm text-muted-foreground">{passengerNames}</p>
-                              ) : (
-                                <p className="text-sm text-muted-foreground italic">Nenhum passageiro</p>
+
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                              <p className="text-sm text-muted-foreground">{trip.driver?.full_name}</p>
+                              {trip.is_urgent && (
+                                <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+                                  {"\u26A0"} NECESSÁRIA
+                                </span>
+                              )}
+                              {trip.is_betel_car && (
+                                <span className="inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
+                                  {"\ud83c\udfe2"} BETEL
+                                </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Clock className="h-4 w-4" />
-                              <span className="font-medium">{departureTime}</span>
+
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              {confirmedPassengers.length > 0 ? (
+                                confirmedPassengers.map((name, index) => (
+                                  <div key={`${trip.id}-${name}-${index}`} className="flex items-center gap-1.5">
+                                    {index > 0 && <span className="text-xs text-muted-foreground/70">/</span>}
+                                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-foreground">
+                                      {name}
+                                    </span>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-sm italic text-muted-foreground/50">Nenhum passageiro</p>
+                              )}
                             </div>
                           </Link>
                         );
