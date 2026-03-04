@@ -9,6 +9,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function normalizeSecret(secret: string | undefined): string {
+  return (secret ?? "").trim().replace(/^['"]|['"]$/g, "");
+}
+
+async function parseJsonSafely(response: Response): Promise<any> {
+  const bodyText = await response.text();
+  try {
+    return JSON.parse(bodyText);
+  } catch {
+    return { raw: bodyText };
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -126,16 +139,40 @@ serve(async (req) => {
     console.log("Sending broadcast notification to", userIds.length, "users");
     console.log("Payload:", JSON.stringify(primaryPayload, null, 2));
 
-    const response = await fetch("https://onesignal.com/api/v1/notifications", {
+    const oneSignalApiKey = normalizeSecret(ONESIGNAL_REST_API_KEY);
+    if (!oneSignalApiKey) {
+      throw new Error("ONESIGNAL_REST_API_KEY is not set");
+    }
+
+    let response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
+        Authorization: `Basic ${oneSignalApiKey}`,
       },
       body: JSON.stringify(primaryPayload),
     });
 
-    const result = await response.json();
+    let result = await parseJsonSafely(response);
+
+    const authErrors = Array.isArray(result?.errors)
+      ? result.errors.map((e: unknown) => String(e).toLowerCase())
+      : [];
+    const hasAuthError = authErrors.some(
+      (msg: string) => msg.includes("access denied") || msg.includes("authorization")
+    );
+
+    if (!response.ok && hasAuthError) {
+      response = await fetch("https://onesignal.com/api/v1/notifications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Key ${oneSignalApiKey}`,
+        },
+        body: JSON.stringify(primaryPayload),
+      });
+      result = await parseJsonSafely(response);
+    }
 
     console.log("OneSignal response:", JSON.stringify(result, null, 2));
 

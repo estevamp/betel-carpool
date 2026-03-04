@@ -22,6 +22,19 @@ interface NotificationRequest {
   large_icon?: string;
 }
 
+function normalizeSecret(secret: string | undefined): string {
+  return (secret ?? "").trim().replace(/^['"]|['"]$/g, "");
+}
+
+async function parseJsonSafely(response: Response): Promise<any> {
+  const bodyText = await response.text();
+  try {
+    return JSON.parse(bodyText);
+  } catch {
+    return { raw: bodyText };
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -126,17 +139,41 @@ serve(async (req) => {
 
     console.log("Sending notification with payload:", JSON.stringify(notificationPayload, null, 2));
 
+    const oneSignalApiKey = normalizeSecret(ONESIGNAL_REST_API_KEY);
+    if (!oneSignalApiKey) {
+      throw new Error("ONESIGNAL_REST_API_KEY is not set");
+    }
+
     // Send notification via OneSignal REST API
-    const response = await fetch("https://onesignal.com/api/v1/notifications", {
+    let response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
+        Authorization: `Basic ${oneSignalApiKey}`,
       },
       body: JSON.stringify(notificationPayload),
     });
 
-    const result = await response.json();
+    let result = await parseJsonSafely(response);
+
+    const authErrors = Array.isArray(result?.errors)
+      ? result.errors.map((e: unknown) => String(e).toLowerCase())
+      : [];
+    const hasAuthError = authErrors.some(
+      (msg: string) => msg.includes("access denied") || msg.includes("authorization")
+    );
+
+    if (!response.ok && hasAuthError) {
+      response = await fetch("https://onesignal.com/api/v1/notifications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Key ${oneSignalApiKey}`,
+        },
+        body: JSON.stringify(notificationPayload),
+      });
+      result = await parseJsonSafely(response);
+    }
 
     // Check if OneSignal request was successful
     if (!response.ok) {
