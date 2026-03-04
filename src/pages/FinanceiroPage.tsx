@@ -144,14 +144,14 @@ export default function FinanceiroPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-        {isAdmin && <button onClick={() => setActiveTab("report")} className={cn("px-4 py-2 rounded-md text-sm font-medium transition-colors", activeTab === "report" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+      <div className="flex gap-1 p-1 bg-muted rounded-lg w-full overflow-x-auto">
+        {isAdmin && <button onClick={() => setActiveTab("report")} className={cn("shrink-0 px-4 py-2 rounded-md text-sm font-medium transition-colors", activeTab === "report" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
             Relatório
           </button>}
-        <button onClick={() => setActiveTab("transfers")} className={cn("px-4 py-2 rounded-md text-sm font-medium transition-colors", activeTab === "transfers" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+        <button onClick={() => setActiveTab("transfers")} className={cn("shrink-0 px-4 py-2 rounded-md text-sm font-medium transition-colors", activeTab === "transfers" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
           Transferências
         </button>
-        <button onClick={() => setActiveTab("trips")} className={cn("px-4 py-2 rounded-md text-sm font-medium transition-colors", activeTab === "trips" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+        <button onClick={() => setActiveTab("trips")} className={cn("shrink-0 px-4 py-2 rounded-md text-sm font-medium transition-colors", activeTab === "trips" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
           Viagens do Mês
         </button>
       </div>
@@ -347,15 +347,15 @@ function TripAccordionItem({
     >
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full text-left p-4 hover:bg-muted/30 transition-colors"
+        className="w-full text-left p-3 sm:p-4 hover:bg-muted/30 transition-colors"
       >
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 shrink-0">
               <Car className="h-5 w-5 text-primary" />
             </div>
-            <div>
-              <p className="font-medium text-foreground">{trip.driverName}</p>
+            <div className="min-w-0">
+              <p className="font-medium text-foreground break-words">{trip.driverName}</p>
               <p className="text-sm text-muted-foreground">
                 {format(new Date(trip.departureAt), "dd/MM 'às' HH:mm", {
                   locale: ptBR
@@ -364,16 +364,16 @@ function TripAccordionItem({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex w-full sm:w-auto flex-wrap items-center justify-end gap-2 sm:gap-3">
             {isAdmin && (
-              <div className="flex items-center gap-2">
+              <div className="ml-auto sm:ml-0 flex flex-wrap items-center justify-end gap-2">
                 {!isFull && (
                   <Dialog open={addPassengerDialogOpen} onOpenChange={setAddPassengerDialogOpen}>
                     <DialogTrigger asChild>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="gap-1"
+                        className="gap-1 w-full sm:w-auto"
                         onClick={(event) => event.stopPropagation()}
                       >
                         <UserPlus className="h-3 w-3" />
@@ -445,7 +445,7 @@ function TripAccordionItem({
                 <Button
                   variant="destructive"
                   size="sm"
-                  className="gap-1"
+                  className="gap-1 w-full sm:w-auto"
                   onClick={(event) => {
                     event.stopPropagation();
                     if (window.confirm("Tem certeza que deseja excluir esta viagem?")) {
