@@ -307,9 +307,42 @@ export default function Dashboard() {
                               className="block px-5 py-4 hover:bg-muted/50 transition-colors"
                             >
                               <div className="flex items-start justify-between gap-4">
-                                <p className="min-w-0 font-bold text-base text-foreground">
-                                  {trip.driver?.full_name ?? "Motorista desconhecido"}
-                                </p>
+                                <div className="min-w-0">
+                                  <p className="font-bold text-base text-foreground">
+                                    {trip.driver?.full_name ?? "Motorista desconhecido"}
+                                  </p>
+
+                                  {(trip.is_urgent || trip.is_betel_car) && (
+                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                      {trip.is_urgent && (
+                                        <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+                                          {"\u26A0"} NECESSÁRIA
+                                        </span>
+                                      )}
+                                      {trip.is_betel_car && (
+                                        <span className="inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
+                                          {"\ud83c\udfe2"} BETEL
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                    {confirmedPassengers.length > 0 ? (
+                                      confirmedPassengers.map((name, index) => (
+                                        <div key={`${trip.id}-${name}-${index}`} className="flex items-center gap-1.5">
+                                          {index > 0 && <span className="text-xs text-muted-foreground/70">/</span>}
+                                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-foreground">
+                                            {name}
+                                          </span>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <p className="text-sm italic text-muted-foreground/50">Nenhum passageiro</p>
+                                    )}
+                                  </div>
+                                </div>
+
                                 <div className="flex shrink-0 flex-col items-end gap-1">
                                   <p className="font-bold text-base text-foreground text-right">
                                     {departureTime}
@@ -326,36 +359,6 @@ export default function Dashboard() {
                                     {isFull ? "Completo" : `${availableSeats} vagas`}
                                   </span>
                                 </div>
-                              </div>
-
-                              {(trip.is_urgent || trip.is_betel_car) && (
-                                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                                  {trip.is_urgent && (
-                                    <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
-                                      {"\u26A0"} NECESSÁRIA
-                                    </span>
-                                  )}
-                                  {trip.is_betel_car && (
-                                    <span className="inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
-                                      {"\ud83c\udfe2"} BETEL
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-
-                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                {confirmedPassengers.length > 0 ? (
-                                  confirmedPassengers.map((name, index) => (
-                                    <div key={`${trip.id}-${name}-${index}`} className="flex items-center gap-1.5">
-                                      {index > 0 && <span className="text-xs text-muted-foreground/70">/</span>}
-                                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-foreground">
-                                        {name}
-                                      </span>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <p className="text-sm italic text-muted-foreground/50">Nenhum passageiro</p>
-                                )}
                               </div>
                             </Link>
                           );
