@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, isToday, parseISO, startOfDay } from "date-fns";
+import { format, isToday, isTomorrow, parseISO, startOfDay, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
 import { useCongregations } from "@/hooks/useCongregations";
@@ -97,6 +97,7 @@ export default function Dashboard() {
       if (!selectedCongregationId) return []; // Don't fetch if no congregation is selected
 
       const todayStart = startOfDay(new Date()).toISOString();
+      const threeDaysEnd = addDays(startOfDay(new Date()), 3).toISOString();
 
       const { data, error } = await supabase
         .from("trips")
@@ -107,17 +108,16 @@ export default function Dashboard() {
           passengers:trip_passengers(id, passenger_id)
         `,
         )
-        .eq("is_active", true)
-        .eq("congregation_id", selectedCongregationId) // Filter by congregation_id
-        .gte("departure_at", todayStart) // Get trips from today onwards
-        .order("departure_at", {
-          ascending: true,
-        });
-      if (error) throw error;
+      .eq("is_active", true)
+      .eq("congregation_id", selectedCongregationId)
+      .gte("departure_at", todayStart)
+      .lt("departure_at", threeDaysEnd)
+      .order("departure_at", { ascending: true });
+          if (error) throw error;
 
-      return data ?? [];
-    },
-  });
+          return data ?? [];
+        },
+      });
 
   const todayDateString = format(new Date(), "yyyy-MM-dd");
 
@@ -213,51 +213,87 @@ export default function Dashboard() {
             </Link>
           </div>
 
-          <div className="divide-y divide-border">
-            {todayTrips.length > 0 ? (
-              todayTrips.map((trip) => {
-                const passengerCount = trip.passengers?.length || 0;
-                const maxPassengers = trip.max_passengers || 4;
-                const availableSeats = maxPassengers - passengerCount;
-                const departureDate = parseISO(trip.departure_at);
-                const departureTime = format(departureDate, "HH:mm");
-                const departureDateStr = format(departureDate, "dd/MM/yyyy");
-                const isTodayTrip = isToday(departureDate);
-                
+          <div>
+            {todayTrips.length > 0 ? (() => {
+              // Agrupar viagens por data
+              const groups: Record<string, typeof todayTrips> = {};
+              todayTrips.forEach((trip) => {
+                const key = format(parseISO(trip.departure_at), "yyyy-MM-dd");
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(trip);
+              });
+
+              return Object.entries(groups).map(([dateKey, trips]) => {
+                const dateObj = new Date(dateKey + "T00:00:00");
+                const isTodayDate = isToday(dateObj);
+                const isTomorrowDate = isTomorrow(dateObj);
+                const dateLabel = isTodayDate
+                  ? "Hoje"
+                  : isTomorrowDate
+                  ? "Amanhã"
+                  : format(dateObj, "EEEE, d 'de' MMMM", { locale: ptBR });
+
                 return (
-                  <Link
-                    key={trip.id}
-                    to={`/viagens/${trip.id}`}
-                    className="flex items-center gap-4 px-5 py-4 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <Car className="h-6 w-6 text-primary" />
+                  <div key={dateKey}>
+                    {/* Separador de data estilo agenda */}
+                    <div className="flex items-center gap-3 px-5 py-2 bg-muted/40 border-y border-border">
+                      <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span className={cn(
+                        "text-xs font-semibold uppercase tracking-wide",
+                        isTodayDate ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        {dateLabel}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground">{trip.driver?.full_name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {passengerCount}/{maxPassengers} passageiros
-                      </p>
+
+                    {/* Viagens do dia */}
+                    <div className="divide-y divide-border">
+                      {trips.map((trip) => {
+                        const passengerCount = trip.passengers?.length || 0;
+                        const maxPassengers = trip.max_passengers || 4;
+                        const availableSeats = maxPassengers - passengerCount;
+                        const departureDate = parseISO(trip.departure_at);
+                        const departureTime = format(departureDate, "HH:mm");
+
+                        return (
+                          <Link
+                            key={trip.id}
+                            to={`/viagens/${trip.id}`}
+                            className="flex items-center gap-4 px-5 py-4 hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                              <Car className="h-6 w-6 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-foreground">{trip.driver?.full_name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {passengerCount}/{maxPassengers} passageiros
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Clock className="h-4 w-4" />
+                              <span className="font-medium">{departureTime}</span>
+                            </div>
+                            <span
+                              className={cn(
+                                "px-2.5 py-1 rounded-full text-xs font-medium",
+                                availableSeats > 0
+                                  ? "bg-success/10 text-success"
+                                  : "bg-muted text-muted-foreground",
+                              )}
+                            >
+                              {availableSeats > 0
+                                ? `${availableSeats} vaga${availableSeats > 1 ? "s" : ""}`
+                                : "Completo"}
+                            </span>
+                          </Link>
+                        );
+                      })}
                     </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <div className="flex flex-col items-end">
-                        <span className="font-medium">{departureTime}</span>
-                        {!isTodayTrip && <span className="text-xs">{departureDateStr}</span>}
-                      </div>
-                    </div>
-                    <span
-                      className={cn(
-                        "px-2.5 py-1 rounded-full text-xs font-medium",
-                        availableSeats > 0 ? "bg-success/10 text-success" : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {availableSeats > 0 ? `${availableSeats} vaga${availableSeats > 1 ? "s" : ""}` : "Completo"}
-                    </span>
-                  </Link>
+                  </div>
                 );
-              })
-            ) : (
+              });
+            })() : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
                   <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
