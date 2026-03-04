@@ -105,7 +105,11 @@ export default function Dashboard() {
           `
           *,
           driver:profiles!trips_driver_id_fkey(id, full_name),
-          passengers:trip_passengers(id, passenger_id)
+          passengers:trip_passengers(
+            id,
+            passenger_id,
+            profile:profiles(full_name)
+          )
         `,
         )
       .eq("is_active", true)
@@ -201,11 +205,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <h2 className="font-semibold text-foreground">Próximas Viagens</h2>
-                <p className="text-sm text-muted-foreground">
-                  A partir de {format(new Date(), "d 'de' MMMM", {
-                    locale: ptBR,
-                  })}
-                </p>
+                <p className="text-sm text-muted-foreground">Próximos 3 dias</p>
               </div>
             </div>
             <Link to="/viagens" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
@@ -236,11 +236,16 @@ export default function Dashboard() {
                 return (
                   <div key={dateKey}>
                     {/* Separador de data estilo agenda */}
-                    <div className="flex items-center gap-3 px-5 py-2 bg-muted/40 border-y border-border">
-                      <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <div
+                      className={cn(
+                        "flex items-center gap-3 px-5 py-2 border-y border-border",
+                        isTodayDate ? "bg-primary/5" : "bg-muted/40",
+                      )}
+                    >
+                      <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
                       <span className={cn(
                         "text-xs font-semibold uppercase tracking-wide",
-                        isTodayDate ? "text-primary" : "text-muted-foreground"
+                        isTodayDate ? "text-primary" : "text-muted-foreground",
                       )}>
                         {dateLabel}
                       </span>
@@ -249,11 +254,13 @@ export default function Dashboard() {
                     {/* Viagens do dia */}
                     <div className="divide-y divide-border">
                       {trips.map((trip) => {
-                        const passengerCount = trip.passengers?.length || 0;
-                        const maxPassengers = trip.max_passengers || 4;
-                        const availableSeats = maxPassengers - passengerCount;
                         const departureDate = parseISO(trip.departure_at);
                         const departureTime = format(departureDate, "HH:mm");
+                        const passengerNames =
+                          trip.passengers
+                            ?.map((passenger) => passenger.profile?.full_name)
+                            .filter(Boolean)
+                            .join(" / ") || "";
 
                         return (
                           <Link
@@ -266,26 +273,16 @@ export default function Dashboard() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-foreground">{trip.driver?.full_name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {passengerCount}/{maxPassengers} passageiros
-                              </p>
+                              {passengerNames ? (
+                                <p className="text-sm text-muted-foreground">{passengerNames}</p>
+                              ) : (
+                                <p className="text-sm text-muted-foreground italic">Nenhum passageiro</p>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 text-muted-foreground">
                               <Clock className="h-4 w-4" />
                               <span className="font-medium">{departureTime}</span>
                             </div>
-                            <span
-                              className={cn(
-                                "px-2.5 py-1 rounded-full text-xs font-medium",
-                                availableSeats > 0
-                                  ? "bg-success/10 text-success"
-                                  : "bg-muted text-muted-foreground",
-                              )}
-                            >
-                              {availableSeats > 0
-                                ? `${availableSeats} vaga${availableSeats > 1 ? "s" : ""}`
-                                : "Completo"}
-                            </span>
                           </Link>
                         );
                       })}
