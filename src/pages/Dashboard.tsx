@@ -310,7 +310,7 @@ export default function Dashboard() {
                               </div>
                             )}
 
-                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
                               {confirmedPassengers.length > 0 ? (
                                 confirmedPassengers.map((name, index) => (
                                   <div key={`${trip.id}-${name}-${index}`} className="flex items-center gap-1.5">
