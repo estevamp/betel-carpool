@@ -331,7 +331,6 @@ export default function Dashboard() {
                                     {confirmedPassengers.length > 0 ? (
                                       confirmedPassengers.map((name, index) => (
                                         <div key={`${trip.id}-${name}-${index}`} className="flex items-center gap-1.5">
-                                          {index > 0 && <span className="text-xs text-muted-foreground/70">/</span>}
                                           <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-foreground">
                                             {name}
                                           </span>
