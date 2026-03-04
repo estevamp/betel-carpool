@@ -40,8 +40,11 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseSecretKey =
+      Deno.env.get("SUPABASE_SECRET_KEY") ??
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+      "";
+    const supabase = createClient(supabaseUrl, supabaseSecretKey);
 
     // Verify the user is an admin
     const authHeader = req.headers.get("Authorization");

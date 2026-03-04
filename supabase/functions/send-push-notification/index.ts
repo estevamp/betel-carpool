@@ -30,10 +30,13 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabaseSecretKey =
+      Deno.env.get("SUPABASE_SECRET_KEY") ??
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+      "";
     
     // Create admin client for manual verification and DB operations
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -55,7 +58,7 @@ serve(async (req) => {
         console.error("Auth error:", userError.message, userError.status);
         
         // Fallback: check if it's the service role key being passed as a token
-        if (token === supabaseServiceKey) {
+        if (token === supabaseSecretKey) {
           console.log("Authenticated via Service Key in Auth header");
         } else {
           return new Response(
@@ -70,7 +73,7 @@ serve(async (req) => {
     // Fallback to apikey header if no user found via auth header
     if (!user) {
       const apiKey = req.headers.get("apikey");
-      if (apiKey !== supabaseServiceKey) {
+      if (apiKey !== supabaseSecretKey) {
         console.error("Unauthorized: No valid authentication provided");
         return new Response(
           JSON.stringify({ success: false, error: "Unauthorized" }),

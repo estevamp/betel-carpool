@@ -46,9 +46,12 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabaseSecretKey =
+      Deno.env.get("SUPABASE_SECRET_KEY") ??
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+      "";
     
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -61,7 +64,7 @@ serve(async (req) => {
     const apiKey = req.headers.get("apikey");
     
     // Normalize keys for comparison (remove whitespace)
-    const normalizedServiceKey = supabaseServiceKey.trim();
+    const normalizedServiceKey = supabaseSecretKey.trim();
     const normalizedApiKey = apiKey?.trim();
     const normalizedAuthToken = authHeader?.replace(/^Bearer\s+/i, "").trim();
 

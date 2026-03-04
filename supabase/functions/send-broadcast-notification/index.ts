@@ -16,9 +16,12 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabaseSecretKey =
+      Deno.env.get("SUPABASE_SECRET_KEY") ??
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+      "";
     
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -38,7 +41,7 @@ serve(async (req) => {
       if (userError) {
         console.error("Auth error:", userError.message, userError.status);
         // If it fails, we check if it's the service key
-        if (token === supabaseServiceKey) {
+        if (token === supabaseSecretKey) {
            console.log("Authenticated via Service Key");
         } else {
           return new Response(
@@ -53,7 +56,7 @@ serve(async (req) => {
     // Fallback to apikey header if no auth header
     if (!user) {
       const apiKey = req.headers.get("apikey");
-      if (apiKey === supabaseServiceKey) {
+      if (apiKey === supabaseSecretKey) {
         console.log("Authenticated via apikey header");
       } else if (!authHeader) {
         return new Response(

@@ -35,7 +35,10 @@ serve(async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
       Deno.env.get("SUPABASE_ANON_KEY") ??
       "";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseSecretKey =
+      Deno.env.get("SUPABASE_SECRET_KEY") ??
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+      "";
 
     const userClient = createClient(supabaseUrl, supabasePublishableKey, {
       global: { headers: { Authorization: authHeader } },
@@ -72,7 +75,7 @@ serve(async (req: Request): Promise<Response> => {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Create admin client with service role
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+    const adminClient = createClient(supabaseUrl, supabaseSecretKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,

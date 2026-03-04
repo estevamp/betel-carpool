@@ -33,9 +33,14 @@ serve(async (req) => {
     console.log("Auth header:", authHeader ? "present" : "missing");
     
     // Create Supabase admin client to get user by ID from JWT
+    const supabaseSecretKey =
+      Deno.env.get("SUPABASE_SECRET_KEY") ??
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+      "";
+
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      supabaseSecretKey,
       {
         auth: {
           autoRefreshToken: false,

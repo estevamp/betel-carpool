@@ -22,9 +22,14 @@ serve(async (req) => {
   const token = authHeader.replace("Bearer ", "");
   const { profile_id, congregation_id, action = 'assign' } = await req.json();
 
+  const supabaseSecretKey =
+    Deno.env.get("SUPABASE_SECRET_KEY") ??
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+    "";
+
   const adminClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    supabaseSecretKey,
     {
       auth: {
         autoRefreshToken: false,
