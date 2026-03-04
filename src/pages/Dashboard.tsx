@@ -274,37 +274,41 @@ export default function Dashboard() {
                             className="block px-5 py-4 hover:bg-muted/50 transition-colors"
                           >
                             <div className="flex items-start justify-between gap-4">
-                              <div className="min-w-0">
-                                <p className="font-bold text-base text-foreground">
+                              <p className="min-w-0 font-bold text-base text-foreground">
+                                {trip.driver?.full_name ?? "Motorista desconhecido"}
+                              </p>
+                              <div className="flex shrink-0 flex-col items-end gap-1">
+                                <p className="font-bold text-base text-foreground text-right">
                                   {departureTime}
                                   {returnTime && (
                                     <span className="font-medium text-muted-foreground"> {"\u2192"} {returnTime}</span>
                                   )}
                                 </p>
+                                <span
+                                  className={cn(
+                                    "px-2.5 py-1 rounded-full text-xs font-medium",
+                                    isFull ? "bg-muted text-muted-foreground" : "bg-success/10 text-success",
+                                  )}
+                                >
+                                  {isFull ? "Completo" : `${availableSeats} vagas`}
+                                </span>
                               </div>
-                              <span
-                                className={cn(
-                                  "shrink-0 px-2.5 py-1 rounded-full text-xs font-medium",
-                                  isFull ? "bg-muted text-muted-foreground" : "bg-success/10 text-success",
-                                )}
-                              >
-                                {isFull ? "Completo" : `${availableSeats} vagas`}
-                              </span>
                             </div>
 
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                              <p className="text-sm text-muted-foreground">{trip.driver?.full_name}</p>
-                              {trip.is_urgent && (
-                                <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
-                                  {"\u26A0"} NECESSÁRIA
-                                </span>
-                              )}
-                              {trip.is_betel_car && (
-                                <span className="inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
-                                  {"\ud83c\udfe2"} BETEL
-                                </span>
-                              )}
-                            </div>
+                            {(trip.is_urgent || trip.is_betel_car) && (
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                {trip.is_urgent && (
+                                  <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+                                    {"\u26A0"} NECESSÁRIA
+                                  </span>
+                                )}
+                                {trip.is_betel_car && (
+                                  <span className="inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
+                                    {"\ud83c\udfe2"} BETEL
+                                  </span>
+                                )}
+                              </div>
+                            )}
 
                             <div className="mt-2 flex flex-wrap items-center gap-1.5">
                               {confirmedPassengers.length > 0 ? (
