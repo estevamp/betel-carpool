@@ -442,15 +442,19 @@ export default function Dashboard() {
                                   <p className="text-sm text-muted-foreground">
                                     {trip.driver?.full_name ?? "Motorista desconhecido"}
                                   </p>
-                                  {trip.is_urgent && (
-                                    <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
-                                      {"\u26A0"} NECESSÁRIA
-                                    </span>
-                                  )}
-                                  {trip.is_betel_car && (
-                                    <span className="inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
-                                      {"\ud83c\udfe2"} BETEL
-                                    </span>
+                                  {(trip.is_urgent || trip.is_betel_car) && (
+                                    <>
+                                      {trip.is_urgent && (
+                                        <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+                                          {"\u26A0"} NECESSÁRIA
+                                        </span>
+                                      )}
+                                      {trip.is_betel_car && (
+                                        <span className="inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
+                                          {"\ud83c\udfe2"} BETEL
+                                        </span>
+                                      )}
+                                    </>
                                   )}
                                 </div>
 
