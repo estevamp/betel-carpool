@@ -33,6 +33,27 @@ interface Trip {
 const ROUND_TRIP_COST = 15.0;
 const ONE_WAY_COST = 7.5;
 
+// ============================================================
+// Union-Find helpers for connected component detection
+// ============================================================
+function makeUnionFind() {
+  const parent = new Map<string, string>();
+
+  function find(x: string): string {
+    if (!parent.has(x)) parent.set(x, x);
+    if (parent.get(x) !== x) parent.set(x, find(parent.get(x)!));
+    return parent.get(x)!;
+  }
+
+  function union(x: string, y: string) {
+    const px = find(x);
+    const py = find(y);
+    if (px !== py) parent.set(px, py);
+  }
+
+  return { find, union };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -57,7 +78,7 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
@@ -88,32 +109,31 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Determine congregation: use provided one or get from user's profile
-    let targetCongregationId = congregation_id;
-    if (!targetCongregationId) {
+    // Get user's congregation if not super_admin
+    const isSuperAdmin = roleData.some((r: { role: string }) => r.role === "super_admin");
+
+    let targetCongregationId: string;
+    if (isSuperAdmin && congregation_id) {
+      targetCongregationId = congregation_id;
+    } else {
       const { data: profileData } = await supabase
         .from("profiles")
         .select("congregation_id")
-        .eq("user_id", user.id)
+        .eq("id", user.id)
         .single();
-      targetCongregationId = profileData?.congregation_id;
+
+      if (!profileData?.congregation_id) {
+        return new Response(JSON.stringify({ error: "User has no congregation" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      targetCongregationId = congregation_id ?? profileData.congregation_id;
     }
 
-    if (!targetCongregationId) {
-      return new Response(JSON.stringify({ error: "Congregação não encontrada" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    console.log(`Closing month ${month} for congregation ${targetCongregationId}`);
 
-    console.log(`Processing month: ${month} for congregation: ${targetCongregationId}`);
-
-    // Parse month to get date range
-    const [year, monthNum] = month.split("-").map(Number);
-    const monthStart = new Date(year, monthNum - 1, 1);
-    const monthEnd = new Date(year, monthNum, 0, 23, 59, 59, 999);
-
-    // Fetch profiles for this congregation only
+    // Fetch profiles for this congregation
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("id, full_name, sex, is_married, is_exempt, spouse_id, pix_key, congregation_id")
@@ -125,31 +145,33 @@ Deno.serve(async (req) => {
       (profiles as Profile[]).map((p) => [p.id, p])
     );
 
-    // Fetch trips for the month filtered by congregation
+    // Fetch trips for this month and congregation
+    const startDate = `${month}-01`;
+    const [year, monthNum] = month.split("-").map(Number);
+    const endDate = new Date(year, monthNum, 0).toISOString().split("T")[0];
+
     const { data: trips, error: tripsError } = await supabase
       .from("trips")
       .select("id, driver_id, is_betel_car, departure_at, congregation_id")
       .eq("congregation_id", targetCongregationId)
-      .eq("is_active", true)
-      .gte("departure_at", monthStart.toISOString())
-      .lte("departure_at", monthEnd.toISOString());
+      .gte("departure_at", startDate)
+      .lte("departure_at", `${endDate}T23:59:59`);
 
     if (tripsError) throw tripsError;
 
-    console.log(`Found ${trips?.length || 0} trips for month ${month}, congregation ${targetCongregationId}`);
+    console.log(`Found ${trips?.length ?? 0} trips`);
 
-    // Fetch all passengers for these trips
-    const tripIds = (trips as Trip[]).map((t) => t.id);
-    
+    // Fetch passengers for those trips
     let passengers: TripPassenger[] = [];
-    if (tripIds.length > 0) {
+    if (trips && trips.length > 0) {
+      const tripIds = (trips as Trip[]).map((t) => t.id);
       const { data: passengersData, error: passengersError } = await supabase
         .from("trip_passengers")
         .select("trip_id, passenger_id, trip_type")
         .in("trip_id", tripIds);
 
       if (passengersError) throw passengersError;
-      passengers = (passengersData ?? []) as TripPassenger[];
+      passengers = (passengersData as TripPassenger[]) ?? [];
     }
 
     console.log(`Found ${passengers.length} passenger records`);
@@ -231,30 +253,47 @@ Deno.serve(async (req) => {
       if (insertTransError) throw insertTransError;
     }
 
-    // Calculate net balances for transfer optimization
-    const netBalances = new Map<string, number>();
+    // ============================================================
+    // SMART TRANSFER OPTIMIZATION WITH CONNECTED COMPONENTS
+    //
+    // Problem with naive global net-balance approach:
+    //   If A→B (R$50) and C→D (R$50) are independent debts,
+    //   a global greedy match could incorrectly produce A→D and C→B.
+    //
+    // Solution: Use Union-Find to identify connected components.
+    //   Only merge/optimize debts within the same component.
+    //   Independent chains (A→B, C→D, E→F) stay separate.
+    //   Chains sharing a person (A→B, B→C) get optimized together.
+    // ============================================================
+
+    const { find, union } = makeUnionFind();
+
+    // Step 1: Union every debtor with their creditors to find connected groups
+    for (const [debtorId, creditorMap] of rawDebts) {
+      for (const creditorId of creditorMap.keys()) {
+        union(debtorId, creditorId);
+      }
+    }
+
+    // Step 2: Compute net balances grouped by connected component
+    // componentNetBalances: componentRoot -> (personId -> netBalance)
+    const componentNetBalances = new Map<string, Map<string, number>>();
 
     for (const [debtorId, creditorMap] of rawDebts) {
       for (const [creditorId, amount] of creditorMap) {
-        netBalances.set(debtorId, (netBalances.get(debtorId) || 0) - amount);
-        netBalances.set(creditorId, (netBalances.get(creditorId) || 0) + amount);
+        const component = find(debtorId); // same root as find(creditorId)
+
+        if (!componentNetBalances.has(component)) {
+          componentNetBalances.set(component, new Map());
+        }
+        const balMap = componentNetBalances.get(component)!;
+
+        balMap.set(debtorId, (balMap.get(debtorId) ?? 0) - amount);
+        balMap.set(creditorId, (balMap.get(creditorId) ?? 0) + amount);
       }
     }
 
-    const debtors: Array<{ id: string; amount: number }> = [];
-    const creditors: Array<{ id: string; amount: number }> = [];
-
-    for (const [id, balance] of netBalances) {
-      if (balance < -0.01) {
-        debtors.push({ id, amount: Math.abs(balance) });
-      } else if (balance > 0.01) {
-        creditors.push({ id, amount: balance });
-      }
-    }
-
-    debtors.sort((a, b) => b.amount - a.amount);
-    creditors.sort((a, b) => b.amount - a.amount);
-
+    // Step 3: For each component independently, apply greedy matching
     const transfers: Array<{
       debtor_id: string;
       creditor_id: string;
@@ -263,27 +302,44 @@ Deno.serve(async (req) => {
       congregation_id: string;
     }> = [];
 
-    let i = 0, j = 0;
-    while (i < debtors.length && j < creditors.length) {
-      const debtor = debtors[i];
-      const creditor = creditors[j];
-      const transferAmount = Math.min(debtor.amount, creditor.amount);
-      
-      if (transferAmount > 0.01) {
-        transfers.push({
-          debtor_id: debtor.id,
-          creditor_id: creditor.id,
-          amount: Math.round(transferAmount * 100) / 100,
-          month,
-          congregation_id: targetCongregationId,
-        });
+    for (const [, balMap] of componentNetBalances) {
+      const compDebtors: Array<{ id: string; amount: number }> = [];
+      const compCreditors: Array<{ id: string; amount: number }> = [];
+
+      for (const [id, balance] of balMap) {
+        if (balance < -0.01) {
+          compDebtors.push({ id, amount: Math.abs(balance) });
+        } else if (balance > 0.01) {
+          compCreditors.push({ id, amount: balance });
+        }
       }
 
-      debtor.amount -= transferAmount;
-      creditor.amount -= transferAmount;
+      // Sort descending so largest debts are settled first
+      compDebtors.sort((a, b) => b.amount - a.amount);
+      compCreditors.sort((a, b) => b.amount - a.amount);
 
-      if (debtor.amount < 0.01) i++;
-      if (creditor.amount < 0.01) j++;
+      let i = 0, j = 0;
+      while (i < compDebtors.length && j < compCreditors.length) {
+        const debtor = compDebtors[i];
+        const creditor = compCreditors[j];
+        const transferAmount = Math.min(debtor.amount, creditor.amount);
+
+        if (transferAmount > 0.01) {
+          transfers.push({
+            debtor_id: debtor.id,
+            creditor_id: creditor.id,
+            amount: Math.round(transferAmount * 100) / 100,
+            month,
+            congregation_id: targetCongregationId,
+          });
+        }
+
+        debtor.amount -= transferAmount;
+        creditor.amount -= transferAmount;
+
+        if (debtor.amount < 0.01) i++;
+        if (creditor.amount < 0.01) j++;
+      }
     }
 
     console.log(`Generated ${transfers.length} optimized transfers`);
@@ -331,7 +387,6 @@ Deno.serve(async (req) => {
 
     if (cleanupRideError) {
       console.error("Error cleaning up ride requests:", cleanupRideError);
-      // We don't throw here to not fail the whole month closure if just this cleanup fails
     }
 
     // Clean up absences that have already ended (end_date <= today) for this congregation
@@ -343,7 +398,6 @@ Deno.serve(async (req) => {
 
     if (cleanupAbsencesError) {
       console.error("Error cleaning up absences:", cleanupAbsencesError);
-      // We don't throw here to not fail the whole month closure if just this cleanup fails
     }
 
     return new Response(
