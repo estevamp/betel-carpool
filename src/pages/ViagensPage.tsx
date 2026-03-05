@@ -9,6 +9,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { TripCard } from "@/components/trips/TripCard";
 import { CreateTripDialog } from "@/components/trips/CreateTripDialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { format, parseISO, isToday, isTomorrow } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -71,6 +74,14 @@ export default function ViagensPage() {
     );
   });
 
+  // Group trips by date
+  const tripGroups: Record<string, typeof filteredTrips> = {};
+  filteredTrips.forEach((trip) => {
+    const key = format(parseISO(trip.departure_at), "yyyy-MM-dd");
+    if (!tripGroups[key]) tripGroups[key] = [];
+    tripGroups[key].push(trip);
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -78,7 +89,7 @@ export default function ViagensPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Viagens</h1>
           <p className="text-muted-foreground">
-            Coloque seu carro à disposição ou reserve uma vaga pra você em um dos carros. 
+            Coloque seu carro à disposição ou reserve uma vaga pra você em um dos carros.
           </p>
         </div>
         <CreateTripDialog
@@ -119,31 +130,68 @@ export default function ViagensPage() {
         </div>
       )}
 
-      {/* Trips List */}
+      {/* Trips List grouped by date */}
       {!isLoading && filteredTrips.length > 0 && (
         <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid gap-4"
+          className="space-y-2"
         >
-          {filteredTrips.map((trip) => (
-            <TripCard
-              key={trip.id}
-              trip={trip}
-              currentUserId={profile?.id}
-              isAdmin={isAdmin}
-              profiles={congregationProfiles}
-              onReserveSeat={reserveSeat}
-              onCancelReservation={cancelReservation}
-              onRemovePassenger={removePassenger}
-              onDeleteTrip={deleteTrip}
-              onUpdateTrip={updateTrip}
-              isReserving={isReserving}
-              isCanceling={isCanceling}
-              isUpdating={isUpdating}
-            />
-          ))}
+          {Object.entries(tripGroups).map(([dateKey, tripsForDate]) => {
+            const dateObj = new Date(dateKey + "T00:00:00");
+            const isTodayDate = isToday(dateObj);
+            const isTomorrowDate = isTomorrow(dateObj);
+            const dateLabel = isTodayDate
+              ? "Hoje"
+              : isTomorrowDate
+              ? "Amanhã"
+              : format(dateObj, "EEEE, d 'de' MMMM", { locale: ptBR });
+
+            return (
+              <div key={dateKey}>
+                {/* Date divider */}
+                <div
+                  className={cn(
+                    "flex items-center gap-3 px-1 py-2 mb-3",
+                    isTodayDate ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                  <span
+                    className={cn(
+                      "text-xs font-semibold uppercase tracking-wide",
+                      isTodayDate ? "text-primary" : "text-muted-foreground",
+                    )}
+                  >
+                    {dateLabel}
+                  </span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+
+                {/* Trips for this date */}
+                <div className="grid gap-4 mb-6">
+                  {tripsForDate.map((trip) => (
+                    <TripCard
+                      key={trip.id}
+                      trip={trip}
+                      currentUserId={profile?.id}
+                      isAdmin={isAdmin}
+                      profiles={congregationProfiles}
+                      onReserveSeat={reserveSeat}
+                      onCancelReservation={cancelReservation}
+                      onRemovePassenger={removePassenger}
+                      onDeleteTrip={deleteTrip}
+                      onUpdateTrip={updateTrip}
+                      isReserving={isReserving}
+                      isCanceling={isCanceling}
+                      isUpdating={isUpdating}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </motion.div>
       )}
 
