@@ -201,21 +201,18 @@ export default function Dashboard() {
       {/* Today's Trips and Future Trips */}
       <motion.div variants={itemVariants}>
         <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <Calendar className="h-5 w-5 text-primary" />
+          <div className="px-5 py-4 border-b border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Calendar className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-foreground">Próximas Viagens</h2>
+                  <p className="text-sm text-muted-foreground">Próximos 3 dias</p>
+                </div>
               </div>
-              <div>
-                <h2 className="font-semibold text-foreground">Próximas Viagens</h2>
-                <p className="text-sm text-muted-foreground">Próximos 3 dias</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link to="/viagens" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
-                Ver todas
-              </Link>
-              <div className="inline-flex items-center rounded-full border border-border p-0.5">
+              <div className="inline-flex items-center rounded-full border border-border p-0.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => setViewMode("agenda")}
@@ -244,8 +241,12 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
+            <div className="mt-2 flex justify-end">
+              <Link to="/viagens" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+                Ver todas
+              </Link>
+            </div>
           </div>
-
           <div>
             {todayTrips.length > 0 ? (() => {
               // Agrupar viagens por data
