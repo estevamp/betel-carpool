@@ -38,11 +38,30 @@ const containerVariants = {
 };
 
 export default function BetelitasPage() {
+  type DeleteProfileMutationInput = {
+    person: Betelita;
+    forceDeleteDriverTrips?: boolean;
+  };
+
+  type DeleteProfileMutationResult =
+    | { status: "deleted"; profileId: string }
+    | {
+        status: "needs_confirmation";
+        person: Betelita;
+        message: string;
+        tripsCount: number;
+      };
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<"all" | "drivers" | "admins">("all");
   const [viewPerson, setViewPerson] = useState<Betelita | null>(null);
   const [editPerson, setEditPerson] = useState<Betelita | null>(null);
   const [deletePerson, setDeletePerson] = useState<Betelita | null>(null);
+  const [confirmDeleteTripsContext, setConfirmDeleteTripsContext] = useState<{
+    person: Betelita;
+    message: string;
+    tripsCount: number;
+  } | null>(null);
   const [showBroadcastDialog, setShowBroadcastDialog] = useState(false);
 
   const { toast } = useToast();
@@ -72,11 +91,14 @@ export default function BetelitasPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (person: Betelita) => {
+    mutationFn: async ({
+      person,
+      forceDeleteDriverTrips = false,
+    }: DeleteProfileMutationInput): Promise<DeleteProfileMutationResult> => {
       // Use Supabase client's built-in functions.invoke method
       // This automatically handles authentication and headers correctly
       const { data, error } = await supabase.functions.invoke('delete-profile', {
-        body: { profileId: person.id },
+        body: { profileId: person.id, forceDeleteDriverTrips },
       });
 
       if (error) {
@@ -84,13 +106,34 @@ export default function BetelitasPage() {
         throw new Error(error.message || "Erro ao excluir perfil");
       }
 
+      if (data?.requiresConfirmation && data?.code === "PROFILE_LINKED_AS_DRIVER") {
+        return {
+          status: "needs_confirmation",
+          person,
+          message:
+            data?.error ||
+            "Este perfil está vinculado como motorista em viagens. Deseja continuar e excluir também essas viagens?",
+          tripsCount: data?.tripsCount ?? 0,
+        };
+      }
+
       if (!data?.success) {
         throw new Error(data?.error || "Erro ao excluir perfil");
       }
       
-      return person.id;
+      return { status: "deleted", profileId: person.id };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result.status === "needs_confirmation") {
+        setDeletePerson(null);
+        setConfirmDeleteTripsContext({
+          person: result.person,
+          message: result.message,
+          tripsCount: result.tripsCount,
+        });
+        return;
+      }
+
       // Invalidate and refetch with the correct query key
       queryClient.invalidateQueries({
         queryKey: ["betelitas", effectiveCongregationId]
@@ -100,6 +143,7 @@ export default function BetelitasPage() {
         description: "O membro foi removido com sucesso.",
       });
       setDeletePerson(null);
+      setConfirmDeleteTripsContext(null);
     },
     onError: (error) => {
       toast({
@@ -276,10 +320,42 @@ export default function BetelitasPage() {
           <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
             <AlertDialogCancel className="w-full sm:w-auto order-2 sm:order-1">Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deletePerson && deleteMutation.mutate(deletePerson)}
+              onClick={() => deletePerson && deleteMutation.mutate({ person: deletePerson })}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto order-1 sm:order-2"
             >
               {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!confirmDeleteTripsContext}
+        onOpenChange={(open) => !open && setConfirmDeleteTripsContext(null)}
+      >
+        <AlertDialogContent className="w-[95vw] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Perfil vinculado como motorista</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
+              {confirmDeleteTripsContext?.message}
+              {confirmDeleteTripsContext?.tripsCount
+                ? ` (${confirmDeleteTripsContext.tripsCount} viagem(ns) vinculada(s)).`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto order-2 sm:order-1">Não, cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                confirmDeleteTripsContext &&
+                deleteMutation.mutate({
+                  person: confirmDeleteTripsContext.person,
+                  forceDeleteDriverTrips: true,
+                })
+              }
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto order-1 sm:order-2"
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Sim, excluir viagens e perfil"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

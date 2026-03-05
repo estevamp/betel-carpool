@@ -8,6 +8,34 @@ const corsHeaders = {
 
 interface DeleteProfileRequest {
   profileId: string;
+  forceDeleteDriverTrips?: boolean;
+}
+
+function getFriendlyDeleteError(error: any): { message: string; status: number } {
+  const errorCode = error?.code;
+  const errorMessage = String(error?.message ?? "");
+
+  // Foreign key violation: profile is still referenced by other records.
+  if (errorCode === "23503") {
+    if (errorMessage.includes("trips_driver_id_fkey")) {
+      return {
+        message:
+          "Este perfil não pode ser excluído porque está vinculado a uma ou mais viagens como motorista. Remova ou transfira essas viagens antes de tentar novamente.",
+        status: 409,
+      };
+    }
+
+    return {
+      message:
+        "Este perfil não pode ser excluído porque ainda está vinculado a outros registros do sistema.",
+      status: 409,
+    };
+  }
+
+  return {
+    message: error?.message || "Erro desconhecido ao excluir perfil",
+    status: 400,
+  };
 }
 
 serve(async (req) => {
@@ -79,7 +107,7 @@ serve(async (req) => {
       );
     }
 
-    const { profileId }: DeleteProfileRequest = await req.json();
+    const { profileId, forceDeleteDriverTrips = false }: DeleteProfileRequest = await req.json();
     console.log("Profile ID to delete:", profileId);
 
     if (!profileId) {
@@ -151,6 +179,34 @@ serve(async (req) => {
 
     console.log("✅ Authorization checks passed, deleting profile...");
 
+    // If profile is linked as trip driver, require explicit confirmation first.
+    const { data: driverTrips, error: driverTripsError } = await adminClient
+      .from("trips")
+      .select("id")
+      .eq("driver_id", profileId);
+
+    if (driverTripsError) {
+      throw driverTripsError;
+    }
+
+    const driverTripIds = (driverTrips ?? []).map((t: { id: string }) => t.id);
+    if (driverTripIds.length > 0 && !forceDeleteDriverTrips) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          code: "PROFILE_LINKED_AS_DRIVER",
+          requiresConfirmation: true,
+          tripsCount: driverTripIds.length,
+          error:
+            "Este perfil está vinculado como motorista em viagens. Deseja continuar e excluir também essas viagens?",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
     // Delete related records
     await adminClient.from("absences").delete().eq("profile_id", profileId);
     await adminClient.from("ride_requests").delete().eq("profile_id", profileId);
@@ -167,15 +223,12 @@ serve(async (req) => {
 
     await adminClient.from("congregation_administrators").delete().eq("profile_id", profileId);
 
-    // Delete future trips
-    const { data: driverTrips } = await adminClient
-      .from("trips")
-      .select("id")
-      .eq("driver_id", profileId)
-      .gte("date", new Date().toISOString());
-
-    if (driverTrips && driverTrips.length > 0) {
-      await adminClient.from("trips").delete().in("id", driverTrips.map((t: any) => t.id));
+    // If user confirmed, delete all trips where this profile is driver.
+    // Remove dependent records first to avoid FK violations.
+    if (driverTripIds.length > 0) {
+      await adminClient.from("trip_passengers").delete().in("trip_id", driverTripIds);
+      await adminClient.from("transactions").delete().in("trip_id", driverTripIds);
+      await adminClient.from("trips").delete().in("id", driverTripIds);
     }
 
     // Delete Auth User if exists, otherwise delete profile directly
@@ -202,11 +255,13 @@ serve(async (req) => {
     );
   } catch (error: any) {
     console.error("❌ Error deleting profile:", error);
+    const friendlyError = getFriendlyDeleteError(error);
+
     return new Response(
-      JSON.stringify({ error: error.message || "Unknown error" }),
+      JSON.stringify({ error: friendlyError.message }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
+        status: friendlyError.status,
       }
     );
   }
