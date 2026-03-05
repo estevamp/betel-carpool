@@ -201,52 +201,45 @@ export default function Dashboard() {
       {/* Today's Trips and Future Trips */}
       <motion.div variants={itemVariants}>
         <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
-          <div className="px-5 py-4 border-b border-border">
-            <div className="px-5 py-4 border-b border-border space-y-3">
-              {/* Linha 1: ícone + título + subtítulo inline */}
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-                  <Calendar className="h-5 w-5 text-primary" />
-                </div>
-                <h2 className="font-semibold text-foreground whitespace-nowrap">Próximas Viagens</h2>
-                <p className="text-sm text-muted-foreground whitespace-nowrap">Próximos 3 dias</p>
+          <div className="px-5 py-4 border-b border-border space-y-3">
+            {/* Linha 1: ícone + título + subtítulo inline */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                <Calendar className="h-5 w-5 text-primary" />
               </div>
-              {/* Linha 2: botões de view à esquerda, "Ver todas" à direita */}
-              <div className="flex items-center justify-between">
-                <div className="inline-flex items-center rounded-full border border-border p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("agenda")}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-                      viewMode === "agenda"
-                        ? "bg-primary text-white"
-                        : "bg-transparent text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    <List className="h-3.5 w-3.5" />
-                    Agenda
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("timeline")}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-                      viewMode === "timeline"
-                        ? "bg-primary text-white"
-                        : "bg-transparent text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    <Hexagon className="h-3.5 w-3.5" />
-                    Timeline
-                  </button>
-                </div>
-                <Link to="/viagens" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
-                  Ver todas
-                </Link>
-              </div>
+              <h2 className="font-semibold text-foreground whitespace-nowrap">Próximas Viagens</h2>
+              <p className="text-sm text-muted-foreground">Próximos 3 dias</p>
             </div>
-            <div className="mt-2 flex justify-end">
+            {/* Linha 2: botões de view à esquerda, "Ver todas" à direita */}
+            <div className="flex items-center justify-between">
+              <div className="inline-flex items-center rounded-full border border-border p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("agenda")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                    viewMode === "agenda"
+                      ? "bg-primary text-white"
+                      : "bg-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <List className="h-3.5 w-3.5" />
+                  Agenda
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("timeline")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                    viewMode === "timeline"
+                      ? "bg-primary text-white"
+                      : "bg-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Hexagon className="h-3.5 w-3.5" />
+                  Timeline
+                </button>
+              </div>
               <Link to="/viagens" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
                 Ver todas
               </Link>
