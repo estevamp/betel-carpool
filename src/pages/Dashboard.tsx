@@ -513,7 +513,7 @@ export default function Dashboard() {
                     <Search className="h-6 w-6 text-warning" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground">{request.profile?.full_name ?? "Desconhecido"}</p>
+                    <p className="font-bold text-base text-foreground">{request.profile?.full_name ?? "Desconhecido"}</p>
                     <p className="text-sm text-muted-foreground">
                       {format(parseISO(request.requested_date), "dd/MM/yyyy")}
                     </p>
@@ -558,7 +558,7 @@ export default function Dashboard() {
                     <Plane className="h-6 w-6 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground">{absence.profile?.full_name ?? "Desconhecido"}</p>
+                    <p className="font-bold text-base text-foreground">{absence.profile?.full_name ?? "Desconhecido"}</p>
                     <p className="text-sm text-muted-foreground">
                       {format(parseISO(absence.start_date), "dd/MM/yyyy")} - {format(parseISO(absence.end_date), "dd/MM/yyyy")}
                     </p>
