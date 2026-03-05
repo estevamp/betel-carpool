@@ -15,7 +15,7 @@ verify_jwt = false
 [functions.assign-congregation-admin]
 verify_jwt = false
 
-[functions.cremove-congregation-admin]
+[functions.remove-congregation-admin]
 verify_jwt = false
 
 [functions.send-broadcast-notification]
