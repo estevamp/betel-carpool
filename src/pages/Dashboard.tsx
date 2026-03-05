@@ -207,8 +207,7 @@ export default function Dashboard() {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
                 <Calendar className="h-5 w-5 text-primary" />
               </div>
-              <h2 className="font-semibold text-foreground whitespace-nowrap">Próximas Viagens</h2>
-              <p className="text-sm text-muted-foreground">Próximos 3 dias</p>
+              <h2 className="font-semibold text-foreground whitespace-nowrap">Viagens nos próximos 3 dias</h2>
             </div>
             {/* Linha 2: botões de view à esquerda, "Ver todas" à direita */}
             <div className="flex items-center justify-between">

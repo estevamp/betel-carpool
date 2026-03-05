@@ -43,7 +43,7 @@ export function ViewBetelitaDialog({
       const congregationName = congregations?.find(c => c.id === selectedCongregationId)?.name || '';
       const baseUrl = window.location.origin;
       const inviteUrl = `${baseUrl}/auth?email=${encodeURIComponent(person.email)}&type=invite`;
-      const inviteText = `Esse é o seu convite para de cadastrar no sistema de transportes da congregação ${congregationName}.\n\n${inviteUrl}`;
+      const inviteText = `Esse é o seu convite para se cadastrar no sistema de transportes da congregação ${congregationName}.\n\n${inviteUrl}`;
 
       await navigator.clipboard.writeText(inviteText);
 
