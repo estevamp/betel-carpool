@@ -370,6 +370,26 @@ export function useFinanceiro(selectedMonth: string) {
     },
   });
 
+  // Mark transfer as unpaid mutation
+  const markAsUnpaidMutation = useMutation({
+    mutationFn: async (transferId: string) => {
+      const { error } = await supabase
+        .from("transfers")
+        .update({ is_paid: false, paid_at: null })
+        .eq("id", transferId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth, effectiveCongregationId] });
+      toast.success("Transferência marcada como pendente!");
+    },
+    onError: (error: Error) => {
+      console.error("Error marking transfer as unpaid:", error);
+      toast.error("Erro ao desfazer pagamento: " + error.message);
+    },
+  });
+
   // Close month mutation
   const closeMonthMutation = useMutation({
     mutationFn: async (monthToClose: string) => {
@@ -433,6 +453,8 @@ export function useFinanceiro(selectedMonth: string) {
       tripsQuery.error,
     markAsPaid: markAsPaidMutation.mutate,
     isMarkingAsPaid: markAsPaidMutation.isPending,
+    markAsUnpaid: markAsUnpaidMutation.mutate,
+    isMarkingAsUnpaid: markAsUnpaidMutation.isPending,    
     closeMonth,
     isClosingMonth: closeMonthMutation.isPending,
     deleteTrip: deleteTripMutation.mutate,

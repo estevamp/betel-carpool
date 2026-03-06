@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, TrendingDown, Calendar, Check, Copy, Car, Users, Loader2, Lock, ChevronDown, ChevronUp, ArrowRight, ArrowLeft, ArrowLeftRight, Trash2, UserPlus, X, AlertTriangle } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, RotateCcw, Calendar, Check, Copy, Car, Users, Loader2, Lock, ChevronDown, ChevronUp, ArrowRight, ArrowLeft, ArrowLeftRight, Trash2, UserPlus, X, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -53,6 +53,8 @@ export default function FinanceiroPage() {
     error,
     markAsPaid,
     isMarkingAsPaid,
+    markAsUnpaid,
+    isMarkingAsUnpaid,
     closeMonth,
     isClosingMonth,
     deleteTrip,
@@ -236,10 +238,18 @@ export default function FinanceiroPage() {
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyPixKey(transfer.pixKey, transfer.toName)} title="Copiar chave PIX">
                         <Copy className="h-4 w-4" />
                       </Button>
-                      {!transfer.isPaid && canMarkAsPaid && <Button size="sm" variant="outline" className="gap-1" onClick={() => markAsPaid(transfer.id)} disabled={isMarkingAsPaid}>
+                      {!transfer.isPaid && canMarkAsPaid && (
+                        <Button size="sm" variant="outline" className="gap-1" onClick={() => markAsPaid(transfer.id)} disabled={isMarkingAsPaid}>
                           {isMarkingAsPaid ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                           Pago
-                        </Button>}
+                        </Button>
+                      )}
+                      {transfer.isPaid && canMarkAsPaid && (
+                        <Button size="sm" variant="ghost" className="gap-1 text-muted-foreground hover:text-destructive" onClick={() => markAsUnpaid(transfer.id)} disabled={isMarkingAsUnpaid} title="Desfazer pagamento">
+                          {isMarkingAsUnpaid ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                          Desfazer
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </motion.div>;
