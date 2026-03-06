@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { format, isSameMonth, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Plus } from "lucide-react";
+import { CalendarIcon, Plus, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +39,7 @@ interface CreateTripDialogProps {
   onCreateTrip: (data: CreateTripData) => void;
   isCreating?: boolean;
 }
+
 export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogProps) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date>();
@@ -55,6 +56,8 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
   const { profile, isSuperAdmin } = useAuth();
   const { isCongregationAdmin } = useIsCongregationAdmin();
   const { selectedCongregationId } = useSelectedCongregation();
+
+  const isAdmin = isSuperAdmin || isCongregationAdmin;
 
   // Determine the effective congregation ID
   const effectiveCongregationId = isSuperAdmin
@@ -96,6 +99,11 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
     }
   }, [settings]);
 
+  // Verifica se a data selecionada é retroativa e fora do mês corrente
+  const isRetroactiveDate = date ? date < today : false;
+  const isDifferentMonth = date ? !isSameMonth(date, today) : false;
+  const showMonthWarning = isRetroactiveDate && isDifferentMonth;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!date) return;
@@ -136,6 +144,7 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
     setDriverId(profile?.id || "");
     setOpen(false);
   };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -181,13 +190,15 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !date && "text-muted-foreground",
+                        isRetroactiveDate && "border-warning text-warning-foreground",
+                      )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {date
-                        ? format(date, "PPP", {
-                            locale: ptBR,
-                          })
+                        ? format(date, "PPP", { locale: ptBR })
                         : "Selecione a data"}
                     </Button>
                   </PopoverTrigger>
@@ -196,12 +207,34 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
                       mode="single"
                       selected={date}
                       onSelect={setDate}
-                      disabled={(selectedDate) => selectedDate < today}
                       initialFocus
                       className="pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
+
+                {/* Aviso de data retroativa no mesmo mês */}
+                {isRetroactiveDate && !isDifferentMonth && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
+                    Você está adicionando uma viagem com data retroativa.
+                  </p>
+                )}
+
+                {/* Aviso de fechamento de mês */}
+                {showMonthWarning && (
+                  <div className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm text-warning-foreground">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                    <p>
+                      A data selecionada é de{" "}
+                      <strong>
+                        {format(date!, "MMMM 'de' yyyy", { locale: ptBR })}
+                      </strong>
+                      . Como está fora do mês atual, será necessário{" "}
+                      <strong>refazer o fechamento do mês</strong> correspondente para que esta viagem seja contabilizada corretamente.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -246,35 +279,46 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
                 <div className="space-y-0.5">
                   <Label htmlFor="urgent">Viagem Necessária</Label>
                 </div>
-                <Switch id="urgent" checked={isUrgent} onCheckedChange={setIsUrgent} />
+                <Switch
+                  id="urgent"
+                  checked={isUrgent}
+                  onCheckedChange={setIsUrgent}
+                />
               </div>
-
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="betel">Carro de Betel</Label>
+                  <Label htmlFor="betelcar">Carro de Betel</Label>
                 </div>
-                <Switch id="betel" checked={isBetelCar} onCheckedChange={setIsBetelCar} />
+                <Switch
+                  id="betelcar"
+                  checked={isBetelCar}
+                  onCheckedChange={setIsBetelCar}
+                />
               </div>
             </div>
 
             {/* Notes */}
             <div className="grid gap-2">
-              <Label htmlFor="notes">Observações</Label>
+              <Label htmlFor="notes">Observações (opcional)</Label>
               <Textarea
                 id="notes"
-                placeholder="Ex: Saída da doca do bloco 16..."
+                placeholder="Alguma observação sobre a viagem..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={3}
+                rows={2}
               />
             </div>
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isCreating || !date}>
+            <Button type="submit" disabled={!date || isCreating}>
               {isCreating ? "Criando..." : "Criar Viagem"}
             </Button>
           </DialogFooter>
