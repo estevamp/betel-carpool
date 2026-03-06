@@ -515,7 +515,7 @@ export default function ConfiguracoesPage() {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Motoristas não poderão editar a viagem dentro desse intervalo.
-                    Apenas admin ou super-admin poderão fazer alterações.
+                    Apenas o admin poderá fazer alterações.
                   </p>
                 </div>
               )}

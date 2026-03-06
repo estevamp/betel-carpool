@@ -313,7 +313,7 @@ export function TripCard({
                 {passenger.trip_type !== "Ida e Volta" && (
                   <span className="text-xs opacity-70">({passenger.trip_type === "Apenas Ida" ? "Ida" : "Volta"})</span>
                 )}
-                {onRemovePassenger && (canEdit || passenger.passenger_id === currentUserId) && (
+                {onRemovePassenger && (canEdit || !editBlocked && passenger.passenger_id === currentUserId) && (
                   <button
                     onClick={() => onRemovePassenger({ tripId: trip.id, passengerId: passenger.passenger_id })}
                     className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
@@ -357,15 +357,17 @@ export function TripCard({
         {!readOnly && (
         <div className="mt-4 pt-4 border-t border-border">
           {isPassenger ? (
-              <Button
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={() => onCancelReservation(trip.id)}
-              disabled={isCanceling}
-            >
-              {isCanceling ? "Cancelando..." : "Cancelar Reserva"}
-            </Button>
-          ) : !isFull && !isDriver ? (
+            editBlocked ? (
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                <Lock className="h-3.5 w-3.5" />
+                Viagem bloqueada para alterações
+              </span>
+            ) : (
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => onCancelReservation(trip.id)} disabled={isCanceling}>
+                {isCanceling ? "Cancelando..." : "Cancelar Reserva"}
+              </Button>
+            )
+          ) : !isFull && !isDriver && !editBlocked ? (
             <Dialog open={reserveDialogOpen} onOpenChange={setReserveDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="w-full sm:w-auto bg-success hover:bg-success/90 text-success-foreground">
