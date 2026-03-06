@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Car, Clock, Users, MapPin, Calendar, MoreVertical, AlertTriangle, Building2, UserPlus, X } from "lucide-react";
+import { Car, Clock, Users, MapPin, Calendar, MoreVertical, AlertTriangle, Building2, UserPlus, X, Lock } from "lucide-react";
 
 // Special UUID for Visitante profile
 const VISITANTE_PROFILE_ID = "00000000-0000-0000-0000-000000000001";
@@ -30,6 +30,7 @@ import type { Trip, UpdateTripData } from "@/hooks/useTrips";
 import type { Database } from "@/integrations/supabase/types";
 import type { Profile } from "@/hooks/useProfiles";
 import { EditTripDialog } from "./EditTripDialog";
+import { useTripLock } from "@/hooks/useTripLock";
 
 type TripType = Database["public"]["Enums"]["trip_type"];
 
@@ -78,10 +79,18 @@ export function TripCard({
   const [selectedPassengerId, setSelectedPassengerId] = useState<string>("");
   const [selectedReservePassengerId, setSelectedReservePassengerId] = useState<string>("");
 
+  // ── Trip lock ──────────────────────────────────────────────────────────
+  const { isLockedForUser, isTripLocked, lockSettings } = useTripLock();
+  const tripIsWithinLockWindow = isTripLocked(trip.departure_at);
+  // Usuários comuns não podem editar se bloqueado; admins sempre podem
+  const editBlocked = isLockedForUser(trip.departure_at);
+
   const availableSeats = (trip.max_passengers ?? 4) - trip.passengers.length;
   const isFull = availableSeats <= 0;
   const isDriver = trip.driver_id === currentUserId;
   const canManageTrip = isDriver || isAdmin;
+  // Se o usuário é driver mas a viagem está bloqueada (e ele não é admin), não mostra menu de edição
+  const canEdit = canManageTrip && !editBlocked;
   const isPassenger = trip.passengers.some((p) => p.passenger_id === currentUserId);
 
   const departureDate = new Date(trip.departure_at);
@@ -97,12 +106,10 @@ export function TripCard({
   const availableProfiles =
     profiles?.filter((p) => p.id !== trip.driver_id && !existingPassengerIds.includes(p.id)) ?? [];
 
-  // For reserve dialog, include all profiles except the driver and existing passengers
   const reserveAvailableProfiles =
     profiles?.filter((p) => p.id !== trip.driver_id && !existingPassengerIds.includes(p.id)) ?? [];
 
   const handleReserve = () => {
-    // If "Visitante" is selected, use the special Visitante profile ID
     const passengerId = selectedReservePassengerId === "visitante" ? VISITANTE_PROFILE_ID : selectedReservePassengerId;
     onReserveSeat({ tripId: trip.id, tripType: selectedTripType, passengerId });
     setReserveDialogOpen(false);
@@ -140,6 +147,13 @@ export function TripCard({
             : `HÁ ${availableSeats} VAGA${availableSeats > 1 ? "S" : ""} DISPONÍVE${availableSeats > 1 ? "IS" : "L"}`}
         </span>
         <div className="flex items-center gap-2">
+          {/* Indicador de bloqueio (visível para todos quando bloqueado) */}
+          {lockSettings.enabled && tripIsWithinLockWindow && (
+            <span className="flex items-center gap-1 text-muted-foreground text-xs">
+              <Lock className="h-3.5 w-3.5" />
+              {isAdmin ? "Bloqueada (admin pode editar)" : "Bloqueada"}
+            </span>
+          )}
           {trip.is_urgent && (
             <span className="flex items-center gap-1 text-warning">
               <AlertTriangle className="h-4 w-4" />
@@ -168,7 +182,7 @@ export function TripCard({
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   {formattedDate}
-                  {showReturnDate && ` -> ${formattedReturnDate}`}
+                  {showReturnDate && ` → ${formattedReturnDate}`}
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="h-4 w-4" />
@@ -179,7 +193,8 @@ export function TripCard({
             </div>
           </div>
 
-          {canManageTrip && (
+          {/* Menu de gerenciamento — só exibe se o usuário pode editar */}
+          {canEdit && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="shrink-0">
@@ -223,7 +238,7 @@ export function TripCard({
                 Passageiros ({trip.passengers.length}/{trip.max_passengers ?? 4})
               </span>
             </div>
-            {canManageTrip && !isFull && (
+            {canEdit && !isFull && (
               <Dialog open={addPassengerDialogOpen} onOpenChange={setAddPassengerDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1">
@@ -262,55 +277,41 @@ export function TripCard({
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="Ida e Volta" id="add-ida-volta" />
-                          <Label htmlFor="add-ida-volta" className="font-normal">
-                            Ida e Volta
-                          </Label>
+                          <Label htmlFor="add-ida-volta" className="font-normal">Ida e Volta</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="Apenas Ida" id="add-ida" />
-                          <Label htmlFor="add-ida" className="font-normal">
-                            Ida
-                          </Label>
+                          <Label htmlFor="add-ida" className="font-normal">Apenas Ida</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="Apenas Volta" id="add-volta" />
-                          <Label htmlFor="add-volta" className="font-normal">
-                            Volta
-                          </Label>
+                          <Label htmlFor="add-volta" className="font-normal">Apenas Volta</Label>
                         </div>
                       </RadioGroup>
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setAddPassengerDialogOpen(false)}>
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleAddPassenger} disabled={isReserving || !selectedPassengerId}>
-                      {isReserving ? "Adicionando..." : "Adicionar"}
-                    </Button>
+                    <Button variant="outline" onClick={() => setAddPassengerDialogOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleAddPassenger} disabled={!selectedPassengerId}>Adicionar</Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
             )}
           </div>
+
           <div className="flex flex-wrap gap-2">
             {trip.passengers.map((passenger) => (
               <span
                 key={passenger.id}
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm",
-                  "bg-muted text-muted-foreground group",
-                )}
+                className="group inline-flex items-center px-3 py-1.5 rounded-full text-sm bg-primary/10 text-primary"
               >
-                <span className="font-medium">
-                  {passenger.passenger_id === VISITANTE_PROFILE_ID
-                    ? "Visitante"
-                    : passenger.profile?.full_name || "Passageiro"}
-                </span>
+                {passenger.passenger_id === VISITANTE_PROFILE_ID
+                  ? "Visitante"
+                  : passenger.profile?.full_name || "Passageiro"}
                 {passenger.trip_type !== "Ida e Volta" && (
                   <span className="text-xs opacity-70">({passenger.trip_type === "Apenas Ida" ? "Ida" : "Volta"})</span>
                 )}
-                {onRemovePassenger && (canManageTrip || passenger.passenger_id === currentUserId) && (
+                {onRemovePassenger && (canEdit || passenger.passenger_id === currentUserId) && (
                   <button
                     onClick={() => onRemovePassenger({ tripId: trip.id, passengerId: passenger.passenger_id })}
                     className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
@@ -399,48 +400,31 @@ export function TripCard({
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="Ida e Volta" id="reserve-ida-volta" />
-                        <Label htmlFor="reserve-ida-volta" className="font-normal">
-                          Ida e Volta
-                        </Label>
+                        <Label htmlFor="reserve-ida-volta" className="font-normal">Ida e Volta</Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="Apenas Ida" id="reserve-ida" />
-                        <Label htmlFor="reserve-ida" className="font-normal">
-                          Apenas Ida
-                        </Label>
+                        <Label htmlFor="reserve-ida" className="font-normal">Apenas Ida</Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="Apenas Volta" id="reserve-volta" />
-                        <Label htmlFor="reserve-volta" className="font-normal">
-                          Apenas Volta
-                        </Label>
+                        <Label htmlFor="reserve-volta" className="font-normal">Apenas Volta</Label>
                       </div>
                     </RadioGroup>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setReserveDialogOpen(false);
-                      setSelectedReservePassengerId("");
-                      setSelectedTripType("Ida e Volta");
-                    }}
-                  >
-                    Cancelar
-                  </Button>
+                  <Button variant="outline" onClick={() => setReserveDialogOpen(false)}>Cancelar</Button>
                   <Button
                     onClick={handleReserve}
                     disabled={isReserving || !selectedReservePassengerId}
-                    className="bg-success hover:bg-success/90"
+                    className="bg-success hover:bg-success/90 text-success-foreground"
                   >
                     {isReserving ? "Reservando..." : "Confirmar Reserva"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          ) : isDriver ? (
-            <span className="text-sm text-muted-foreground">Você é o motorista desta viagem</span>
           ) : null}
         </div>
       </div>

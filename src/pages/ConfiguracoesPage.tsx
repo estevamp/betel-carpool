@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, Wallet, Bell, Shield, Database, Building2, Calendar, Clock, MessageSquare } from "lucide-react";
+import { Settings, Wallet, Bell, Shield, Database, Building2, Calendar, Clock, MessageSquare, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +57,8 @@ export default function ConfiguracoesPage() {
   const [tripValue, setTripValue] = useState("15.00");
   const [showTransportHelp, setShowTransportHelp] = useState(true);
   const [maxPassengers, setMaxPassengers] = useState("4");
+  const [tripLockEnabled, setTripLockEnabled] = useState(false);
+  const [tripLockHours, setTripLockHours] = useState("2");
 
   const { profile } = useAuth();
   // Use selectedCongregationId from context for super-admin, profile congregation for regular admin
@@ -123,8 +125,16 @@ export default function ConfiguracoesPage() {
       setTripValue("15.00");
       setShowTransportHelp(true);
       setMaxPassengers("4");
+      setTripLockEnabled(false);
+      setTripLockHours("2");
     }
+    const lockEnabled = settings.find(s => s.key === "trip_lock_enabled");  // ❌ fora do if
+    if (lockEnabled) setTripLockEnabled(lockEnabled.value === "true");
+
+    const lockHours = settings.find(s => s.key === "trip_lock_hours");      // ❌ fora do if
+    if (lockHours) setTripLockHours(lockHours.value);
   }, [settings, effectiveCongregationId]);
+
 
   const { data: notificationSettings, isLoading: isLoadingNotif } = useQuery({
     queryKey: ["notification-settings", effectiveCongregationId],
@@ -195,6 +205,8 @@ export default function ConfiguracoesPage() {
       await upsertSetting("trip_value", tripValue, "decimal");
       await upsertSetting("show_transport_help", showTransportHelp.toString(), "boolean");
       await upsertSetting("max_passengers", maxPassengers, "integer");
+      await upsertSetting("trip_lock_enabled", tripLockEnabled.toString(), "boolean");
+      await upsertSetting("trip_lock_hours", tripLockHours, "integer");
 
       // Save default congregation ID for super-admin (global setting)
       if (isSuperAdmin && defaultCongregationId) {
@@ -496,6 +508,55 @@ export default function ConfiguracoesPage() {
                 </div>
               )}
             </div>
+
+            {/* Trip Lock Settings */}
+            <div className="pt-4 border-t border-border space-y-4">
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4 text-destructive" />
+                <h3 className="font-semibold text-foreground">Bloqueio de Alterações de Viagem</h3>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="tripLockEnabled">Habilitar bloqueio</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Impede que motoristas editem viagens próximas. Admins sempre podem editar.
+                  </p>
+                </div>
+                <Switch
+                  id="tripLockEnabled"
+                  checked={tripLockEnabled}
+                  onCheckedChange={setTripLockEnabled}
+                  disabled={!effectiveCongregationId}
+                />
+              </div>
+
+              {tripLockEnabled && (
+                <div className="grid gap-2">
+                  <Label htmlFor="tripLockHours">
+                    Bloquear edições a partir de quantas horas antes da viagem?
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      id="tripLockHours"
+                      type="number"
+                      min="1"
+                      max="72"
+                      value={tripLockHours}
+                      onChange={(e) => setTripLockHours(e.target.value)}
+                      className="max-w-[100px]"
+                      disabled={!effectiveCongregationId}
+                    />
+                    <span className="text-sm text-muted-foreground">horas antes da partida</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Motoristas não poderão editar a viagem dentro desse intervalo.
+                    Apenas admin ou super-admin poderão fazer alterações.
+                  </p>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>}
       {/* Save Button */}
