@@ -472,40 +472,6 @@ export default function ConfiguracoesPage() {
                   disabled={!effectiveCongregationId}
                 />
               </div>
-              
-              {isSuperAdmin && (
-                <div className="mt-6 pt-6 border-t border-border space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
-                      <Shield className="h-5 w-5 text-warning" />
-                    </div>
-                    <div>
-                      <h2 className="font-semibold text-foreground">Área Administrativa</h2>
-                      <p className="text-sm text-muted-foreground">Apenas para super-admins</p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="defaultCongregation">Congregação Padrão para Super-Admin</Label>
-                    <Select value={defaultCongregationId} onValueChange={setDefaultCongregationId}>
-                      <SelectTrigger id="defaultCongregation">
-                        <SelectValue placeholder="Selecione uma congregação..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {congregations && congregations.map((cong) => (
-                          <SelectItem key={cong.id} value={cong.id}>
-                            {cong.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Esta congregação será selecionada automaticamente ao fazer login
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
 
             {/* Trip Lock Settings */}
             <div className="pt-4 border-t border-border space-y-4">
@@ -555,6 +521,39 @@ export default function ConfiguracoesPage() {
               )}
             </div>
 
+              {isSuperAdmin && (
+                <div className="mt-6 pt-6 border-t border-border space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
+                      <Shield className="h-5 w-5 text-warning" />
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-foreground">Área Administrativa</h2>
+                      <p className="text-sm text-muted-foreground">Apenas para super-admins</p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="defaultCongregation">Congregação Padrão para Super-Admin</Label>
+                    <Select value={defaultCongregationId} onValueChange={setDefaultCongregationId}>
+                      <SelectTrigger id="defaultCongregation">
+                        <SelectValue placeholder="Selecione uma congregação..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {congregations && congregations.map((cong) => (
+                          <SelectItem key={cong.id} value={cong.id}>
+                            {cong.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Esta congregação será selecionada automaticamente ao fazer login
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>}
       {/* Save Button */}

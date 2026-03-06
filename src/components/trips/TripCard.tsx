@@ -56,6 +56,7 @@ interface TripCardProps {
   isReserving?: boolean;
   isCanceling?: boolean;
   isUpdating?: boolean;
+  readOnly?: boolean;
 }
 
 export function TripCard({
@@ -71,6 +72,7 @@ export function TripCard({
   isReserving,
   isCanceling,
   isUpdating,
+  readOnly,
 }: TripCardProps) {
   const [reserveDialogOpen, setReserveDialogOpen] = useState(false);
   const [addPassengerDialogOpen, setAddPassengerDialogOpen] = useState(false);
@@ -352,9 +354,10 @@ export function TripCard({
         )}
 
         {/* Actions */}
+        {!readOnly && (
         <div className="mt-4 pt-4 border-t border-border">
           {isPassenger ? (
-            <Button
+              <Button
               variant="outline"
               className="w-full sm:w-auto"
               onClick={() => onCancelReservation(trip.id)}
@@ -427,6 +430,7 @@ export function TripCard({
             </Dialog>
           ) : null}
         </div>
+        )}
       </div>
     </motion.div>
   );

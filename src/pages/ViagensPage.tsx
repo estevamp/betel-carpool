@@ -322,6 +322,7 @@ export default function ViagensPage() {
                               isReserving={isReserving}
                               isCanceling={isCanceling}
                               isUpdating={isUpdating}
+                              readOnly
                             />
                           ))}
                         </motion.div>
