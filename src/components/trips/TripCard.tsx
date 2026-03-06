@@ -240,7 +240,7 @@ export function TripCard({
                 Passageiros ({trip.passengers.length}/{trip.max_passengers ?? 4})
               </span>
             </div>
-            {canEdit && !isFull && (
+            {canEdit && !isFull && (!readOnly || isAdmin) && (
               <Dialog open={addPassengerDialogOpen} onOpenChange={setAddPassengerDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1">
