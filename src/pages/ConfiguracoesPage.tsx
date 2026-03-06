@@ -210,11 +210,10 @@ export default function ConfiguracoesPage() {
 
       // Save default congregation ID for super-admin (global setting)
       if (isSuperAdmin && defaultCongregationId) {
-        // Keep a single row for this key to avoid ambiguous reads after per-congregation settings migration
         const { error: deleteDefaultError } = await supabase
           .from("settings")
-          .eq("key", "default_congregation_id")
-          .delete();
+          .delete()
+          .eq("key", "default_congregation_id"); // ✅ .delete() antes do .eq()
 
         if (deleteDefaultError) throw deleteDefaultError;
 
@@ -227,9 +226,7 @@ export default function ConfiguracoesPage() {
             congregation_id: defaultCongregationId,
           });
 
-        if (insertDefaultError) {
-          throw insertDefaultError;
-        }
+        if (insertDefaultError) throw insertDefaultError;
       }
     },
     onSuccess: () => {
