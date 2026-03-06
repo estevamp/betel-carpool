@@ -120,21 +120,22 @@ export default function ConfiguracoesPage() {
       
       const maxPass = settings.find(s => s.key === "max_passengers");
       if (maxPass) setMaxPassengers(maxPass.value);
+
+      // ✅ Dentro do if(settings)
+      const lockEnabled = settings.find(s => s.key === "trip_lock_enabled");
+      if (lockEnabled) setTripLockEnabled(lockEnabled.value === "true");
+
+      const lockHours = settings.find(s => s.key === "trip_lock_hours");
+      if (lockHours) setTripLockHours(lockHours.value);
+
     } else if (effectiveCongregationId) {
-      // Reset to defaults when switching congregation
       setTripValue("15.00");
       setShowTransportHelp(true);
       setMaxPassengers("4");
       setTripLockEnabled(false);
       setTripLockHours("2");
     }
-    const lockEnabled = settings.find(s => s.key === "trip_lock_enabled");  // ❌ fora do if
-    if (lockEnabled) setTripLockEnabled(lockEnabled.value === "true");
-
-    const lockHours = settings.find(s => s.key === "trip_lock_hours");      // ❌ fora do if
-    if (lockHours) setTripLockHours(lockHours.value);
   }, [settings, effectiveCongregationId]);
-
 
   const { data: notificationSettings, isLoading: isLoadingNotif } = useQuery({
     queryKey: ["notification-settings", effectiveCongregationId],
