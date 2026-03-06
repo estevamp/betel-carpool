@@ -50,8 +50,12 @@ export default function ViagensPage() {
     removePassenger,
   } = useTrips();
 
+  const effectiveCongregationId = isSuperAdmin
+    ? selectedCongregationId
+    : profile?.congregation_id;
+
   const congregationProfiles = profiles?.filter(
-    (p) => p.congregation_id === profile?.congregation_id,
+    (p) => p.congregation_id === effectiveCongregationId,
   );
 
   const today = new Date();
@@ -75,10 +79,6 @@ export default function ViagensPage() {
   });
 
   // ── Viagens anteriores (últimos 30 dias) ───────────────────────────────
-  const effectiveCongregationId = isSuperAdmin
-    ? selectedCongregationId
-    : profile?.congregation_id;
-
   const { data: pastTrips = [], isLoading: isLoadingPast } = useQuery({
     queryKey: ["trips", "past30", effectiveCongregationId],
     enabled: showPast && !!effectiveCongregationId,
