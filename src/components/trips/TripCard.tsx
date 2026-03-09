@@ -137,12 +137,13 @@ export function TripCard({
       )}
     >
       {/* Status Bar */}
-      <div
+      {!readOnly && 
+        <div
         className={cn(
           "px-4 py-2 flex items-center justify-between text-sm font-medium",
           isFull ? "bg-muted text-muted-foreground" : "bg-success/10 text-success",
         )}
-      >
+        >
         <span>
           {isFull
             ? "COMPLETO"
@@ -169,7 +170,7 @@ export function TripCard({
             </span>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* Content */}
       <div className="p-5">
