@@ -316,7 +316,9 @@ function TripAccordionItem({
   const isFull = availableSeats <= 0;
 
   const existingPassengerIds = new Set(trip.passengers.map((passenger) => passenger.passengerId));
-  const availableProfiles = profiles.filter((profile) => profile.id !== trip.driverId && !existingPassengerIds.has(profile.id));
+  const availableProfiles = profiles
+    .filter((profile) => profile.id !== trip.driverId && !existingPassengerIds.has(profile.id))
+    .sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
 
   const getTripTypeIcon = (type: string) => {
     switch (type) {

@@ -101,7 +101,8 @@ export function useFinanceiro(selectedMonth: string) {
     queryFn: async () => {
       let query = supabase
         .from("profiles")
-        .select("id, full_name, pix_key, congregation_id");
+        .select("id, full_name, pix_key, congregation_id")
+        .order("full_name", { ascending: true });
 
       if (effectiveCongregationId) {
         query = query.eq("congregation_id", effectiveCongregationId);
@@ -266,14 +267,14 @@ export function useFinanceiro(selectedMonth: string) {
       maxPassengers: t.max_passengers,
       isActive: t.is_active,
       passengerCount: t.trip_passengers?.length ?? 0,
-      passengers: (t.trip_passengers as any[])?.map((tp) => ({
+      passengers: ((t.trip_passengers as any[])?.map((tp) => ({
         id: tp.id,
         passengerId: tp.passenger_id,
-        name: tp.passenger_id === '00000000-0000-0000-0000-000000000001'
+        name: tp.passenger_id === "00000000-0000-0000-0000-000000000001"
           ? "Visitante"
           : tp.profiles?.full_name ?? "Passageiro",
         tripType: (tp.trip_type ?? "Ida e Volta") as TripType
-      })) ?? [],
+      })) ?? []).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
       congregationId: t.congregation_id,
     }));
   })();

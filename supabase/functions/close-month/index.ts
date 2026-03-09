@@ -116,11 +116,25 @@ Deno.serve(async (req) => {
     if (isSuperAdmin && congregation_id) {
       targetCongregationId = congregation_id;
     } else {
-      const { data: profileData } = await supabase
+      // profiles.id is not always auth user id in this project.
+      // Resolve by user_id first, then fallback to legacy id linkage.
+      let profileData: { congregation_id: string | null } | null = null;
+      const { data: byUserId } = await supabase
         .from("profiles")
         .select("congregation_id")
-        .eq("id", user.id)
-        .single();
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (byUserId) {
+        profileData = byUserId;
+      } else {
+        const { data: byId } = await supabase
+          .from("profiles")
+          .select("congregation_id")
+          .eq("id", user.id)
+          .maybeSingle();
+        profileData = byId;
+      }
 
       if (!profileData?.congregation_id) {
         return new Response(JSON.stringify({ error: "User has no congregation" }), {
