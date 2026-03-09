@@ -45,12 +45,12 @@ export function RideRequestCard({ request }: RideRequestCardProps) {
       variants={itemVariants}
       className="bg-card rounded-xl border border-warning/30 shadow-card p-5"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning/10 shrink-0">
             <Search className="h-6 w-6 text-warning" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="font-semibold text-foreground text-lg">
               {request.profile_name}
             </h3>
@@ -61,14 +61,14 @@ export function RideRequestCard({ request }: RideRequestCardProps) {
               </span>
             </div>
             {request.notes && (
-              <p className="text-sm text-muted-foreground mt-2 p-2 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground mt-2 p-2 bg-muted/50 rounded-lg break-words">
                 {request.notes}
               </p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleCreateTrip}>
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <Button variant="outline" size="sm" onClick={handleCreateTrip} className="flex-1 sm:flex-none">
             Criar Viagem
           </Button>
           {canDelete && (

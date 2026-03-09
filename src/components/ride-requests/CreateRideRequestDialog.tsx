@@ -81,7 +81,7 @@ export function CreateRideRequestDialog({ children }: CreateRideRequestDialogPro
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="w-[95vw] sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Preciso de Carona</DialogTitle>
           <DialogDescription>
