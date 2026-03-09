@@ -81,6 +81,8 @@ export function getMonthOptions(): MonthOption[] {
   return options;
 }
 
+export type TransferMode = "direct" | "optimized";
+
 export function useFinanceiro(selectedMonth: string) {
   const { profile, isAdmin } = useAuth();
   const queryClient = useQueryClient();
@@ -392,11 +394,17 @@ export function useFinanceiro(selectedMonth: string) {
   });
 
   // Close month mutation
-  const closeMonthMutation = useMutation({
-    mutationFn: async (monthToClose: string) => {
+const closeMonthMutation = useMutation({
+    mutationFn: async ({
+      month: monthToClose,
+      transferMode,
+    }: {
+      month: string;
+      transferMode: TransferMode;
+    }) => {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
-      
+
       if (!token) throw new Error("Não autenticado");
 
       const response = await fetch(
@@ -407,7 +415,11 @@ export function useFinanceiro(selectedMonth: string) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ month: monthToClose, congregation_id: effectiveCongregationId }),
+          body: JSON.stringify({
+            month: monthToClose,
+            congregation_id: effectiveCongregationId,
+            transfer_mode: transferMode,        // ← novo campo
+          }),
         }
       );
 
@@ -430,7 +442,8 @@ export function useFinanceiro(selectedMonth: string) {
   });
 
   const closeMonth = useCallback(
-    (monthToClose: string) => closeMonthMutation.mutate(monthToClose),
+    (monthToClose: string, transferMode: TransferMode) =>
+      closeMonthMutation.mutate({ month: monthToClose, transferMode }),
     [closeMonthMutation]
   );
 
