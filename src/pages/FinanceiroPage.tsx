@@ -258,7 +258,7 @@ export default function FinanceiroPage() {
 
       {/* Trips Tab */}
       {!isLoading && activeTab === "trips" && <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-3">
-          {isAdmin && <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+          {isAdmin && selectedMonth !== months[0]?.id && <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
               <AlertTriangle className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
               <p className="text-sm text-amber-900/90">
                 Se editar ou excluir uma viagem deste mês, feche o mês novamente para recalcular os valores.
