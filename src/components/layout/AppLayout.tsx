@@ -6,12 +6,17 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
 import { CongregationSelector } from "@/components/congregations/CongregationSelector";
+import { TourOverlay, TOUR_STEPS } from "@/components/tour/TourOverlay";
+import { TourButton } from "@/components/tour/TourButton";
+import { useTour } from "@/hooks/useTour";
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isSuperAdmin } = useIsSuperAdmin();
   const { selectedCongregationId, setSelectedCongregationId } = useSelectedCongregation();
   const location = useLocation();
+
+  const { isOpen, currentStep, openTour, closeTour, nextStep, prevStep, goToStep } = useTour();
 
   // Não mostrar o seletor de congregações na página de Congregações
   const showCongregationSelector = isSuperAdmin && location.pathname !== "/congregacoes";
@@ -53,6 +58,19 @@ export function AppLayout() {
             <Outlet />
           </div>
         </main>
+
+        {/* Tour */}
+        <TourOverlay
+          isOpen={isOpen}
+          currentStep={currentStep}
+          onNext={() => nextStep(TOUR_STEPS.length)}
+          onPrev={prevStep}
+          onClose={() => closeTour(true)}
+          onGoToStep={goToStep}
+        />
+
+        {/* Floating help button — only visible when tour is closed */}
+        {!isOpen && <TourButton onClick={openTour} />}
       </div>
     </SidebarProvider>
   );
