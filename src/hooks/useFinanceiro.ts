@@ -447,6 +447,45 @@ const closeMonthMutation = useMutation({
     [closeMonthMutation]
   );
 
+  // Delete month closure mutation
+  const deleteMonthClosureMutation = useMutation({
+    mutationFn: async (monthToDelete: string) => {
+      if (!isAdmin) throw new Error("Apenas administradores podem excluir fechamento");
+
+      // Delete transfers for the month
+      const { error: transfersError } = await supabase
+        .from("transfers")
+        .delete()
+        .eq("month", monthToDelete)
+        .eq("congregation_id", effectiveCongregationId);
+
+      if (transfersError) throw transfersError;
+
+      // Delete transactions for the month
+      const { error: transactionsError } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("month", monthToDelete)
+        .eq("congregation_id", effectiveCongregationId);
+
+      if (transactionsError) throw transactionsError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions", selectedMonth, effectiveCongregationId] });
+      queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth, effectiveCongregationId] });
+      toast.success("Fechamento do mês excluído com sucesso!");
+    },
+    onError: (error: Error) => {
+      console.error("Error deleting month closure:", error);
+      toast.error("Erro ao excluir fechamento: " + error.message);
+    },
+  });
+
+  const deleteMonthClosure = useCallback(
+    (monthToDelete: string) => deleteMonthClosureMutation.mutate(monthToDelete),
+    [deleteMonthClosureMutation]
+  );
+
   return {
     profiles: profilesQuery.data ?? [],
     profileBalances,
@@ -468,9 +507,11 @@ const closeMonthMutation = useMutation({
     markAsPaid: markAsPaidMutation.mutate,
     isMarkingAsPaid: markAsPaidMutation.isPending,
     markAsUnpaid: markAsUnpaidMutation.mutate,
-    isMarkingAsUnpaid: markAsUnpaidMutation.isPending,    
+    isMarkingAsUnpaid: markAsUnpaidMutation.isPending,
     closeMonth,
     isClosingMonth: closeMonthMutation.isPending,
+    deleteMonthClosure,
+    isDeletingMonthClosure: deleteMonthClosureMutation.isPending,
     deleteTrip: deleteTripMutation.mutate,
     isDeletingTrip: deleteTripMutation.isPending,
     addPassenger: addPassengerMutation.mutate,

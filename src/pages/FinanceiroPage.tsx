@@ -63,6 +63,8 @@ export default function FinanceiroPage() {
     isMarkingAsUnpaid,
     closeMonth,
     isClosingMonth,
+    deleteMonthClosure,
+    isDeletingMonthClosure,
     deleteTrip,
     isDeletingTrip,
     addPassenger,
@@ -101,72 +103,105 @@ export default function FinanceiroPage() {
         </div>
 
         {isAdmin && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="default" className="gap-2" disabled={isClosingMonth}>
-                {isClosingMonth ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-                Fechar Mês
-              </Button>
-            </AlertDialogTrigger>
+          <div className="flex gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="default" className="gap-2" disabled={isClosingMonth}>
+                  {isClosingMonth ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+                  Fechar Mês
+                </Button>
+              </AlertDialogTrigger>
 
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Fechar mês {months.find((m) => m.id === selectedMonth)?.label}?
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta ação irá calcular todas as transações e transferências do mês
-                  com base nas viagens registradas. Os dados existentes serão recalculados.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Fechar mês {months.find((m) => m.id === selectedMonth)?.label}?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação irá calcular todas as transações e transferências do mês
+                    com base nas viagens registradas. Os dados existentes serão recalculados.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
 
-              {/* Mode selector */}
-              <div className="space-y-3 py-2">
-                <p className="text-sm font-medium text-foreground">Modo de transferência</p>
-                <div className="grid grid-cols-1 gap-2">
-                  {(["direct", "optimized"] as TransferMode[]).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setTransferMode(mode)}
-                      className={cn(
-                        "flex items-start gap-3 rounded-lg border p-3 text-left transition-colors",
-                        transferMode === mode
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      )}
-                    >
-                      <div
+                {/* Mode selector */}
+                <div className="space-y-3 py-2">
+                  <p className="text-sm font-medium text-foreground">Modo de transferência</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {(["direct", "optimized"] as TransferMode[]).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setTransferMode(mode)}
                         className={cn(
-                          "mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center",
-                          transferMode === mode ? "border-primary" : "border-muted-foreground"
+                          "flex items-start gap-3 rounded-lg border p-3 text-left transition-colors",
+                          transferMode === mode
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
                         )}
                       >
-                        {transferMode === mode && <div className="h-2 w-2 rounded-full bg-primary" />}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium leading-none">
-                          {mode === "direct" ? "Direto" : "Otimizado"}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {mode === "direct"
-                            ? "Cada pessoa paga exatamente quem a levou. Mais transparente e intuitivo, porém com mais transferências."
-                            : "Minimiza o número de transferências consolidando dívidas entre grupos conectados. O valor total é o mesmo, mas o destinatário pode ser diferente do motorista."}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
+                        <div
+                          className={cn(
+                            "mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center",
+                            transferMode === mode ? "border-primary" : "border-muted-foreground"
+                          )}
+                        >
+                          {transferMode === mode && <div className="h-2 w-2 rounded-full bg-primary" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium leading-none">
+                            {mode === "direct" ? "Direto" : "Otimizado"}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {mode === "direct"
+                              ? "Cada pessoa paga exatamente quem a levou. Mais transparente e intuitivo, porém com mais transferências."
+                              : "Minimiza o número de transferências consolidando dívidas entre grupos conectados. O valor total é o mesmo, mas o destinatário pode ser diferente do motorista."}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => closeMonth(selectedMonth, transferMode)}>
-                  Confirmar Fechamento
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => closeMonth(selectedMonth, transferMode)}>
+                    Confirmar Fechamento
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="gap-2" disabled={isDeletingMonthClosure}>
+                  {isDeletingMonthClosure ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  Excluir Fechamento
+                </Button>
+              </AlertDialogTrigger>
+
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Excluir fechamento do mês {months.find((m) => m.id === selectedMonth)?.label}?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação irá remover todas as transações e transferências calculadas para este mês.
+                    As viagens não serão afetadas. Você poderá fechar o mês novamente quando desejar.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteMonthClosure(selectedMonth)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Confirmar Exclusão
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         )}
       </div>
 
@@ -313,7 +348,11 @@ export default function FinanceiroPage() {
             <div className="flex flex-col items-center justify-center py-12 text-center bg-card rounded-xl border border-border shadow-card">
               <Wallet className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="font-semibold text-foreground">Nenhuma transferência</h3>
-              <p className="text-sm text-muted-foreground mt-1">Não há transferências pendentes para este mês</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {selectedMonth === months[0]?.id
+                  ? "As transferências ficarão disponíveis quando o mês for finalizado"
+                  : "Não há transferências pendentes para este mês"}
+              </p>
             </div>
           ) : transfers.map((transfer) => {
             const isDebtor = transfer.fromId === currentProfileId;
