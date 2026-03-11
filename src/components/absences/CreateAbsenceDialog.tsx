@@ -50,6 +50,8 @@ export function CreateAbsenceDialog({
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState("");
   const [profileId, setProfileId] = useState<string>("");
+  const [startCalendarOpen, setStartCalendarOpen] = useState(false);
+  const [endCalendarOpen, setEndCalendarOpen] = useState(false);
 
   const { profile, isSuperAdmin } = useAuth();
   const { isCongregationAdmin } = useIsCongregationAdmin();
@@ -118,7 +120,7 @@ export function CreateAbsenceDialog({
             {/* Start Date */}
             <div className="grid gap-2">
               <Label>Data de Início</Label>
-              <Popover>
+              <Popover open={startCalendarOpen} onOpenChange={setStartCalendarOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -139,7 +141,7 @@ export function CreateAbsenceDialog({
                   <Calendar
                     mode="single"
                     selected={startDate}
-                    onSelect={setStartDate}
+                    onSelect={(d) => { setStartDate(d); setStartCalendarOpen(false); }}
                     locale={ptBR}
                     initialFocus
                   />
@@ -150,7 +152,7 @@ export function CreateAbsenceDialog({
             {/* End Date */}
             <div className="grid gap-2">
               <Label>Data de Término</Label>
-              <Popover>
+              <Popover open={endCalendarOpen} onOpenChange={setEndCalendarOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -171,7 +173,7 @@ export function CreateAbsenceDialog({
                   <Calendar
                     mode="single"
                     selected={endDate}
-                    onSelect={setEndDate}
+                    onSelect={(d) => { setEndDate(d); setEndCalendarOpen(false); }}
                     locale={ptBR}
                     disabled={(date) => startDate ? date < startDate : false}
                     initialFocus

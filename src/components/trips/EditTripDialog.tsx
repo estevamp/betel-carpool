@@ -47,6 +47,7 @@ export function EditTripDialog({ trip, open, onOpenChange, onUpdateTrip, isUpdat
   const [isUrgent, setIsUrgent] = useState(trip.is_urgent ?? false);
   const [isBetelCar, setIsBetelCar] = useState(trip.is_betel_car ?? false);
   const [notes, setNotes] = useState(trip.notes ?? "");
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   // Reset form when trip changes
   useEffect(() => {
@@ -104,8 +105,8 @@ export function EditTripDialog({ trip, open, onOpenChange, onUpdateTrip, isUpdat
           {/* Date */}
           <div className="grid gap-2">
             <Label>Data de Ida</Label>
-            <Popover>
-              <PopoverTrigger asChild>
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn("justify-start text-left font-normal", !date && "text-muted-foreground")}
@@ -115,8 +116,13 @@ export function EditTripDialog({ trip, open, onOpenChange, onUpdateTrip, isUpdat
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0 bg-popover" align="start">
-                <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-              </PopoverContent>
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={(d) => { setDate(d); setCalendarOpen(false); }}
+                    initialFocus
+                  />
+                </PopoverContent>
             </Popover>
           </div>
 

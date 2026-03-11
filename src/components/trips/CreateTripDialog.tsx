@@ -43,6 +43,7 @@ interface CreateTripDialogProps {
 export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogProps) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date>();
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [departureTime, setDepartureTime] = useState("18:30");
   const [returnTime, setReturnTime] = useState("21:30");
   const [maxPassengers, setMaxPassengers] = useState(4);
@@ -186,7 +187,7 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
             <div className="grid gap-4">
               <div className="grid gap-2">
                 <Label>Data de Ida</Label>
-                <Popover>
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -206,7 +207,7 @@ export function CreateTripDialog({ onCreateTrip, isCreating }: CreateTripDialogP
                     <Calendar
                       mode="single"
                       selected={date}
-                      onSelect={setDate}
+                      onSelect={(d) => { setDate(d); setCalendarOpen(false); }}
                       initialFocus
                       className="pointer-events-auto"
                     />
