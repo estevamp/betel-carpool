@@ -68,7 +68,6 @@ export function getMonthOptions(): MonthOption[] {
     const date = subMonths(now, i);
     const monthStr = format(date, "yyyy-MM");
     const label = format(date, "MMMM yyyy", { locale: ptBR });
-    // Capitalize first letter
     const capitalizedLabel = label.charAt(0).toUpperCase() + label.slice(1);
 
     options.push({
@@ -89,12 +88,10 @@ export function useFinanceiro(selectedMonth: string) {
   const { isSuperAdmin } = useIsSuperAdmin();
   const { selectedCongregationId } = useSelectedCongregation();
 
-  // Parse month string to get date range
   const [year, month] = selectedMonth.split("-").map(Number);
   const monthStart = startOfMonth(new Date(year, month - 1));
   const monthEnd = endOfMonth(new Date(year, month - 1));
 
-  // Determine the effective congregation ID for filtering
   const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : profile?.congregation_id;
 
   // Fetch all profiles for name mapping
@@ -196,28 +193,19 @@ export function useFinanceiro(selectedMonth: string) {
 
     const balanceMap = new Map<string, { toPay: number; toReceive: number; congregationId: string | null }>();
 
-    // Initialize all profiles
     profilesQuery.data.forEach((p) => {
       balanceMap.set(p.id, { toPay: 0, toReceive: 0, congregationId: p.congregation_id });
     });
 
-    // Calculate from transactions
     transactionsQuery.data.forEach((t) => {
       const debtor = balanceMap.get(t.debtor_id);
-      if (debtor) {
-        debtor.toPay += Number(t.amount);
-      }
+      if (debtor) debtor.toPay += Number(t.amount);
 
       const creditor = balanceMap.get(t.creditor_id);
-      if (creditor) {
-        creditor.toReceive += Number(t.amount);
-      }
+      if (creditor) creditor.toReceive += Number(t.amount);
     });
 
-    // Convert to array with names
-    const profileNameMap = new Map(
-      profilesQuery.data.map((p) => [p.id, p.full_name])
-    );
+    const profileNameMap = new Map(profilesQuery.data.map((p) => [p.id, p.full_name]));
 
     return Array.from(balanceMap.entries())
       .map(([id, balance]) => ({
@@ -256,9 +244,7 @@ export function useFinanceiro(selectedMonth: string) {
   const monthTrips: MonthTrip[] = (() => {
     if (!tripsQuery.data || !profilesQuery.data) return [];
 
-    const profileNameMap = new Map(
-      profilesQuery.data.map((p) => [p.id, p.full_name])
-    );
+    const profileNameMap = new Map(profilesQuery.data.map((p) => [p.id, p.full_name]));
 
     return tripsQuery.data.map((t) => ({
       id: t.id,
@@ -275,13 +261,12 @@ export function useFinanceiro(selectedMonth: string) {
         name: tp.passenger_id === "00000000-0000-0000-0000-000000000001"
           ? "Visitante"
           : tp.profiles?.full_name ?? "Passageiro",
-        tripType: (tp.trip_type ?? "Ida e Volta") as TripType
+        tripType: (tp.trip_type ?? "Ida e Volta") as TripType,
       })) ?? []).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
       congregationId: t.congregation_id,
     }));
   })();
 
-  // Calculate totals
   const totalToPay = profileBalances.reduce((sum, b) => sum + b.toPay, 0);
   const totalToReceive = profileBalances.reduce((sum, b) => sum + b.toReceive, 0);
   const pendingTransfers = transfers.filter((t) => !t.isPaid).length;
@@ -360,7 +345,6 @@ export function useFinanceiro(selectedMonth: string) {
         .from("transfers")
         .update({ is_paid: true, paid_at: new Date().toISOString() })
         .eq("id", transferId);
-
       if (error) throw error;
     },
     onSuccess: () => {
@@ -368,7 +352,6 @@ export function useFinanceiro(selectedMonth: string) {
       toast.success("Transferência marcada como paga!");
     },
     onError: (error: Error) => {
-      console.error("Error marking transfer as paid:", error);
       toast.error("Erro ao marcar como paga: " + error.message);
     },
   });
@@ -380,7 +363,6 @@ export function useFinanceiro(selectedMonth: string) {
         .from("transfers")
         .update({ is_paid: false, paid_at: null })
         .eq("id", transferId);
-
       if (error) throw error;
     },
     onSuccess: () => {
@@ -388,13 +370,12 @@ export function useFinanceiro(selectedMonth: string) {
       toast.success("Transferência marcada como pendente!");
     },
     onError: (error: Error) => {
-      console.error("Error marking transfer as unpaid:", error);
       toast.error("Erro ao desfazer pagamento: " + error.message);
     },
   });
 
   // Close month mutation
-const closeMonthMutation = useMutation({
+  const closeMonthMutation = useMutation({
     mutationFn: async ({
       month: monthToClose,
       transferMode,
@@ -404,7 +385,6 @@ const closeMonthMutation = useMutation({
     }) => {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
-
       if (!token) throw new Error("Não autenticado");
 
       const response = await fetch(
@@ -418,7 +398,7 @@ const closeMonthMutation = useMutation({
           body: JSON.stringify({
             month: monthToClose,
             congregation_id: effectiveCongregationId,
-            transfer_mode: transferMode,        // ← novo campo
+            transfer_mode: transferMode,
           }),
         }
       );
@@ -436,7 +416,6 @@ const closeMonthMutation = useMutation({
       toast.success(data.message || "Mês fechado com sucesso!");
     },
     onError: (error: Error) => {
-      console.error("Error closing month:", error);
       toast.error(error instanceof Error ? error.message : "Erro ao fechar mês");
     },
   });
@@ -452,88 +431,57 @@ const closeMonthMutation = useMutation({
     mutationFn: async (monthToDelete: string) => {
       if (!isAdmin) throw new Error("Apenas administradores podem excluir fechamento");
 
-      console.log("Deleting month closure for:", monthToDelete, "congregation:", effectiveCongregationId);
-
-      // First, check how many transfers exist
-      let transfersCheckQuery = supabase
+      const { count: transfersCountBefore } = await supabase
         .from("transfers")
         .select("id", { count: "exact", head: false })
-        .eq("month", monthToDelete);
+        .eq("month", monthToDelete)
+        .eq("congregation_id", effectiveCongregationId!);
 
-      if (effectiveCongregationId) {
-        transfersCheckQuery = transfersCheckQuery.eq("congregation_id", effectiveCongregationId);
-      }
-
-      const { data: transfersCheck, count: transfersCountBefore } = await transfersCheckQuery;
-      console.log("Transfers found before delete:", transfersCountBefore, transfersCheck);
-
-      // Delete transfers for the month
-      let transfersDeleteQuery = supabase
+      const { error: transfersError } = await supabase
         .from("transfers")
         .delete()
-        .eq("month", monthToDelete);
+        .eq("month", monthToDelete)
+        .eq("congregation_id", effectiveCongregationId!);
 
-      if (effectiveCongregationId) {
-        transfersDeleteQuery = transfersDeleteQuery.eq("congregation_id", effectiveCongregationId);
-      }
-
-      const { error: transfersError } = await transfersDeleteQuery;
-      console.log("Transfers delete error:", transfersError);
       if (transfersError) throw transfersError;
 
-      // Check how many transactions exist
-      let transactionsCheckQuery = supabase
+      const { count: transactionsCountBefore } = await supabase
         .from("transactions")
         .select("id", { count: "exact", head: false })
-        .eq("month", monthToDelete);
+        .eq("month", monthToDelete)
+        .eq("congregation_id", effectiveCongregationId!);
 
-      if (effectiveCongregationId) {
-        transactionsCheckQuery = transactionsCheckQuery.eq("congregation_id", effectiveCongregationId);
-      }
-
-      const { data: transactionsCheck, count: transactionsCountBefore } = await transactionsCheckQuery;
-      console.log("Transactions found before delete:", transactionsCountBefore, transactionsCheck);
-
-      // Delete transactions for the month
-      let transactionsDeleteQuery = supabase
+      const { error: transactionsError } = await supabase
         .from("transactions")
         .delete()
-        .eq("month", monthToDelete);
+        .eq("month", monthToDelete)
+        .eq("congregation_id", effectiveCongregationId!);
 
-      if (effectiveCongregationId) {
-        transactionsDeleteQuery = transactionsDeleteQuery.eq("congregation_id", effectiveCongregationId);
-      }
-
-      const { error: transactionsError } = await transactionsDeleteQuery;
-      console.log("Transactions delete error:", transactionsError);
       if (transactionsError) throw transactionsError;
 
       return {
         transfersCount: transfersCountBefore || 0,
-        transactionsCount: transactionsCountBefore || 0
+        transactionsCount: transactionsCountBefore || 0,
       };
     },
     onSuccess: async (data, monthToDelete) => {
-      // Cancela fetches em andamento
-      await queryClient.cancelQueries({
-        queryKey: ["transfers", monthToDelete, effectiveCongregationId],
-      });
-      await queryClient.cancelQueries({
-        queryKey: ["transactions", monthToDelete, effectiveCongregationId],
-      });
+      await queryClient.cancelQueries({ queryKey: ["transfers", monthToDelete] });
+      await queryClient.cancelQueries({ queryKey: ["transactions", monthToDelete] });
 
-      // Remove completamente do cache — sem rastro de dados antigos
-      queryClient.removeQueries({
-        queryKey: ["transfers", monthToDelete, effectiveCongregationId],
-      });
-      queryClient.removeQueries({
-        queryKey: ["transactions", monthToDelete, effectiveCongregationId],
-      });
+      queryClient.setQueriesData<unknown[]>({ queryKey: ["transfers", monthToDelete] }, []);
+      queryClient.setQueriesData<unknown[]>({ queryKey: ["transactions", monthToDelete] }, []);
 
       toast.success(
         `Fechamento excluído: ${data.transfersCount} transferências e ${data.transactionsCount} transações removidas`
       );
-    },  });
+
+      await queryClient.refetchQueries({ queryKey: ["transfers", monthToDelete] });
+      await queryClient.refetchQueries({ queryKey: ["transactions", monthToDelete] });
+    },
+    onError: (error: Error) => {
+      toast.error("Erro ao excluir fechamento: " + error.message);
+    },
+  });
 
   const deleteMonthClosure = useCallback(
     (monthToDelete: string) => deleteMonthClosureMutation.mutate(monthToDelete),
@@ -543,7 +491,7 @@ const closeMonthMutation = useMutation({
   return {
     profiles: profilesQuery.data ?? [],
     profileBalances,
-    transfers: transfers,
+    transfers,
     monthTrips,
     totalToPay,
     totalToReceive,
