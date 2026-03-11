@@ -452,28 +452,43 @@ const closeMonthMutation = useMutation({
     mutationFn: async (monthToDelete: string) => {
       if (!isAdmin) throw new Error("Apenas administradores podem excluir fechamento");
 
+      console.log("Deleting month closure for:", monthToDelete, "congregation:", effectiveCongregationId);
+
       // Delete transfers for the month
-      const { error: transfersError } = await supabase
+      let transfersQuery = supabase
         .from("transfers")
         .delete()
-        .eq("month", monthToDelete)
-        .eq("congregation_id", effectiveCongregationId);
+        .eq("month", monthToDelete);
 
+      if (effectiveCongregationId) {
+        transfersQuery = transfersQuery.eq("congregation_id", effectiveCongregationId);
+      }
+
+      const { data: transfersData, error: transfersError, count: transfersCount } = await transfersQuery;
+      console.log("Transfers deleted:", transfersCount, "error:", transfersError);
       if (transfersError) throw transfersError;
 
       // Delete transactions for the month
-      const { error: transactionsError } = await supabase
+      let transactionsQuery = supabase
         .from("transactions")
         .delete()
-        .eq("month", monthToDelete)
-        .eq("congregation_id", effectiveCongregationId);
+        .eq("month", monthToDelete);
 
+      if (effectiveCongregationId) {
+        transactionsQuery = transactionsQuery.eq("congregation_id", effectiveCongregationId);
+      }
+
+      const { data: transactionsData, error: transactionsError, count: transactionsCount } = await transactionsQuery;
+      console.log("Transactions deleted:", transactionsCount, "error:", transactionsError);
       if (transactionsError) throw transactionsError;
+
+      return { transfersCount, transactionsCount };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Delete success, invalidating queries...");
       queryClient.invalidateQueries({ queryKey: ["transactions", selectedMonth, effectiveCongregationId] });
       queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth, effectiveCongregationId] });
-      toast.success("Fechamento do mês excluído com sucesso!");
+      toast.success(`Fechamento excluído: ${data.transfersCount || 0} transferências e ${data.transactionsCount || 0} transações removidas`);
     },
     onError: (error: Error) => {
       console.error("Error deleting month closure:", error);
