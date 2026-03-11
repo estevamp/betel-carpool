@@ -517,27 +517,24 @@ const closeMonthMutation = useMutation({
       console.log("Delete success, invalidating queries...");
       
       // Small delay to ensure database has processed the delete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
-      // Remove queries from cache completely
-      queryClient.removeQueries({ queryKey: ["transactions", selectedMonth, effectiveCongregationId] });
-      queryClient.removeQueries({ queryKey: ["transfers", selectedMonth, effectiveCongregationId] });
-      
-      console.log("Cache cleared, refetching...");
-      
-      // Force refetch with fresh data
-      const transfersResult = await queryClient.refetchQueries({
-        queryKey: ["transfers", selectedMonth, effectiveCongregationId],
-        type: 'active'
+      // Invalidate queries to mark them as stale
+      await queryClient.invalidateQueries({
+        queryKey: ["transactions"],
+        refetchType: 'active'
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["transfers"],
+        refetchType: 'active'
       });
       
-      const transactionsResult = await queryClient.refetchQueries({
-        queryKey: ["transactions", selectedMonth, effectiveCongregationId],
-        type: 'active'
-      });
+      console.log("Queries invalidated, waiting for automatic refetch...");
       
-      console.log("Refetch results - transfers:", transfersResult, "transactions:", transactionsResult);
-      console.log("Queries invalidated and refetched");
+      // Wait a bit more for the refetch to complete
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      console.log("Refetch should be complete");
       toast.success(`Fechamento excluído: ${data.transfersCount} transferências e ${data.transactionsCount} transações removidas`);
     },
     onError: (error: Error) => {
