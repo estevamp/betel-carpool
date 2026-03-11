@@ -12,16 +12,16 @@ export function TourButton({ onClick }: TourButtonProps) {
     <Tooltip>
       <TooltipTrigger asChild>
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
+          initial={{ opacity: 0, scale: 0.7 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 1.2, type: "spring", stiffness: 300, damping: 22 }}
+          transition={{ delay: 1.4, type: "spring", stiffness: 300, damping: 22 }}
           className="fixed bottom-6 right-6 z-50"
         >
           <Button
             variant="outline"
             size="icon"
             onClick={onClick}
-            className="h-11 w-11 rounded-full shadow-lg border-border bg-card hover:bg-accent hover:scale-105 transition-transform"
+            className="h-11 w-11 rounded-full shadow-lg border-border bg-card hover:bg-accent hover:scale-105 active:scale-95 transition-transform"
             aria-label="Abrir tour do aplicativo"
           >
             <HelpCircle className="h-5 w-5 text-muted-foreground" />

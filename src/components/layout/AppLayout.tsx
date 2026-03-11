@@ -6,7 +6,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
 import { CongregationSelector } from "@/components/congregations/CongregationSelector";
-import { TourOverlay, TOUR_STEPS } from "@/components/tour/TourOverlay";
+import { TourSpotlight } from "@/components/tour/TourSpotlight";
 import { TourButton } from "@/components/tour/TourButton";
 import { useTour } from "@/hooks/useTour";
 
@@ -16,9 +16,20 @@ export function AppLayout() {
   const { selectedCongregationId, setSelectedCongregationId } = useSelectedCongregation();
   const location = useLocation();
 
-  const { isOpen, currentStep, openTour, closeTour, nextStep, prevStep, goToStep } = useTour();
+  const {
+    isOpen,
+    currentStep,
+    targetRect,
+    isNavigating,
+    totalSteps,
+    currentStepData,
+    startTour,
+    closeTour,
+    nextStep,
+    prevStep,
+    goToStep,
+  } = useTour();
 
-  // Não mostrar o seletor de congregações na página de Congregações
   const showCongregationSelector = isSuperAdmin && location.pathname !== "/congregacoes";
 
   return (
@@ -38,9 +49,9 @@ export function AppLayout() {
         {/* Mobile Sidebar */}
         <div
           className={`
-          fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 ease-in-out lg:hidden
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-        `}
+            fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 ease-in-out lg:hidden
+            ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+          `}
         >
           <AppSidebar mobile onClose={() => setSidebarOpen(false)} />
         </div>
@@ -59,18 +70,22 @@ export function AppLayout() {
           </div>
         </main>
 
-        {/* Tour */}
-        <TourOverlay
+        {/* Spotlight Tour */}
+        <TourSpotlight
           isOpen={isOpen}
-          currentStep={currentStep}
-          onNext={() => nextStep(TOUR_STEPS.length)}
+          step={currentStepData}
+          stepIndex={currentStep}
+          totalSteps={totalSteps}
+          targetRect={targetRect}
+          isNavigating={isNavigating}
+          onNext={nextStep}
           onPrev={prevStep}
           onClose={() => closeTour(true)}
           onGoToStep={goToStep}
         />
 
-        {/* Floating help button — only visible when tour is closed */}
-        {!isOpen && <TourButton onClick={openTour} />}
+        {/* Floating help button */}
+        {!isOpen && <TourButton onClick={startTour} />}
       </div>
     </SidebarProvider>
   );

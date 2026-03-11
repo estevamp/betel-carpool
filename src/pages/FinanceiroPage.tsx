@@ -192,7 +192,7 @@ export default function FinanceiroPage() {
       </div>
 
       {/* Summary Card */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div data-tour="fechamento-mes" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-card rounded-xl border border-border shadow-card p-5">
           <div className="flex items-center gap-3 mb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">

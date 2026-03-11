@@ -141,7 +141,13 @@ export default function ViagensPage() {
             Coloque seu carro à disposição ou reserve uma vaga pra você em um dos carros.
           </p>
         </div>
-        <CreateTripDialog onCreateTrip={createTrip} isCreating={isCreating} />
+        <div data-tour="nova-viagem" className="inline-flex">
+          <CreateTripDialog
+            profiles={congregationProfiles ?? []}
+            onCreateTrip={createTrip}
+            isCreating={isCreating}
+          />
+        </div>
       </div>
 
       {/* Filters */}

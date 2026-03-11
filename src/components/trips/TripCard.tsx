@@ -371,7 +371,13 @@ export function TripCard({
           ) : !isFull && !isDriver && !editBlocked ? (
             <Dialog open={reserveDialogOpen} onOpenChange={setReserveDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto bg-success hover:bg-success/90 text-success-foreground">
+                <Button
+                  data-tour="reservar-vaga"
+                  variant="default"
+                  size="sm"
+                  className="gap-1.5 bg-success hover:bg-success/90 text-success-foreground"
+                  disabled={isReserving}
+                >
                   Reservar Vaga
                 </Button>
               </DialogTrigger>

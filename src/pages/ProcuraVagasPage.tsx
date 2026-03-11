@@ -40,7 +40,10 @@ export default function ProcuraVagasPage() {
           </p>
         </div>
         <CreateRideRequestDialog>
-          <Button className="gap-2 bg-warning hover:bg-warning/90 text-warning-foreground">
+          <Button
+            data-tour="procuro-carona"
+            className="gap-2 bg-warning hover:bg-warning/90 text-warning-foreground"
+          >
             <Plus className="h-4 w-4" />
             Preciso de Carona
           </Button>

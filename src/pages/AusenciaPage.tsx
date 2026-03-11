@@ -39,6 +39,7 @@ export default function AusenciaPage() {
           </p>
         </div>
         <Button
+          data-tour="nova-ausencia"
           className="gap-2 bg-primary hover:bg-primary/90"
           onClick={() => setIsDialogOpen(true)}
         >
