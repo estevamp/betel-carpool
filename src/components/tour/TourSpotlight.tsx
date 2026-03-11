@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { TourStep, TargetRect } from "@/hooks/useTour";
 
-const PADDING = 8;       // spotlight padding around target element
-const CARD_MARGIN = 14;  // gap between spotlight border and tooltip card
+const PADDING = 8;
+const CARD_MARGIN = 14;
 const CARD_MAX_WIDTH = 320;
-const CARD_SIDE_MARGIN = 12; // minimum distance from viewport edges
+const CARD_SIDE_MARGIN = 12;
 
 function getCardWidth() {
   return Math.min(CARD_MAX_WIDTH, window.innerWidth - CARD_SIDE_MARGIN * 2);
@@ -39,33 +39,21 @@ function computeTooltipPos(
   const spaceRight = vw - spotRight;
   const spaceLeft  = spotLeft;
 
-  // Clamp horizontal position so card never bleeds off screen
-  const clampedLeft = (rawLeft: number) =>
-    Math.max(CARD_SIDE_MARGIN, Math.min(vw - cardWidth - CARD_SIDE_MARGIN, rawLeft));
+  const clampedLeft = (raw: number) =>
+    Math.max(CARD_SIDE_MARGIN, Math.min(vw - cardWidth - CARD_SIDE_MARGIN, raw));
 
-  // Preferred center-aligned under/above the target
   const centeredLeft = rect.left + rect.width / 2 - cardWidth / 2;
 
   const order: TourStep["position"][] = preferred
     ? [preferred, "bottom", "top", "right", "left"]
     : ["bottom", "top", "right", "left"];
 
-  const uniqueOrder = [...new Set(order)];
-
-  for (const side of uniqueOrder) {
+  for (const side of [...new Set(order)]) {
     if (side === "bottom" && spaceBelow >= cardHeight + CARD_MARGIN) {
-      return {
-        top: spotBottom + CARD_MARGIN,
-        left: clampedLeft(centeredLeft),
-        arrowSide: "top",
-      };
+      return { top: spotBottom + CARD_MARGIN, left: clampedLeft(centeredLeft), arrowSide: "top" };
     }
     if (side === "top" && spaceAbove >= cardHeight + CARD_MARGIN) {
-      return {
-        top: spotTop - cardHeight - CARD_MARGIN,
-        left: clampedLeft(centeredLeft),
-        arrowSide: "bottom",
-      };
+      return { top: spotTop - cardHeight - CARD_MARGIN, left: clampedLeft(centeredLeft), arrowSide: "bottom" };
     }
     if (side === "right" && spaceRight >= cardWidth + CARD_MARGIN) {
       return {
@@ -83,12 +71,29 @@ function computeTooltipPos(
     }
   }
 
-  // Fallback: centered on screen
   return {
     top:  Math.max(CARD_SIDE_MARGIN, vh / 2 - cardHeight / 2),
     left: Math.max(CARD_SIDE_MARGIN, vw / 2 - cardWidth / 2),
     arrowSide: null,
   };
+}
+
+// Animated SVG path for the spotlight hole — morphs smoothly between positions
+function buildSpotlightPath(vw: number, vh: number, sr: { x: number; y: number; w: number; h: number; r: number } | null) {
+  const base = `M0 0 H${vw} V${vh} H0 Z`;
+  if (!sr) return base;
+  return (
+    base +
+    ` M${sr.x + sr.r} ${sr.y}` +
+    ` H${sr.x + sr.w - sr.r}` +
+    ` Q${sr.x + sr.w} ${sr.y} ${sr.x + sr.w} ${sr.y + sr.r}` +
+    ` V${sr.y + sr.h - sr.r}` +
+    ` Q${sr.x + sr.w} ${sr.y + sr.h} ${sr.x + sr.w - sr.r} ${sr.y + sr.h}` +
+    ` H${sr.x + sr.r}` +
+    ` Q${sr.x} ${sr.y + sr.h} ${sr.x} ${sr.y + sr.h - sr.r}` +
+    ` V${sr.y + sr.r}` +
+    ` Q${sr.x} ${sr.y} ${sr.x + sr.r} ${sr.y} Z`
+  );
 }
 
 interface TourSpotlightProps {
@@ -120,8 +125,17 @@ export function TourSpotlight({
   const [tooltipPos, setTooltipPos] = useState<TooltipPos | null>(null);
   const [vsize, setVsize] = useState({ w: window.innerWidth, h: window.innerHeight });
   const [cardWidth, setCardWidth] = useState(getCardWidth());
+  // Track previous stepIndex to determine slide direction
+  const prevStepRef = useRef(stepIndex);
+  const [slideDir, setSlideDir] = useState<1 | -1>(1); // 1 = forward, -1 = back
 
-  // Update viewport size + card width
+  useEffect(() => {
+    if (stepIndex !== prevStepRef.current) {
+      setSlideDir(stepIndex > prevStepRef.current ? 1 : -1);
+      prevStepRef.current = stepIndex;
+    }
+  }, [stepIndex]);
+
   useEffect(() => {
     const onResize = () => {
       setVsize({ w: window.innerWidth, h: window.innerHeight });
@@ -131,7 +145,6 @@ export function TourSpotlight({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Compute tooltip position whenever rect, step, or viewport changes
   useLayoutEffect(() => {
     if (!targetRect || !cardRef.current) { setTooltipPos(null); return; }
     const cardHeight = cardRef.current.offsetHeight || 220;
@@ -151,60 +164,46 @@ export function TourSpotlight({
   const isFirst = stepIndex === 0;
   const isLast  = stepIndex === totalSteps - 1;
 
+  const spotlightPath = buildSpotlightPath(vsize.w, vsize.h, sr);
+
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* SVG overlay with spotlight hole */}
+          {/* ── SVG overlay — stays mounted, path morphs smoothly ── */}
           <motion.svg
             key="tour-svg"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.3 }}
             className="fixed inset-0 z-[100] pointer-events-none"
             style={{ width: "100vw", height: "100vh" }}
             xmlns="http://www.w3.org/2000/svg"
           >
             <defs>
               <clipPath id="spotlight-clip">
-                <path
+                {/* Animate the path so the spotlight hole glides to the next element */}
+                <motion.path
                   fillRule="evenodd"
-                  d={
-                    sr
-                      ? `M0 0 H${vsize.w} V${vsize.h} H0 Z ` +
-                        `M${sr.x + sr.r} ${sr.y} ` +
-                        `H${sr.x + sr.w - sr.r} ` +
-                        `Q${sr.x + sr.w} ${sr.y} ${sr.x + sr.w} ${sr.y + sr.r} ` +
-                        `V${sr.y + sr.h - sr.r} ` +
-                        `Q${sr.x + sr.w} ${sr.y + sr.h} ${sr.x + sr.w - sr.r} ${sr.y + sr.h} ` +
-                        `H${sr.x + sr.r} ` +
-                        `Q${sr.x} ${sr.y + sr.h} ${sr.x} ${sr.y + sr.h - sr.r} ` +
-                        `V${sr.y + sr.r} ` +
-                        `Q${sr.x} ${sr.y} ${sr.x + sr.r} ${sr.y} Z`
-                      : `M0 0 H${vsize.w} V${vsize.h} H0 Z`
-                  }
+                  animate={{ d: spotlightPath }}
+                  transition={{ type: "spring", stiffness: 260, damping: 32 }}
                 />
               </clipPath>
             </defs>
 
-            {/* Dark overlay */}
             <rect x="0" y="0" width="100%" height="100%"
               fill="rgba(0,0,0,0.55)" clipPath="url(#spotlight-clip)" />
 
-            {/* Animated border around spotlight */}
+            {/* Spotlight border — also morphs */}
             {sr && (
               <motion.rect
-                key={`border-${stepIndex}`}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                x={sr.x} y={sr.y} width={sr.w} height={sr.h} rx={sr.r}
+                animate={{ x: sr.x, y: sr.y, width: sr.w, height: sr.h, rx: sr.r }}
+                transition={{ type: "spring", stiffness: 260, damping: 32 }}
                 fill="none"
                 stroke="hsl(var(--primary))"
                 strokeWidth="2"
                 strokeDasharray="6 3"
-                style={{ transformOrigin: `${sr.x + sr.w / 2}px ${sr.y + sr.h / 2}px` }}
               />
             )}
           </motion.svg>
@@ -212,20 +211,35 @@ export function TourSpotlight({
           {/* Clickable backdrop */}
           <div className="fixed inset-0 z-[100] cursor-pointer" onClick={onClose} aria-hidden />
 
-          {/* Tooltip card */}
+          {/* ── Tooltip card — stays mounted, slides to new position ── */}
           <motion.div
-            key={`card-${stepIndex}`}
+            key="tour-card"
             ref={cardRef}
-            initial={{ opacity: 0, scale: 0.93, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.93 }}
-            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            // Enter animation (first mount only)
+            initial={{ opacity: 0, scale: 0.93, y: 10 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+              // Smoothly glide to new position when tooltipPos changes
+              top: tooltipPos?.top ?? "50%",
+              left: tooltipPos?.left ?? "50%",
+            }}
+            exit={{ opacity: 0, scale: 0.93, y: 10 }}
+            transition={{
+              // Position glide: spring
+              top:  { type: "spring", stiffness: 260, damping: 32 },
+              left: { type: "spring", stiffness: 260, damping: 32 },
+              // Enter/exit: quick ease
+              opacity: { duration: 0.2 },
+              scale:   { type: "spring", stiffness: 340, damping: 28 },
+              y:       { type: "spring", stiffness: 340, damping: 28 },
+            }}
             className="fixed z-[102] pointer-events-auto"
             style={{
               width: cardWidth,
-              ...(tooltipPos
-                ? { top: tooltipPos.top, left: tooltipPos.left }
-                : { top: "50%", left: "50%", transform: "translate(-50%, -50%)" }),
+              // When tooltipPos is null (not yet computed), center on screen
+              ...(tooltipPos ? {} : { transform: "translate(-50%, -50%)" }),
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -243,34 +257,42 @@ export function TourSpotlight({
                 </Button>
               </div>
 
-              {/* Content */}
-              <div className="px-4 pb-2">
-                {isNavigating && (
-                  <div className="flex items-center gap-2 py-4">
-                    <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                    <span className="text-sm text-muted-foreground">Navegando...</span>
-                  </div>
-                )}
-
-                {!isNavigating && (
-                  <>
-                    <h3 className="font-bold text-foreground text-base leading-snug mb-2">
-                      {step.title}
-                    </h3>
-                    <p
-                      className="text-sm text-muted-foreground leading-relaxed mb-3"
-                      dangerouslySetInnerHTML={{ __html: step.description }}
-                    />
-                    {step.tip && (
-                      <div className="bg-muted/60 rounded-xl px-3 py-2.5 border border-border/50 mb-1">
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          <span className="font-semibold text-foreground">💡 </span>
-                          {step.tip}
-                        </p>
+              {/* ── Step content — crossfades between steps ── */}
+              <div className="px-4 pb-2 overflow-hidden">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={stepIndex}
+                    initial={{ opacity: 0, x: slideDir * 18 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: slideDir * -18 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                  >
+                    {isNavigating ? (
+                      <div className="flex items-center gap-2 py-4">
+                        <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                        <span className="text-sm text-muted-foreground">Navegando...</span>
                       </div>
+                    ) : (
+                      <>
+                        <h3 className="font-bold text-foreground text-base leading-snug mb-2">
+                          {step.title}
+                        </h3>
+                        <p
+                          className="text-sm text-muted-foreground leading-relaxed mb-3"
+                          dangerouslySetInnerHTML={{ __html: step.description }}
+                        />
+                        {step.tip && (
+                          <div className="bg-muted/60 rounded-xl px-3 py-2.5 border border-border/50 mb-1">
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              <span className="font-semibold text-foreground">💡 </span>
+                              {step.tip}
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
-                  </>
-                )}
+                  </motion.div>
+                </AnimatePresence>
               </div>
 
               {/* Step dots */}
@@ -280,7 +302,7 @@ export function TourSpotlight({
                     key={i}
                     onClick={() => onGoToStep(i)}
                     className={cn(
-                      "rounded-full transition-all duration-200",
+                      "rounded-full transition-all duration-300",
                       i === stepIndex
                         ? "w-4 h-1.5 bg-primary"
                         : "w-1.5 h-1.5 bg-muted-foreground/25 hover:bg-muted-foreground/50",
