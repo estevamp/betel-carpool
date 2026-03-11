@@ -281,13 +281,13 @@ export default function FinanceiroPage() {
                       <motion.tr key={row.profileId} variants={itemVariants} className="hover:bg-muted/30">
                         <td className="px-3 py-2 text-xs font-medium text-foreground">{row.name}</td>
                         <td className="px-3 py-2 text-xs text-right text-destructive">
+                            {row.toPay > 0 ? formatCurrency(row.toPay) : "-"}
+                        </td>
                         <td className="px-3 py-2 text-xs text-right text-success">
-                        <td className={cn(
-                          "px-3 py-2 text-xs text-right font-medium",
                           {row.toReceive > 0 ? formatCurrency(row.toReceive) : "-"}
                         </td>
                         <td className={cn(
-                          "px-4 py-3 text-right font-medium",
+                          "px-3 py-2 text-xs text-right font-medium",
                           balance > 0 ? "text-success" : balance < 0 ? "text-destructive" : "text-muted-foreground"
                         )}>
                           {balance > 0
