@@ -21,6 +21,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
 import { APP_INFO } from "@/lib/appInfo";
+import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
+import { useSelectedCongregation } from "@/contexts/CongregationContext";
+import { useCongregations } from "@/hooks/useCongregations";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface NavItemConfig {
   icon: typeof Home;
@@ -31,115 +35,49 @@ interface NavItemConfig {
 }
 
 const mainNavItems: NavItemConfig[] = [
-  {
-    icon: Home,
-    label: "Início",
-    path: "/",
-    adminOnly: false,
-  },
-  {
-    icon: Car,
-    label: "Viagens",
-    path: "/viagens",
-    adminOnly: false,
-  },
-  {
-    icon: Users,
-    label: "Betelitas",
-    path: "/betelitas",
-    adminOnly: true,
-  },
-  {
-    icon: Plane,
-    label: "Ausência",
-    path: "/ausencia",
-    adminOnly: false,
-  },
-  {
-    icon: Search,
-    label: "Preciso de Carona",
-    path: "/procura-vagas",
-    adminOnly: false,
-  },
-  {
-    icon: AlertTriangle,
-    label: "Desocupação",
-    path: "/desocupacao",
-    adminOnly: false,
-  },
-  {
-    icon: Wallet,
-    label: "Ajuda de Transporte",
-    path: "/financeiro",
-    adminOnly: false,
-  },
-  {
-    icon: Building2,
-    label: "Congregações",
-    path: "/congregacoes",
-    adminOnly: false,
-    superAdminOnly: true,
-  },
+  { icon: Home,         label: "Início",             path: "/",            adminOnly: false },
+  { icon: Car,          label: "Viagens",             path: "/viagens",     adminOnly: false },
+  { icon: Users,        label: "Betelitas",           path: "/betelitas",   adminOnly: true  },
+  { icon: Plane,        label: "Ausência",            path: "/ausencia",    adminOnly: false },
+  { icon: Search,       label: "Preciso de Carona",   path: "/procura-vagas", adminOnly: false },
+  { icon: AlertTriangle,label: "Desocupação",         path: "/desocupacao", adminOnly: false },
+  { icon: Wallet,       label: "Ajuda de Transporte", path: "/financeiro",  adminOnly: false },
+  { icon: Building2,    label: "Congregações",        path: "/congregacoes",adminOnly: false, superAdminOnly: true },
 ];
+
 const secondaryNavItems: NavItemConfig[] = [
-  {
-    icon: User,
-    label: "Perfil",
-    path: "/perfil",
-    adminOnly: false,
-    superAdminOnly: false,
-  },
-  {
-    icon: HelpCircle,
-    label: "Perguntas Frequentes",
-    path: "/faq",
-    adminOnly: false,
-    superAdminOnly: false,
-  },
-  {
-    icon: Settings,
-    label: "Configurações",
-    path: "/configuracoes",
-    adminOnly: true,
-    superAdminOnly: false,
-  },
-  {
-    icon: Info,
-    label: "Sobre",
-    path: "/sobre",
-    adminOnly: false,
-    superAdminOnly: false,
-  },
+  { icon: User,        label: "Perfil",               path: "/perfil",         adminOnly: false, superAdminOnly: false },
+  { icon: HelpCircle,  label: "Perguntas Frequentes", path: "/faq",            adminOnly: false, superAdminOnly: false },
+  { icon: Settings,    label: "Configurações",        path: "/configuracoes",  adminOnly: true,  superAdminOnly: false },
+  { icon: Info,        label: "Sobre",                path: "/sobre",          adminOnly: false, superAdminOnly: false },
 ];
+
 interface AppSidebarProps {
   mobile?: boolean;
   onClose?: () => void;
+  onTourClick?: () => void;
 }
-import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
-import { useSelectedCongregation } from "@/contexts/CongregationContext";
-import { useCongregations } from "@/hooks/useCongregations";
-export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
+
+export function AppSidebar({ mobile, onClose, onTourClick }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, signOut, isAdmin } = useAuth();
   const { isSuperAdmin } = useIsSuperAdmin();
   const { selectedCongregationId } = useSelectedCongregation();
   const { congregations } = useCongregations();
+
   const congregationName =
     congregations?.find((c) => (isSuperAdmin ? c.id === selectedCongregationId : c.id === profile?.congregation_id))
       ?.name || "Carpool";
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
   };
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
-  };
+
+  const getInitials = (name: string) =>
+    name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+
   const NavItem = ({ item }: { item: NavItemConfig }) => {
     const isActive = location.pathname === item.path;
     return (
@@ -166,6 +104,7 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
       </NavLink>
     );
   };
+
   return (
     <div
       className={cn(
@@ -188,7 +127,9 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
             <span className="text-xs text-sidebar-foreground/60 truncate max-w-[120px]">{congregationName}</span>
           </div>
         </NavLink>
-        {mobile && (
+
+        {/* Mobile: close button | Desktop: tour button */}
+        {mobile ? (
           <Button
             variant="ghost"
             size="icon"
@@ -197,7 +138,24 @@ export function AppSidebar({ mobile, onClose }: AppSidebarProps) {
           >
             <X className="h-5 w-5" />
           </Button>
-        )}
+        ) : onTourClick ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onTourClick}
+                className="text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                aria-label="Tour do aplicativo"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Tour do aplicativo</p>
+            </TooltipContent>
+          </Tooltip>
+        ) : null}
       </div>
 
       {/* Navigation */}

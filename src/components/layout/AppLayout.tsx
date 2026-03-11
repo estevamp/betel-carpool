@@ -7,7 +7,6 @@ import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
 import { CongregationSelector } from "@/components/congregations/CongregationSelector";
 import { TourSpotlight } from "@/components/tour/TourSpotlight";
-import { TourButton } from "@/components/tour/TourButton";
 import { useTour } from "@/hooks/useTour";
 
 export function AppLayout() {
@@ -35,8 +34,8 @@ export function AppLayout() {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full overflow-x-hidden bg-background">
-        {/* Desktop Sidebar */}
-        <AppSidebar />
+        {/* Desktop Sidebar — receives onTourClick to show the ? button in the header */}
+        <AppSidebar onTourClick={startTour} />
 
         {/* Mobile Overlay */}
         {sidebarOpen && (
@@ -58,7 +57,10 @@ export function AppLayout() {
 
         {/* Main Content */}
         <main className="flex min-h-screen min-w-0 flex-1 flex-col">
-          <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
+          <MobileHeader
+            onMenuClick={() => setSidebarOpen(true)}
+            onTourClick={startTour}
+          />
           {showCongregationSelector && (
             <div className="flex items-center gap-2 p-4 lg:p-6 border-b border-border">
               <span className="text-sm text-muted-foreground">Visualizando congregação:</span>
@@ -83,9 +85,6 @@ export function AppLayout() {
           onClose={() => closeTour(true)}
           onGoToStep={goToStep}
         />
-
-        {/* Floating help button */}
-        {!isOpen && <TourButton onClick={startTour} />}
       </div>
     </SidebarProvider>
   );
