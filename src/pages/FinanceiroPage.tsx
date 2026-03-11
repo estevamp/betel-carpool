@@ -268,10 +268,10 @@ export default function FinanceiroPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border bg-muted/50">
-                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Betelita</th>
-                    <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">A Pagar</th>
-                    <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">A Receber</th>
-                    <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">Acerto</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Betelita</th>
+                    <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">A Pagar</th>
+                    <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">A Receber</th>
+                    <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Acerto</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -279,11 +279,11 @@ export default function FinanceiroPage() {
                     const balance = row.toReceive - row.toPay;
                     return (
                       <motion.tr key={row.profileId} variants={itemVariants} className="hover:bg-muted/30">
-                        <td className="px-4 py-3 font-medium text-foreground">{row.name}</td>
-                        <td className="px-4 py-3 text-right text-destructive">
-                          {row.toPay > 0 ? formatCurrency(row.toPay) : "-"}
-                        </td>
-                        <td className="px-4 py-3 text-right text-success">
+                        <td className="px-3 py-2 text-xs font-medium text-foreground">{row.name}</td>
+                        <td className="px-3 py-2 text-xs text-right text-destructive">
+                        <td className="px-3 py-2 text-xs text-right text-success">
+                        <td className={cn(
+                          "px-3 py-2 text-xs text-right font-medium",
                           {row.toReceive > 0 ? formatCurrency(row.toReceive) : "-"}
                         </td>
                         <td className={cn(
