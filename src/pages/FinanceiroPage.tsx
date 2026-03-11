@@ -96,14 +96,14 @@ export default function FinanceiroPage() {
     <div className="space-y-6">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Ajuda de Transporte</h1>
           <p className="text-muted-foreground">Relatórios e transferências mensais</p>
         </div>
 
         {isAdmin && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="default" className="gap-2" disabled={isClosingMonth}>
@@ -349,9 +349,9 @@ export default function FinanceiroPage() {
               <Wallet className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="font-semibold text-foreground">Nenhuma transferência</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                {selectedMonth === months[0]?.id
+                {selectedMonth === months[0]?.id && monthTrips.length > 0
                   ? "As transferências ficarão disponíveis quando o mês for finalizado"
-                  : "Não há transferências pendentes para este mês"}
+                  : "Não há transferências para este mês"}
               </p>
             </div>
           ) : transfers.map((transfer) => {
