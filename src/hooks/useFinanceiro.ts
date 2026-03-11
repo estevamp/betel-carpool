@@ -454,41 +454,70 @@ const closeMonthMutation = useMutation({
 
       console.log("Deleting month closure for:", monthToDelete, "congregation:", effectiveCongregationId);
 
+      // First, check how many transfers exist
+      let transfersCheckQuery = supabase
+        .from("transfers")
+        .select("id", { count: "exact", head: false })
+        .eq("month", monthToDelete);
+
+      if (effectiveCongregationId) {
+        transfersCheckQuery = transfersCheckQuery.eq("congregation_id", effectiveCongregationId);
+      }
+
+      const { data: transfersCheck, count: transfersCountBefore } = await transfersCheckQuery;
+      console.log("Transfers found before delete:", transfersCountBefore, transfersCheck);
+
       // Delete transfers for the month
-      let transfersQuery = supabase
+      let transfersDeleteQuery = supabase
         .from("transfers")
         .delete()
         .eq("month", monthToDelete);
 
       if (effectiveCongregationId) {
-        transfersQuery = transfersQuery.eq("congregation_id", effectiveCongregationId);
+        transfersDeleteQuery = transfersDeleteQuery.eq("congregation_id", effectiveCongregationId);
       }
 
-      const { data: transfersData, error: transfersError, count: transfersCount } = await transfersQuery;
-      console.log("Transfers deleted:", transfersCount, "error:", transfersError);
+      const { error: transfersError } = await transfersDeleteQuery;
+      console.log("Transfers delete error:", transfersError);
       if (transfersError) throw transfersError;
 
+      // Check how many transactions exist
+      let transactionsCheckQuery = supabase
+        .from("transactions")
+        .select("id", { count: "exact", head: false })
+        .eq("month", monthToDelete);
+
+      if (effectiveCongregationId) {
+        transactionsCheckQuery = transactionsCheckQuery.eq("congregation_id", effectiveCongregationId);
+      }
+
+      const { data: transactionsCheck, count: transactionsCountBefore } = await transactionsCheckQuery;
+      console.log("Transactions found before delete:", transactionsCountBefore, transactionsCheck);
+
       // Delete transactions for the month
-      let transactionsQuery = supabase
+      let transactionsDeleteQuery = supabase
         .from("transactions")
         .delete()
         .eq("month", monthToDelete);
 
       if (effectiveCongregationId) {
-        transactionsQuery = transactionsQuery.eq("congregation_id", effectiveCongregationId);
+        transactionsDeleteQuery = transactionsDeleteQuery.eq("congregation_id", effectiveCongregationId);
       }
 
-      const { data: transactionsData, error: transactionsError, count: transactionsCount } = await transactionsQuery;
-      console.log("Transactions deleted:", transactionsCount, "error:", transactionsError);
+      const { error: transactionsError } = await transactionsDeleteQuery;
+      console.log("Transactions delete error:", transactionsError);
       if (transactionsError) throw transactionsError;
 
-      return { transfersCount, transactionsCount };
+      return {
+        transfersCount: transfersCountBefore || 0,
+        transactionsCount: transactionsCountBefore || 0
+      };
     },
     onSuccess: (data) => {
       console.log("Delete success, invalidating queries...");
       queryClient.invalidateQueries({ queryKey: ["transactions", selectedMonth, effectiveCongregationId] });
       queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth, effectiveCongregationId] });
-      toast.success(`Fechamento excluído: ${data.transfersCount || 0} transferências e ${data.transactionsCount || 0} transações removidas`);
+      toast.success(`Fechamento excluído: ${data.transfersCount} transferências e ${data.transactionsCount} transações removidas`);
     },
     onError: (error: Error) => {
       console.error("Error deleting month closure:", error);
