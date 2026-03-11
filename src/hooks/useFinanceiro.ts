@@ -513,10 +513,18 @@ const closeMonthMutation = useMutation({
         transactionsCount: transactionsCountBefore || 0
       };
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log("Delete success, invalidating queries...");
-      queryClient.invalidateQueries({ queryKey: ["transactions", selectedMonth, effectiveCongregationId] });
-      queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth, effectiveCongregationId] });
+      
+      // Invalidate and refetch queries
+      await queryClient.invalidateQueries({ queryKey: ["transactions", selectedMonth, effectiveCongregationId] });
+      await queryClient.invalidateQueries({ queryKey: ["transfers", selectedMonth, effectiveCongregationId] });
+      
+      // Force refetch
+      await queryClient.refetchQueries({ queryKey: ["transactions", selectedMonth, effectiveCongregationId] });
+      await queryClient.refetchQueries({ queryKey: ["transfers", selectedMonth, effectiveCongregationId] });
+      
+      console.log("Queries invalidated and refetched");
       toast.success(`Fechamento excluído: ${data.transfersCount} transferências e ${data.transactionsCount} transações removidas`);
     },
     onError: (error: Error) => {
