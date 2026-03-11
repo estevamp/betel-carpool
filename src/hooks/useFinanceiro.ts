@@ -516,26 +516,21 @@ const closeMonthMutation = useMutation({
     onSuccess: async (data) => {
       console.log("Delete success, invalidating queries...");
       
-      // Small delay to ensure database has processed the delete
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
       // Invalidate queries to mark them as stale
-      await queryClient.invalidateQueries({
-        queryKey: ["transactions"],
-        refetchType: 'active'
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["transfers"],
-        refetchType: 'active'
-      });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["transfers"] });
       
-      console.log("Queries invalidated, waiting for automatic refetch...");
+      console.log("Queries invalidated");
       
-      // Wait a bit more for the refetch to complete
-      await new Promise(resolve => setTimeout(resolve, 300));
+      toast.success(
+        `Fechamento excluído: ${data.transfersCount} transferências e ${data.transactionsCount} transações removidas. Recarregue a página para ver as alterações.`,
+        { duration: 5000 }
+      );
       
-      console.log("Refetch should be complete");
-      toast.success(`Fechamento excluído: ${data.transfersCount} transferências e ${data.transactionsCount} transações removidas`);
+      // Reload page after 2 seconds
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     },
     onError: (error: Error) => {
       console.error("Error deleting month closure:", error);
