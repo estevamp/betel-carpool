@@ -514,7 +514,7 @@ const closeMonthMutation = useMutation({
       };
     },
     onSuccess: async (data, monthToDelete) => {
-      // Cancela qualquer refetch em andamento para evitar race condition
+      // Cancela fetches em andamento
       await queryClient.cancelQueries({
         queryKey: ["transfers", monthToDelete, effectiveCongregationId],
       });
@@ -522,31 +522,18 @@ const closeMonthMutation = useMutation({
         queryKey: ["transactions", monthToDelete, effectiveCongregationId],
       });
 
-      // Limpa o cache imediatamente — UI atualiza na hora
-      queryClient.setQueryData(
-        ["transfers", monthToDelete, effectiveCongregationId],
-        []
-      );
-      queryClient.setQueryData(
-        ["transactions", monthToDelete, effectiveCongregationId],
-        []
-      );
-
-      // Marca como stale SEM refetch automático
-      queryClient.invalidateQueries({
+      // Remove completamente do cache — sem rastro de dados antigos
+      queryClient.removeQueries({
         queryKey: ["transfers", monthToDelete, effectiveCongregationId],
-        refetchType: "none",
       });
-      queryClient.invalidateQueries({
+      queryClient.removeQueries({
         queryKey: ["transactions", monthToDelete, effectiveCongregationId],
-        refetchType: "none",
       });
 
       toast.success(
         `Fechamento excluído: ${data.transfersCount} transferências e ${data.transactionsCount} transações removidas`
       );
-    },
-  });
+    },  });
 
   const deleteMonthClosure = useCallback(
     (monthToDelete: string) => deleteMonthClosureMutation.mutate(monthToDelete),
