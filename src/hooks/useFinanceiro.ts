@@ -514,7 +514,15 @@ const closeMonthMutation = useMutation({
       };
     },
     onSuccess: async (data, monthToDelete) => {
-      // Limpa o cache imediatamente para atualizar a UI sem esperar o refetch
+      // Cancela qualquer refetch em andamento para evitar race condition
+      await queryClient.cancelQueries({
+        queryKey: ["transfers", monthToDelete, effectiveCongregationId],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ["transactions", monthToDelete, effectiveCongregationId],
+      });
+
+      // Limpa o cache imediatamente — UI atualiza na hora
       queryClient.setQueryData(
         ["transfers", monthToDelete, effectiveCongregationId],
         []
@@ -524,15 +532,19 @@ const closeMonthMutation = useMutation({
         []
       );
 
-      // Invalida para garantir consistência com o servidor
-      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      await queryClient.invalidateQueries({ queryKey: ["transfers"] });
+      // Marca como stale SEM refetch automático
+      queryClient.invalidateQueries({
+        queryKey: ["transfers", monthToDelete, effectiveCongregationId],
+        refetchType: "none",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["transactions", monthToDelete, effectiveCongregationId],
+        refetchType: "none",
+      });
 
-      toast.success(`Fechamento excluído: ${data.transfersCount} transferências e ${data.transactionsCount} transações removidas`);
-    },
-    onError: (error: Error) => {
-      console.error("Error deleting month closure:", error);
-      toast.error("Erro ao excluir fechamento: " + error.message);
+      toast.success(
+        `Fechamento excluído: ${data.transfersCount} transferências e ${data.transactionsCount} transações removidas`
+      );
     },
   });
 
