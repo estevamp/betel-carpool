@@ -26,13 +26,16 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "reservar-vaga",
-    targetSelector: '[data-tour="reservar-vaga"]',
+    // O botão "Reservar Vaga" só existe quando há viagens com vagas disponíveis.
+    // Usamos o mesmo elemento da página de viagens como âncora visual —
+    // a descrição explica o fluxo de reserva mesmo sem viagens cadastradas.
+    targetSelector: '[data-tour="nova-viagem"]',
     route: "/viagens",
     title: "Se incluir como passageiro",
     description:
-      'Em um card de viagem com vagas, clique em <strong>Reservar vaga</strong>. Escolha se vai na Ida e Volta, só na Ida ou só na Volta.',
+      'Quando houver viagens disponíveis, cada card mostrará o botão <strong>Reservar Vaga</strong>. Clique nele e escolha se vai na Ida e Volta, só na Ida ou só na Volta.',
     tip: "O motorista recebe uma notificação assim que você reserva.",
-    position: "top",
+    position: "bottom",
   },
   {
     id: "procuro-carona",
@@ -40,7 +43,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: "/procura-vagas",
     title: "Informar que preciso de carona",
     description:
-      'Clique em <strong>Procuro Carona</strong> para registrar que você precisa de vaga num dia específico. Os motoristas verão seu pedido.',
+      'Clique em <strong>Preciso de Carona</strong> para registrar que você precisa de vaga num dia específico. Os motoristas verão seu pedido.',
     tip: "Seu pedido fica visível para todos da congregação até ser atendido.",
     position: "bottom",
   },
@@ -50,7 +53,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: "/ausencia",
     title: "Informar que estarei de férias",
     description:
-      'Clique em <strong>Nova Ausência</strong> e registre o período em que você estará fora. Essas viagens não entram no seu cálculo financeiro.',
+      'Clique em <strong>Registrar Ausência</strong> e informe o período em que você estará fora. Essas viagens não entram no seu cálculo financeiro.',
     tip: "Ausências registradas também evitam reservas indesejadas no seu nome.",
     position: "bottom",
   },
@@ -60,7 +63,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: "/financeiro",
     title: "Ver quanto devo pagar no fim do mês",
     description:
-      'Aqui você vê o resumo financeiro do mês. Após o fechamento, o sistema calcula quanto cada betelita deve pagar ou receber pelos trajetos compartilhados.',
+      'Aqui você vê o resumo financeiro do mês. Após o fechamento, o sistema calcula automaticamente quanto cada betelita deve pagar ou receber pelos trajetos compartilhados.',
     tip: "Você pode marcar transferências como pagas diretamente nessa tela.",
     position: "top",
   },
@@ -122,7 +125,6 @@ export function useTour() {
     setTargetRect(null);
     setIsNavigating(true);
     navigate(step.route);
-    // Wait for route transition
     await new Promise((r) => setTimeout(r, 150));
     setIsNavigating(false);
     await measureTarget(step);

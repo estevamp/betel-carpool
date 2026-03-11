@@ -5,9 +5,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { TourStep, TargetRect } from "@/hooks/useTour";
 
-const PADDING = 8; // spotlight padding around target
-const CARD_WIDTH = 320;
-const CARD_MARGIN = 16;
+const PADDING = 8;       // spotlight padding around target element
+const CARD_MARGIN = 14;  // gap between spotlight border and tooltip card
+const CARD_MAX_WIDTH = 320;
+const CARD_SIDE_MARGIN = 12; // minimum distance from viewport edges
+
+function getCardWidth() {
+  return Math.min(CARD_MAX_WIDTH, window.innerWidth - CARD_SIDE_MARGIN * 2);
+}
 
 interface TooltipPos {
   top: number;
@@ -22,18 +27,25 @@ function computeTooltipPos(
 ): TooltipPos {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
+  const cardWidth = getCardWidth();
 
-  const spotTop = rect.top - PADDING;
-  const spotLeft = rect.left - PADDING;
-  const spotRight = rect.left + rect.width + PADDING;
-  const spotBottom = rect.top + rect.height + PADDING;
+  const spotTop    = rect.top  - PADDING;
+  const spotLeft   = rect.left - PADDING;
+  const spotRight  = rect.left + rect.width  + PADDING;
+  const spotBottom = rect.top  + rect.height + PADDING;
 
   const spaceBelow = vh - spotBottom;
   const spaceAbove = spotTop;
   const spaceRight = vw - spotRight;
-  const spaceLeft = spotLeft;
+  const spaceLeft  = spotLeft;
 
-  // Try preferred, then fallbacks
+  // Clamp horizontal position so card never bleeds off screen
+  const clampedLeft = (rawLeft: number) =>
+    Math.max(CARD_SIDE_MARGIN, Math.min(vw - cardWidth - CARD_SIDE_MARGIN, rawLeft));
+
+  // Preferred center-aligned under/above the target
+  const centeredLeft = rect.left + rect.width / 2 - cardWidth / 2;
+
   const order: TourStep["position"][] = preferred
     ? [preferred, "bottom", "top", "right", "left"]
     : ["bottom", "top", "right", "left"];
@@ -44,28 +56,28 @@ function computeTooltipPos(
     if (side === "bottom" && spaceBelow >= cardHeight + CARD_MARGIN) {
       return {
         top: spotBottom + CARD_MARGIN,
-        left: Math.max(8, Math.min(vw - CARD_WIDTH - 8, rect.left + rect.width / 2 - CARD_WIDTH / 2)),
+        left: clampedLeft(centeredLeft),
         arrowSide: "top",
       };
     }
     if (side === "top" && spaceAbove >= cardHeight + CARD_MARGIN) {
       return {
         top: spotTop - cardHeight - CARD_MARGIN,
-        left: Math.max(8, Math.min(vw - CARD_WIDTH - 8, rect.left + rect.width / 2 - CARD_WIDTH / 2)),
+        left: clampedLeft(centeredLeft),
         arrowSide: "bottom",
       };
     }
-    if (side === "right" && spaceRight >= CARD_WIDTH + CARD_MARGIN) {
+    if (side === "right" && spaceRight >= cardWidth + CARD_MARGIN) {
       return {
-        top: Math.max(8, Math.min(vh - cardHeight - 8, rect.top + rect.height / 2 - cardHeight / 2)),
+        top: Math.max(CARD_SIDE_MARGIN, Math.min(vh - cardHeight - CARD_SIDE_MARGIN, rect.top + rect.height / 2 - cardHeight / 2)),
         left: spotRight + CARD_MARGIN,
         arrowSide: "left",
       };
     }
-    if (side === "left" && spaceLeft >= CARD_WIDTH + CARD_MARGIN) {
+    if (side === "left" && spaceLeft >= cardWidth + CARD_MARGIN) {
       return {
-        top: Math.max(8, Math.min(vh - cardHeight - 8, rect.top + rect.height / 2 - cardHeight / 2)),
-        left: spotLeft - CARD_WIDTH - CARD_MARGIN,
+        top: Math.max(CARD_SIDE_MARGIN, Math.min(vh - cardHeight - CARD_SIDE_MARGIN, rect.top + rect.height / 2 - cardHeight / 2)),
+        left: spotLeft - cardWidth - CARD_MARGIN,
         arrowSide: "right",
       };
     }
@@ -73,8 +85,8 @@ function computeTooltipPos(
 
   // Fallback: centered on screen
   return {
-    top: Math.max(8, vh / 2 - cardHeight / 2),
-    left: Math.max(8, vw / 2 - CARD_WIDTH / 2),
+    top:  Math.max(CARD_SIDE_MARGIN, vh / 2 - cardHeight / 2),
+    left: Math.max(CARD_SIDE_MARGIN, vw / 2 - cardWidth / 2),
     arrowSide: null,
   };
 }
@@ -107,15 +119,19 @@ export function TourSpotlight({
   const cardRef = useRef<HTMLDivElement>(null);
   const [tooltipPos, setTooltipPos] = useState<TooltipPos | null>(null);
   const [vsize, setVsize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  const [cardWidth, setCardWidth] = useState(getCardWidth());
 
-  // Update viewport size
+  // Update viewport size + card width
   useEffect(() => {
-    const onResize = () => setVsize({ w: window.innerWidth, h: window.innerHeight });
+    const onResize = () => {
+      setVsize({ w: window.innerWidth, h: window.innerHeight });
+      setCardWidth(getCardWidth());
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Compute tooltip position whenever rect or step changes
+  // Compute tooltip position whenever rect, step, or viewport changes
   useLayoutEffect(() => {
     if (!targetRect || !cardRef.current) { setTooltipPos(null); return; }
     const cardHeight = cardRef.current.offsetHeight || 220;
@@ -125,21 +141,21 @@ export function TourSpotlight({
   const sr = targetRect
     ? {
         x: targetRect.left - PADDING,
-        y: targetRect.top - PADDING,
-        w: targetRect.width + PADDING * 2,
+        y: targetRect.top  - PADDING,
+        w: targetRect.width  + PADDING * 2,
         h: targetRect.height + PADDING * 2,
         r: 10,
       }
     : null;
 
   const isFirst = stepIndex === 0;
-  const isLast = stepIndex === totalSteps - 1;
+  const isLast  = stepIndex === totalSteps - 1;
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* SVG Overlay with spotlight hole */}
+          {/* SVG overlay with spotlight hole */}
           <motion.svg
             key="tour-svg"
             initial={{ opacity: 0 }}
@@ -152,7 +168,6 @@ export function TourSpotlight({
           >
             <defs>
               <clipPath id="spotlight-clip">
-                {/* Full screen rect minus the spotlight hole */}
                 <path
                   fillRule="evenodd"
                   d={
@@ -174,13 +189,10 @@ export function TourSpotlight({
             </defs>
 
             {/* Dark overlay */}
-            <rect
-              x="0" y="0" width="100%" height="100%"
-              fill="rgba(0,0,0,0.55)"
-              clipPath="url(#spotlight-clip)"
-            />
+            <rect x="0" y="0" width="100%" height="100%"
+              fill="rgba(0,0,0,0.55)" clipPath="url(#spotlight-clip)" />
 
-            {/* Animated spotlight border */}
+            {/* Animated border around spotlight */}
             {sr && (
               <motion.rect
                 key={`border-${stepIndex}`}
@@ -197,14 +209,10 @@ export function TourSpotlight({
             )}
           </motion.svg>
 
-          {/* Clickable backdrop to close */}
-          <div
-            className="fixed inset-0 z-[100] cursor-pointer"
-            onClick={onClose}
-            aria-hidden
-          />
+          {/* Clickable backdrop */}
+          <div className="fixed inset-0 z-[100] cursor-pointer" onClick={onClose} aria-hidden />
 
-          {/* Tooltip Card */}
+          {/* Tooltip card */}
           <motion.div
             key={`card-${stepIndex}`}
             ref={cardRef}
@@ -214,7 +222,7 @@ export function TourSpotlight({
             transition={{ type: "spring", stiffness: 380, damping: 30 }}
             className="fixed z-[102] pointer-events-auto"
             style={{
-              width: CARD_WIDTH,
+              width: cardWidth,
               ...(tooltipPos
                 ? { top: tooltipPos.top, left: tooltipPos.left }
                 : { top: "50%", left: "50%", transform: "translate(-50%, -50%)" }),
@@ -237,7 +245,6 @@ export function TourSpotlight({
 
               {/* Content */}
               <div className="px-4 pb-2">
-                {/* Loading state */}
                 {isNavigating && (
                   <div className="flex items-center gap-2 py-4">
                     <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
@@ -245,14 +252,6 @@ export function TourSpotlight({
                   </div>
                 )}
 
-                {/* No target found */}
-                {!isNavigating && !targetRect && (
-                  <p className="text-sm text-muted-foreground py-2 italic">
-                    Elemento não encontrado nesta visualização.
-                  </p>
-                )}
-
-                {/* Step content */}
                 {!isNavigating && (
                   <>
                     <h3 className="font-bold text-foreground text-base leading-snug mb-2">
@@ -311,11 +310,10 @@ export function TourSpotlight({
                   disabled={isNavigating}
                   className="gap-1 h-8 text-xs"
                 >
-                  {isLast ? (
-                    <><Sparkles className="h-3.5 w-3.5" /> Concluir</>
-                  ) : (
-                    <>Próximo <ArrowRight className="h-3.5 w-3.5" /></>
-                  )}
+                  {isLast
+                    ? <><Sparkles className="h-3.5 w-3.5" /> Concluir</>
+                    : <>Próximo <ArrowRight className="h-3.5 w-3.5" /></>
+                  }
                 </Button>
               </div>
             </div>
