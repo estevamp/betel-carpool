@@ -445,38 +445,20 @@ export function useFinanceiro(selectedMonth: string) {
 
       if (transfersError) throw transfersError;
 
-      const { count: transactionsCountBefore } = await supabase
-        .from("transactions")
-        .select("id", { count: "exact", head: false })
-        .eq("month", monthToDelete)
-        .eq("congregation_id", effectiveCongregationId!);
-
-      const { error: transactionsError } = await supabase
-        .from("transactions")
-        .delete()
-        .eq("month", monthToDelete)
-        .eq("congregation_id", effectiveCongregationId!);
-
-      if (transactionsError) throw transactionsError;
-
       return {
         transfersCount: transfersCountBefore || 0,
-        transactionsCount: transactionsCountBefore || 0,
       };
     },
     onSuccess: async (data, monthToDelete) => {
       await queryClient.cancelQueries({ queryKey: ["transfers", monthToDelete] });
-      await queryClient.cancelQueries({ queryKey: ["transactions", monthToDelete] });
 
       queryClient.setQueriesData<unknown[]>({ queryKey: ["transfers", monthToDelete] }, []);
-      queryClient.setQueriesData<unknown[]>({ queryKey: ["transactions", monthToDelete] }, []);
 
       toast.success(
-        `Fechamento excluído: ${data.transfersCount} transferências e ${data.transactionsCount} transações removidas`
+        `Fechamento excluído: ${data.transfersCount} transferências removidas`
       );
 
       await queryClient.refetchQueries({ queryKey: ["transfers", monthToDelete] });
-      await queryClient.refetchQueries({ queryKey: ["transactions", monthToDelete] });
     },
     onError: (error: Error) => {
       toast.error("Erro ao excluir fechamento: " + error.message);
