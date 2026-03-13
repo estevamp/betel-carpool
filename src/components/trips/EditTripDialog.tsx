@@ -176,7 +176,7 @@ export function EditTripDialog({ trip, open, onOpenChange, onUpdateTrip, isUpdat
                 onCheckedChange={(checked) => setIsUrgent(checked === true)}
               />
               <Label htmlFor="edit-urgent" className="font-normal">
-                Viagem necessária (preciso de passageiros)
+                Viagem necessária (preciso ir com meu carro)
               </Label>
             </div>
             <div className="flex items-center space-x-2">
