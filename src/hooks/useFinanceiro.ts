@@ -118,25 +118,6 @@ export function useFinanceiro(selectedMonth: string) {
     },
   });
 
-  // Fetch transactions for the month
-  const transactionsQuery = useQuery({
-    queryKey: ["transactions", selectedMonth, effectiveCongregationId],
-    queryFn: async () => {
-      let query = supabase
-        .from("transactions")
-        .select("*")
-        .eq("month", selectedMonth);
-
-      if (effectiveCongregationId) {
-        query = query.eq("congregation_id", effectiveCongregationId);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
   // Fetch transfers for the month
   const transfersQuery = useQuery({
     queryKey: ["transfers", selectedMonth, effectiveCongregationId],
@@ -192,38 +173,6 @@ export function useFinanceiro(selectedMonth: string) {
       return data ?? [];
     },
   });
-
-  // ── Relatório pós-fechamento (baseado em transactions salvas) ───────────────
-  const profileBalances: ProfileBalance[] = (() => {
-    if (!transactionsQuery.data || !profilesQuery.data) return [];
-
-    const balanceMap = new Map<string, { toPay: number; toReceive: number; congregationId: string | null }>();
-
-    profilesQuery.data.forEach((p) => {
-      balanceMap.set(p.id, { toPay: 0, toReceive: 0, congregationId: p.congregation_id });
-    });
-
-    transactionsQuery.data.forEach((t) => {
-      const debtor = balanceMap.get(t.debtor_id);
-      if (debtor) debtor.toPay += Number(t.amount);
-
-      const creditor = balanceMap.get(t.creditor_id);
-      if (creditor) creditor.toReceive += Number(t.amount);
-    });
-
-    const profileNameMap = new Map(profilesQuery.data.map((p) => [p.id, p.full_name]));
-
-    return Array.from(balanceMap.entries())
-      .map(([id, balance]) => ({
-        profileId: id,
-        name: profileNameMap.get(id) ?? "Desconhecido",
-        toPay: balance.toPay,
-        toReceive: balance.toReceive,
-        congregationId: balance.congregationId,
-      }))
-      .filter((b) => b.toPay > 0 || b.toReceive > 0)
-      .sort((a, b) => a.name.localeCompare(b.name));
-  })();
 
   // ── Relatório em tempo real (mesma lógica da close-month, sem salvar nada) ──
   const liveProfileBalances: ProfileBalance[] = (() => {
@@ -341,8 +290,6 @@ export function useFinanceiro(selectedMonth: string) {
     }));
   })();
 
-  const totalToPay = profileBalances.reduce((sum, b) => sum + b.toPay, 0);
-  const totalToReceive = profileBalances.reduce((sum, b) => sum + b.toReceive, 0);
   const pendingTransfers = transfers.filter((t) => !t.isPaid).length;
 
   const deleteTripMutation = useMutation({
@@ -546,21 +493,16 @@ export function useFinanceiro(selectedMonth: string) {
 
   return {
     profiles: profilesQuery.data ?? [],
-    profileBalances,
     liveProfileBalances,
     transfers,
     monthTrips,
-    totalToPay,
-    totalToReceive,
     pendingTransfers,
     isLoading:
       profilesQuery.isLoading ||
-      transactionsQuery.isLoading ||
       transfersQuery.isLoading ||
       tripsQuery.isLoading,
     error:
       profilesQuery.error ||
-      transactionsQuery.error ||
       transfersQuery.error ||
       tripsQuery.error,
     markAsPaid: markAsPaidMutation.mutate,
