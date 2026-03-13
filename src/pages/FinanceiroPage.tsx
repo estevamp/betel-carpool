@@ -312,8 +312,8 @@ export default function FinanceiroPage() {
                 <thead>
                   <tr className="border-b border-border bg-muted/50">
                     <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Betelita</th>
-                    <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">A Pagar</th>
-                    <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">A Receber</th>
+                    <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Pagar</th>
+                    <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Receber</th>
                     <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Acerto</th>
                   </tr>
                 </thead>
