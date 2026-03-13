@@ -24,6 +24,12 @@ export interface CreateRideRequestData {
   profile_id?: string; // Adicionar para admin/super-admin criar em nome de outros
 }
 
+export interface UpdateRideRequestData {
+  id: string;
+  requested_date: string;
+  notes?: string;
+}
+
 export function useRideRequests() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
@@ -85,6 +91,27 @@ export function useRideRequests() {
     },
   });
 
+  const updateRideRequestMutation = useMutation({
+    mutationFn: async (data: UpdateRideRequestData) => {
+      const { error } = await supabase
+        .from("ride_requests")
+        .update({
+          requested_date: data.requested_date,
+          notes: data.notes ?? null,
+        })
+        .eq("id", data.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ride_requests"] });
+      toast.success("Solicitação atualizada!");
+    },
+    onError: (error: Error) => {
+      toast.error("Erro ao atualizar solicitação: " + error.message);
+    },
+  });
+
   const deleteRideRequestMutation = useMutation({
     mutationFn: async (requestId: string) => {
       const { error } = await supabase
@@ -133,5 +160,7 @@ export function useRideRequests() {
     isDeleting: deleteRideRequestMutation.isPending,
     markAsFulfilled: markAsFulfilledMutation.mutate,
     isMarkingFulfilled: markAsFulfilledMutation.isPending,
+    updateRideRequest: updateRideRequestMutation.mutate,
+    isUpdating: updateRideRequestMutation.isPending,
   };
 }
