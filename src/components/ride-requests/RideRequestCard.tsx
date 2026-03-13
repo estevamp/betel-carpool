@@ -5,8 +5,8 @@ import { motion } from "framer-motion";
 import { Search, Calendar, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsCongregationAdmin } from "@/hooks/useIsCongregationAdmin";
 import { useRideRequests, RideRequest } from "@/hooks/useRideRequests";
-import { useNavigate } from "react-router-dom";
 import { EditRideRequestDialog } from "./EditRideRequestDialog";
 
 interface RideRequestCardProps {
@@ -19,20 +19,19 @@ const itemVariants = {
 };
 
 export function RideRequestCard({ request }: RideRequestCardProps) {
-  const { profile, isAdmin } = useAuth();
+  const { profile, isSuperAdmin } = useAuth();
+  const { isCongregationAdmin } = useIsCongregationAdmin();
   const { deleteRideRequest, isDeleting } = useRideRequests();
-  const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
 
   const isOwner = profile?.id === request.profile_id;
+  const isAdmin = isSuperAdmin || !!isCongregationAdmin;
   const canDelete = isOwner || isAdmin;
-  const canEdit = isAdmin; // só admins/super-admins editam pedidos alheios; dono pode recriar
+  const canEdit = isAdmin;
 
   const formattedDate = format(new Date(request.requested_date), "dd/MM/yyyy", {
     locale: ptBR,
   });
-
-  const handleCreateTrip = () => navigate("/viagens");
 
   const handleDelete = () => {
     if (confirm("Tem certeza que deseja remover esta solicitação?")) {
@@ -68,33 +67,34 @@ export function RideRequestCard({ request }: RideRequestCardProps) {
               )}
             </div>
           </div>
-          <div className="flex w-full items-center gap-2 sm:w-auto">
-            <Button variant="outline" size="sm" onClick={handleCreateTrip} className="flex-1 sm:flex-none">
-              Criar Viagem
-            </Button>
-            {canEdit && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
-                onClick={() => setEditOpen(true)}
-                title="Editar pedido"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-            )}
-            {canDelete && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={handleDelete}
-                disabled={isDeleting}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+
+          {(canEdit || canDelete) && (
+            <div className="flex items-center gap-1 sm:ml-4">
+              {canEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  onClick={() => setEditOpen(true)}
+                  title="Editar pedido"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  title="Remover solicitação"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </motion.div>
 
