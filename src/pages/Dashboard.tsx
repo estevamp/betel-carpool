@@ -174,29 +174,29 @@ export default function Dashboard() {
         <p className="text-muted-foreground mt-1">{subtitle}</p>
       </motion.div>
 
-      {/* Quick Access */}
-      <motion.div variants={itemVariants}>
-        <h2 className="font-semibold text-foreground mb-3">Acesso Rápido</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {quickAccessItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className="group flex flex-row items-center gap-3 px-4 py-3 bg-card border border-border hover:-translate-y-0.5 transition-all duration-300 rounded-xl shadow-card"
+    {/* Quick Access */}
+    <motion.div variants={itemVariants}>
+      <h2 className="font-semibold text-foreground mb-3">Acesso Rápido</h2>
+      <div className="grid grid-cols-2 gap-3">
+        {quickAccessItems.map((item) => (
+          <Link
+            key={item.path}
+            to={item.path}
+            className="group flex flex-col items-center gap-2 p-3 bg-card border border-border hover:-translate-y-1 transition-all duration-300 rounded-xl shadow-card"
+          >
+            <div
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-lg text-white transition-transform group-hover:scale-110",
+                item.color,
+              )}
             >
-              <div
-                className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-transform group-hover:scale-110",
-                  item.color,
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-              </div>
-              <span className="text-sm font-medium text-foreground">{item.label}</span>
-            </Link>
-          ))}
-        </div>
-      </motion.div>
+              <item.icon className="h-4 w-4" />
+            </div>
+            <span className="text-xs font-medium text-foreground text-center">{item.label}</span>
+          </Link>
+        ))}
+      </div>
+    </motion.div>
 
       {/* Today's Trips and Future Trips */}
       <motion.div variants={itemVariants}>
