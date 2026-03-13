@@ -90,7 +90,7 @@ export function ViewBetelitaDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-md max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg sm:text-xl">Perfil de {person.full_name}</DialogTitle>
         </DialogHeader>

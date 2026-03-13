@@ -194,7 +194,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
             <UserPlus className="h-5 w-5" />
@@ -212,7 +212,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                 <FormItem>
                   <FormLabel className="text-xs sm:text-sm">Nome Completo *</FormLabel>
                   <FormControl>
-                    <Input placeholder="João da Silva" {...field} className="text-sm h-9" />
+                    <Input placeholder="João da Silva" {...field} className="text-base sm:text-sm h-10 sm:h-9" />
                   </FormControl>
                   <FormMessage className="text-xs" />
                 </FormItem>
@@ -226,7 +226,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                 <FormItem>
                   <FormLabel className="text-xs sm:text-sm">Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="joao@email.com" {...field} className="text-sm h-9" />
+                    <Input type="email" placeholder="joao@email.com" {...field} className="text-base sm:text-sm h-10 sm:h-9" />
                   </FormControl>
                   <FormDescription className="text-[10px] sm:text-xs">Obrigatório apenas para enviar convite</FormDescription>
                   <FormMessage className="text-xs" />
@@ -242,7 +242,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                   <FormLabel className="text-xs sm:text-sm">Sexo</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger className="text-sm h-9">
+                      <SelectTrigger className="text-base sm:text-sm h-10 sm:h-9">
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
                     </FormControl>
@@ -324,7 +324,7 @@ export function CreateBetelitaDialog({ children }: CreateBetelitaDialogProps) {
                     <FormLabel className="text-xs sm:text-sm">Cônjuge</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger className="text-sm h-9">
+                        <SelectTrigger className="text-base sm:text-sm h-10 sm:h-9">
                           <SelectValue placeholder="Selecione o cônjuge..." />
                         </SelectTrigger>
                       </FormControl>

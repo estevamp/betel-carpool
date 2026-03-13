@@ -179,7 +179,7 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-1.5 text-lg sm:text-xl">
             Editar Betelita
@@ -201,7 +201,7 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
               required
-              className="text-sm h-9"
+              className="text-base sm:text-sm h-10 sm:h-9"
             />
           </div>
 
@@ -214,7 +214,7 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="text-sm h-9"
+              className="text-base sm:text-sm h-10 sm:h-9"
             />
           </div>
 
@@ -226,7 +226,7 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
               value={formData.sex}
               onValueChange={(value: "Homem" | "Mulher") => setFormData({ ...formData, sex: value })}
             >
-              <SelectTrigger className="text-sm h-9">
+              <SelectTrigger className="text-base sm:text-sm h-10 sm:h-9">
                 <SelectValue placeholder="Selecione o sexo" />
               </SelectTrigger>
               <SelectContent>
@@ -244,7 +244,7 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
               id="pix_key"
               value={formData.pix_key}
               onChange={(e) => setFormData({ ...formData, pix_key: e.target.value })}
-              className="text-sm h-9"
+              className="text-base sm:text-sm h-10 sm:h-9"
             />
           </div>
 
@@ -296,7 +296,7 @@ export function EditBetelitaDialog({ person, open, onOpenChange, allBetelitas }:
                 value={formData.spouse_id}
                 onValueChange={(value) => setFormData({ ...formData, spouse_id: value })}
               >
-                <SelectTrigger className="text-sm h-9">
+                <SelectTrigger className="text-base sm:text-sm h-10 sm:h-9">
                   <SelectValue placeholder="Selecione o cônjuge" />
                 </SelectTrigger>
                 <SelectContent>
