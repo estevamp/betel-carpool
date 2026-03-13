@@ -176,23 +176,23 @@ export default function Dashboard() {
 
       {/* Quick Access */}
       <motion.div variants={itemVariants}>
-        <h2 className="font-semibold text-foreground mb-4">Acesso Rápido</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+        <h2 className="font-semibold text-foreground mb-3">Acesso Rápido</h2>
+        <div className="grid grid-cols-2 gap-3">
           {quickAccessItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
-              className="group flex flex-col items-center gap-3 p-5 bg-card border border-border hover:-translate-y-1 transition-all duration-300 text-right rounded-xl shadow-lg"
+              className="group flex flex-col items-center gap-2 p-3 bg-card border border-border hover:-translate-y-1 transition-all duration-300 rounded-xl shadow-card"
             >
               <div
                 className={cn(
-                  "flex h-12 w-12 items-center justify-center rounded-xl text-white transition-transform group-hover:scale-110",
+                  "flex h-9 w-9 items-center justify-center rounded-lg text-white transition-transform group-hover:scale-110",
                   item.color,
                 )}
               >
-                <item.icon className="h-6 w-6" />
+                <item.icon className="h-4 w-4" />
               </div>
-              <span className="text-sm font-medium text-foreground text-center">{item.label}</span>
+              <span className="text-xs font-medium text-foreground text-center">{item.label}</span>
             </Link>
           ))}
         </div>
