@@ -53,8 +53,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: "/ausencia",
     title: "Informar que estarei de férias",
     description:
-      'Clique em <strong>Registrar Ausência</strong> e informe o período em que você estará fora. Essas viagens não entram no seu cálculo financeiro.',
-    tip: "Ausências registradas também evitam reservas indesejadas no seu nome.",
+      'Clique em <strong>Registrar Ausência</strong> e informe o período em que você estará fora.', 
     position: "bottom",
   },
   {
