@@ -296,14 +296,6 @@ export default function FinanceiroPage() {
                 Calculado em tempo real com base nas viagens registradas
               </p>
             </div>
-            {/* Badge indicando que é live */}
-            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-full">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              Tempo real
-            </span>
           </div>
     
           {liveProfileBalances.length === 0 ? (
