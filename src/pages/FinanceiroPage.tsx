@@ -52,6 +52,7 @@ export default function FinanceiroPage() {
   const {
     profiles,
     profileBalances,
+    liveProfileBalances,
     transfers,
     monthTrips,
     pendingTransfers,
@@ -282,21 +283,36 @@ export default function FinanceiroPage() {
         </div>
       )}
 
-      {/* Report Tab */}
+    /* Report Tab — dados em tempo real, sem precisar de fechamento *\/}
       {!isLoading && activeTab === "report" && isAdmin && (
         <motion.div
           variants={containerVariants} initial="hidden" animate="visible"
           className="bg-card rounded-xl border border-border shadow-card overflow-hidden"
         >
-          <div className="px-5 py-4 border-b border-border">
-            <h2 className="font-semibold text-foreground">Relatório do Mês</h2>
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-foreground">Relatório do Mês</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Calculado em tempo real com base nas viagens registradas
+              </p>
+            </div>
+            /* Badge indicando que é live *\/
+            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-full">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              Tempo real
+            </span>
           </div>
-
-          {profileBalances.length === 0 ? (
+    
+          {liveProfileBalances.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Wallet className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="font-semibold text-foreground">Nenhuma transação</h3>
-              <p className="text-sm text-muted-foreground mt-1">Não há transações registradas para este mês</p>
+              <h3 className="font-semibold text-foreground">Nenhuma viagem com custo</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Não há viagens pagas registradas para este mês
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -310,13 +326,13 @@ export default function FinanceiroPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {profileBalances.map((row) => {
+                  {liveProfileBalances.map((row) => {
                     const balance = row.toReceive - row.toPay;
                     return (
                       <motion.tr key={row.profileId} variants={itemVariants} className="hover:bg-muted/30">
                         <td className="px-3 py-2 text-xs font-medium text-foreground">{row.name}</td>
                         <td className="px-3 py-2 text-xs text-right text-destructive">
-                            {row.toPay > 0 ? formatCurrency(row.toPay) : "-"}
+                          {row.toPay > 0 ? formatCurrency(row.toPay) : "-"}
                         </td>
                         <td className="px-3 py-2 text-xs text-right text-success">
                           {row.toReceive > 0 ? formatCurrency(row.toReceive) : "-"}

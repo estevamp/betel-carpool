@@ -39,6 +39,10 @@ export interface Transfer {
 type TripType = Database["public"]["Enums"]["trip_type"];
 export const VISITANTE_PROFILE_ID = "00000000-0000-0000-0000-000000000001";
 
+// Custos fixos por viagem — mesma referência da Edge Function close-month
+const ROUND_TRIP_COST = 15.0;
+const ONE_WAY_COST = 7.5;
+
 export interface MonthTripPassenger {
   id: string;
   passengerId: string;
@@ -95,12 +99,13 @@ export function useFinanceiro(selectedMonth: string) {
   const effectiveCongregationId = isSuperAdmin ? selectedCongregationId : profile?.congregation_id;
 
   // Fetch all profiles for name mapping
+  // Inclui campos usados no cálculo de débitos (sexo, casamento, isenção)
   const profilesQuery = useQuery({
     queryKey: ["profiles", effectiveCongregationId],
     queryFn: async () => {
       let query = supabase
         .from("profiles")
-        .select("id, full_name, pix_key, congregation_id")
+        .select("id, full_name, pix_key, congregation_id, sex, is_married, is_exempt, spouse_id")
         .order("full_name", { ascending: true });
 
       if (effectiveCongregationId) {
@@ -160,6 +165,7 @@ export function useFinanceiro(selectedMonth: string) {
         .select(`
           id,
           driver_id,
+          is_betel_car,
           departure_at,
           return_at,
           max_passengers,
@@ -187,7 +193,7 @@ export function useFinanceiro(selectedMonth: string) {
     },
   });
 
-  // Calculate balances per profile from transactions
+  // ── Relatório pós-fechamento (baseado em transactions salvas) ───────────────
   const profileBalances: ProfileBalance[] = (() => {
     if (!transactionsQuery.data || !profilesQuery.data) return [];
 
@@ -217,6 +223,74 @@ export function useFinanceiro(selectedMonth: string) {
       }))
       .filter((b) => b.toPay > 0 || b.toReceive > 0)
       .sort((a, b) => a.name.localeCompare(b.name));
+  })();
+
+  // ── Relatório em tempo real (mesma lógica da close-month, sem salvar nada) ──
+  const liveProfileBalances: ProfileBalance[] = (() => {
+    if (!tripsQuery.data || !profilesQuery.data) return [];
+
+    const profileMap = new Map(profilesQuery.data.map((p) => [p.id, p]));
+
+    // rawDebts: debtorId → driverId → valor total acumulado
+    const rawDebts = new Map<string, Map<string, number>>();
+
+    for (const trip of tripsQuery.data) {
+      if ((trip as any).is_betel_car) continue;
+
+      for (const tp of ((trip.trip_passengers as any[]) ?? [])) {
+        if (tp.passenger_id === trip.driver_id) continue;
+
+        const passengerProfile = profileMap.get(tp.passenger_id) as any;
+        if (!passengerProfile) continue; // visitante ou desconhecido → skip
+        if (passengerProfile.is_exempt) continue;
+
+        const cost =
+          tp.trip_type === "Ida e Volta" ? ROUND_TRIP_COST : ONE_WAY_COST;
+
+        // Dívidas de mulheres casadas vão para o marido
+        let debtorId = tp.passenger_id;
+        if (
+          passengerProfile.sex === "Mulher" &&
+          passengerProfile.is_married &&
+          passengerProfile.spouse_id
+        ) {
+          debtorId = passengerProfile.spouse_id;
+        }
+
+        if (!rawDebts.has(debtorId)) rawDebts.set(debtorId, new Map());
+        const creditorMap = rawDebts.get(debtorId)!;
+        creditorMap.set(
+          trip.driver_id,
+          (creditorMap.get(trip.driver_id) ?? 0) + cost
+        );
+      }
+    }
+
+    // Converter rawDebts → saldos individuais
+    const balanceMap = new Map<string, { toPay: number; toReceive: number }>();
+
+    for (const [debtorId, creditorMap] of rawDebts) {
+      for (const [creditorId, amount] of creditorMap) {
+        if (!balanceMap.has(debtorId))
+          balanceMap.set(debtorId, { toPay: 0, toReceive: 0 });
+        balanceMap.get(debtorId)!.toPay += amount;
+
+        if (!balanceMap.has(creditorId))
+          balanceMap.set(creditorId, { toPay: 0, toReceive: 0 });
+        balanceMap.get(creditorId)!.toReceive += amount;
+      }
+    }
+
+    return Array.from(balanceMap.entries())
+      .map(([id, balance]) => ({
+        profileId: id,
+        name: profileMap.get(id)?.full_name ?? "Desconhecido",
+        toPay: balance.toPay,
+        toReceive: balance.toReceive,
+        congregationId: profileMap.get(id)?.congregation_id ?? null,
+      }))
+      .filter((b) => b.toPay > 0 || b.toReceive > 0)
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   })();
 
   // Map transfers with names
@@ -473,6 +547,7 @@ export function useFinanceiro(selectedMonth: string) {
   return {
     profiles: profilesQuery.data ?? [],
     profileBalances,
+    liveProfileBalances,
     transfers,
     monthTrips,
     totalToPay,
