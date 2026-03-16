@@ -31,6 +31,8 @@ import type { Database } from "@/integrations/supabase/types";
 import type { Profile } from "@/hooks/useProfiles";
 import { EditTripDialog } from "./EditTripDialog";
 import { useTripLock } from "@/hooks/useTripLock";
+import { useAuth } from "@/contexts/AuthContext";
+import { useConflictingTrips } from "@/hooks/useConflictingTrips";
 
 type TripType = Database["public"]["Enums"]["trip_type"];
 
@@ -74,6 +76,7 @@ export function TripCard({
   isUpdating,
   readOnly,
 }: TripCardProps) {
+  const { profile } = useAuth();
   const [reserveDialogOpen, setReserveDialogOpen] = useState(false);
   const [addPassengerDialogOpen, setAddPassengerDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -110,6 +113,11 @@ export function TripCard({
 
   const reserveAvailableProfiles =
     profiles?.filter((p) => p.id !== trip.driver_id && !existingPassengerIds.includes(p.id)) ?? [];
+
+  const { conflictingTrips } = useConflictingTrips(
+    reserveDialogOpen ? trip : null,
+    selectedReservePassengerId || profile?.id,
+  );
 
   const handleReserve = () => {
     const passengerId = selectedReservePassengerId === "visitante" ? VISITANTE_PROFILE_ID : selectedReservePassengerId;
@@ -425,6 +433,26 @@ export function TripCard({
                     </RadioGroup>
                   </div>
                 </div>
+
+                {conflictingTrips.length > 0 && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                    <div className="text-sm text-amber-900 dark:text-amber-200">
+                      <p className="font-medium">Conflito de horário detectado</p>
+                      <p className="text-xs mt-0.5 opacity-80">
+                        Este passageiro já está inscrito em{" "}
+                        {conflictingTrips.map((t, i) => (
+                          <span key={t.id}>
+                            <strong>{format(new Date(t.departure_at), "dd/MM 'às' HH:mm", { locale: ptBR })}</strong>
+                            {i < conflictingTrips.length - 1 ? " e " : ""}
+                          </span>
+                        ))}{" "}
+                        (menos de 1h de diferença). Confirmar mesmo assim?
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setReserveDialogOpen(false)}>Cancelar</Button>
                   <Button
@@ -432,7 +460,7 @@ export function TripCard({
                     disabled={isReserving || !selectedReservePassengerId}
                     className="bg-success hover:bg-success/90 text-success-foreground"
                   >
-                    {isReserving ? "Reservando..." : "Confirmar Reserva"}
+                    {isReserving ? "Reservando..." : conflictingTrips.length > 0 ? "Confirmar mesmo assim" : "Confirmar"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
