@@ -247,20 +247,38 @@ export function useFinanceiro(selectedMonth: string) {
     if (!transfersQuery.data || !profilesQuery.data) return [];
 
     const profileMap = new Map(
-      profilesQuery.data.map((p) => [p.id, { name: p.full_name, pixKey: p.pix_key, congregationId: p.congregation_id }])
+      profilesQuery.data.map((p) => [
+        p.id,
+        {
+          name: p.full_name,
+          pixKey: p.pix_key,
+          congregationId: p.congregation_id,
+          spouseId: p.spouse_id ?? null,
+        },
+      ])
     );
 
-    return transfersQuery.data.map((t) => ({
-      id: t.id,
-      fromId: t.debtor_id,
-      fromName: profileMap.get(t.debtor_id)?.name ?? "Desconhecido",
-      toId: t.creditor_id,
-      toName: profileMap.get(t.creditor_id)?.name ?? "Desconhecido",
-      amount: Number(t.amount),
-      isPaid: t.is_paid ?? false,
-      pixKey: profileMap.get(t.creditor_id)?.pixKey ?? null,
-      congregationId: t.congregation_id,
-    }));
+    return transfersQuery.data
+      .filter((t) => {
+        // Remove transferências intrafamiliares (mesma pessoa ou entre cônjuges)
+        if (t.debtor_id === t.creditor_id) return false;
+        const debtorSpouse = profileMap.get(t.debtor_id)?.spouseId;
+        const creditorSpouse = profileMap.get(t.creditor_id)?.spouseId;
+        if (debtorSpouse === t.creditor_id) return false;
+        if (creditorSpouse === t.debtor_id) return false;
+        return true;
+      })
+      .map((t) => ({
+        id: t.id,
+        fromId: t.debtor_id,
+        fromName: profileMap.get(t.debtor_id)?.name ?? "Desconhecido",
+        toId: t.creditor_id,
+        toName: profileMap.get(t.creditor_id)?.name ?? "Desconhecido",
+        amount: Number(t.amount),
+        isPaid: t.is_paid ?? false,
+        pixKey: profileMap.get(t.creditor_id)?.pixKey ?? null,
+        congregationId: t.congregation_id,
+      }));
   })();
 
   // Map trips with names
