@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -22,15 +22,21 @@ interface BroadcastNotificationDialogProps {
   defaultMessage?: string;
 }
 
+const NOTIFICATION_MESSAGE_MAX_LENGTH = 150;
+
 export function BroadcastNotificationDialog({
   open,
   onOpenChange,
   congregationId,
   defaultMessage = "Não se esqueça de informar seus arranjos de transporte para a congregação.",
 }: BroadcastNotificationDialogProps) {
-  const [message, setMessage] = useState(defaultMessage);
+  const [message, setMessage] = useState(defaultMessage.slice(0, NOTIFICATION_MESSAGE_MAX_LENGTH));
   const [isSending, setIsSending] = useState(false);
   const { profile } = useAuth();
+
+  useEffect(() => {
+    setMessage((defaultMessage || "").slice(0, NOTIFICATION_MESSAGE_MAX_LENGTH));
+  }, [defaultMessage, open]);
 
   const handleSend = async () => {
     if (!message.trim()) {
@@ -48,7 +54,7 @@ export function BroadcastNotificationDialog({
     try {
       const { data, error } = await supabase.functions.invoke("send-broadcast-notification", {
         body: {
-          message,
+          message: message.slice(0, NOTIFICATION_MESSAGE_MAX_LENGTH),
           congregationId: targetCongregationId,
         },
       });
@@ -88,10 +94,14 @@ export function BroadcastNotificationDialog({
             <Textarea
               id="message"
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => setMessage(e.target.value.slice(0, NOTIFICATION_MESSAGE_MAX_LENGTH))}
               placeholder="Digite sua mensagem aqui..."
               className="min-h-[120px]"
+              maxLength={NOTIFICATION_MESSAGE_MAX_LENGTH}
             />
+            <p className="text-xs text-muted-foreground text-right">
+              {message.length}/{NOTIFICATION_MESSAGE_MAX_LENGTH} caracteres
+            </p>
           </div>
         </div>
 

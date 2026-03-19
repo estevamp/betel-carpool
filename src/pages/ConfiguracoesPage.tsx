@@ -23,6 +23,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
 import { useCongregations } from "@/hooks/useCongregations";
 import { useSelectedCongregation } from "@/contexts/CongregationContext";
+
+const NOTIFICATION_MESSAGE_MAX_LENGTH = 150;
+
 export default function ConfiguracoesPage() {
   const queryClient = useQueryClient();
   const {
@@ -154,7 +157,7 @@ export default function ConfiguracoesPage() {
 
   useEffect(() => {
     if (notificationSettings) {
-      setNotifMessage(notificationSettings.message);
+      setNotifMessage((notificationSettings.message || "").slice(0, NOTIFICATION_MESSAGE_MAX_LENGTH));
       setNotifDays(notificationSettings.scheduled_days?.map(String) || []);
       setNotifTime(notificationSettings.scheduled_time?.substring(0, 5) || "08:00");
       setNotifEnabled(notificationSettings.is_enabled);
@@ -251,7 +254,7 @@ export default function ConfiguracoesPage() {
 
       const payload = {
         congregation_id: effectiveCongregationId,
-        message: notifMessage,
+        message: notifMessage.slice(0, NOTIFICATION_MESSAGE_MAX_LENGTH),
         scheduled_days: notifDays.map(Number),
         scheduled_time: notifTime + (notifTime.length === 5 ? ":00" : ""),
         is_enabled: notifEnabled,
@@ -344,11 +347,15 @@ export default function ConfiguracoesPage() {
               </Label>
               <Textarea
                 value={notifMessage}
-                onChange={(e) => setNotifMessage(e.target.value)}
+                onChange={(e) => setNotifMessage(e.target.value.slice(0, NOTIFICATION_MESSAGE_MAX_LENGTH))}
                 placeholder="Digite a mensagem que será enviada..."
                 className="min-h-[100px]"
+                maxLength={NOTIFICATION_MESSAGE_MAX_LENGTH}
                 disabled={!effectiveCongregationId}
               />
+              <p className="text-xs text-muted-foreground text-right">
+                {notifMessage.length}/{NOTIFICATION_MESSAGE_MAX_LENGTH} caracteres
+              </p>
             </div>
 
             <div className="space-y-3">
