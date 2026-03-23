@@ -1,6 +1,6 @@
 # 🚗 Carpool Betel
 
-PWA para gerenciamento de caronas da congregação **Betel Sul**. Organiza viagens, reservas de vagas, controle financeiro e notificações entre os membros.
+PWA para gerenciamento de caronas de congregações apoiadas por Betel. Organiza viagens, reservas de vagas, controle financeiro e notificações entre os membros.
 
 ---
 
@@ -213,4 +213,4 @@ Os arquivos de teste seguem o padrão `*.{test,spec}.{ts,tsx}` dentro de `src/`.
 
 ## 📄 Licença
 
-Projeto privado — todos os direitos reservados à congregação Betel Sul.
+Projeto privado — todos os direitos reservados.
