@@ -226,47 +226,6 @@ Deno.serve(async (req) => {
       debtorDebts.set(trip.driver_id, currentDebt + cost);
     }
 
-    // Generate transactions
-    const transactions: Array<{
-      debtor_id: string;
-      creditor_id: string;
-      amount: number;
-      month: string;
-      trip_type: string;
-      congregation_id: string;
-    }> = [];
-
-    for (const [debtorId, creditorMap] of rawDebts) {
-      for (const [creditorId, amount] of creditorMap) {
-        transactions.push({
-          debtor_id: debtorId,
-          creditor_id: creditorId,
-          amount,
-          month,
-          trip_type: "Ida e Volta",
-          congregation_id: targetCongregationId,
-        });
-      }
-    }
-
-    console.log(`Generated ${transactions.length} transactions`);
-
-    // Delete existing transactions for this month AND congregation only
-    const { error: deleteTransError } = await supabase
-      .from("transactions")
-      .delete()
-      .eq("month", month)
-      .eq("congregation_id", targetCongregationId);
-
-    if (deleteTransError) throw deleteTransError;
-
-    if (transactions.length > 0) {
-      const { error: insertTransError } = await supabase
-        .from("transactions")
-        .insert(transactions);
-      if (insertTransError) throw insertTransError;
-    }
-
     // ============================================================
     // GENERATE TRANSFERS based on transfer_mode
     // ============================================================
@@ -389,12 +348,6 @@ Deno.serve(async (req) => {
     const cutoffMonth = `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, "0")}`;
 
     await supabase
-      .from("transactions")
-      .delete()
-      .lt("month", cutoffMonth)
-      .eq("congregation_id", targetCongregationId);
-
-    await supabase
       .from("transfers")
       .delete()
       .lt("month", cutoffMonth)
@@ -429,7 +382,6 @@ Deno.serve(async (req) => {
         month,
         congregation_id: targetCongregationId,
         transfer_mode,
-        transactionsCount: transactions.length,
         transfersCount: transfers.length,
         message: `Fechamento do mês ${month} realizado com sucesso!`,
       }),
