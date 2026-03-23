@@ -101,7 +101,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { month, congregation_id } = await req.json();
+    const body = await req.json();
+    const { month, congregation_id, transfer_mode = "optimized" } = body;
+
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
       return new Response(JSON.stringify({ error: "Invalid month format. Use YYYY-MM" }), {
         status: 400,
@@ -116,8 +118,6 @@ Deno.serve(async (req) => {
     if (isSuperAdmin && congregation_id) {
       targetCongregationId = congregation_id;
     } else {
-      // profiles.id is not always auth user id in this project.
-      // Resolve by user_id first, then fallback to legacy id linkage.
       let profileData: { congregation_id: string | null } | null = null;
       const { data: byUserId } = await supabase
         .from("profiles")
@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
       targetCongregationId = congregation_id ?? profileData.congregation_id;
     }
 
-    console.log(`Closing month ${month} for congregation ${targetCongregationId}`);
+    console.log(`Closing month ${month} for congregation ${targetCongregationId}, transfer_mode=${transfer_mode}`);
 
     // Fetch profiles for this congregation
     const { data: profiles, error: profilesError } = await supabase
@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
       (trips as Trip[]).map((t) => [t.id, t])
     );
 
-    // Calculate raw debts (passenger -> driver)
+    // Calculate raw debts (debtor -> driver -> amount)
     const rawDebts = new Map<string, Map<string, number>>();
 
     for (const passenger of passengers) {
@@ -268,47 +268,10 @@ Deno.serve(async (req) => {
     }
 
     // ============================================================
-    // SMART TRANSFER OPTIMIZATION WITH CONNECTED COMPONENTS
-    //
-    // Problem with naive global net-balance approach:
-    //   If A→B (R$50) and C→D (R$50) are independent debts,
-    //   a global greedy match could incorrectly produce A→D and C→B.
-    //
-    // Solution: Use Union-Find to identify connected components.
-    //   Only merge/optimize debts within the same component.
-    //   Independent chains (A→B, C→D, E→F) stay separate.
-    //   Chains sharing a person (A→B, B→C) get optimized together.
+    // GENERATE TRANSFERS based on transfer_mode
     // ============================================================
 
-    const { find, union } = makeUnionFind();
-
-    // Step 1: Union every debtor with their creditors to find connected groups
-    for (const [debtorId, creditorMap] of rawDebts) {
-      for (const creditorId of creditorMap.keys()) {
-        union(debtorId, creditorId);
-      }
-    }
-
-    // Step 2: Compute net balances grouped by connected component
-    // componentNetBalances: componentRoot -> (personId -> netBalance)
-    const componentNetBalances = new Map<string, Map<string, number>>();
-
-    for (const [debtorId, creditorMap] of rawDebts) {
-      for (const [creditorId, amount] of creditorMap) {
-        const component = find(debtorId); // same root as find(creditorId)
-
-        if (!componentNetBalances.has(component)) {
-          componentNetBalances.set(component, new Map());
-        }
-        const balMap = componentNetBalances.get(component)!;
-
-        balMap.set(debtorId, (balMap.get(debtorId) ?? 0) - amount);
-        balMap.set(creditorId, (balMap.get(creditorId) ?? 0) + amount);
-      }
-    }
-
-    // Step 3: For each component independently, apply greedy matching
-    const transfers: Array<{
+    let transfers: Array<{
       debtor_id: string;
       creditor_id: string;
       amount: number;
@@ -316,47 +279,93 @@ Deno.serve(async (req) => {
       congregation_id: string;
     }> = [];
 
-    for (const [, balMap] of componentNetBalances) {
-      const compDebtors: Array<{ id: string; amount: number }> = [];
-      const compCreditors: Array<{ id: string; amount: number }> = [];
+    if (transfer_mode === "direct") {
+      // DIRECT MODE: each debtor pays exactly who they owe
+      // rawDebts already has debtor -> driver -> amount, so use it directly
+      for (const [debtorId, creditorMap] of rawDebts) {
+        for (const [creditorId, amount] of creditorMap) {
+          if (amount > 0.01 && debtorId !== creditorId) {
+            transfers.push({
+              debtor_id: debtorId,
+              creditor_id: creditorId,
+              amount: Math.round(amount * 100) / 100,
+              month,
+              congregation_id: targetCongregationId,
+            });
+          }
+        }
+      }
+    } else {
+      // OPTIMIZED MODE: minimize transfers using Union-Find connected components
 
-      for (const [id, balance] of balMap) {
-        if (balance < -0.01) {
-          compDebtors.push({ id, amount: Math.abs(balance) });
-        } else if (balance > 0.01) {
-          compCreditors.push({ id, amount: balance });
+      const { find, union } = makeUnionFind();
+
+      // Step 1: Union every debtor with their creditors to find connected groups
+      for (const [debtorId, creditorMap] of rawDebts) {
+        for (const creditorId of creditorMap.keys()) {
+          union(debtorId, creditorId);
         }
       }
 
-      // Sort descending so largest debts are settled first
-      compDebtors.sort((a, b) => b.amount - a.amount);
-      compCreditors.sort((a, b) => b.amount - a.amount);
+      // Step 2: Compute net balances grouped by connected component
+      const componentNetBalances = new Map<string, Map<string, number>>();
 
-      let i = 0, j = 0;
-      while (i < compDebtors.length && j < compCreditors.length) {
-        const debtor = compDebtors[i];
-        const creditor = compCreditors[j];
-        const transferAmount = Math.min(debtor.amount, creditor.amount);
+      for (const [debtorId, creditorMap] of rawDebts) {
+        for (const [creditorId, amount] of creditorMap) {
+          const component = find(debtorId);
 
-        if (transferAmount > 0.01) {
-          transfers.push({
-            debtor_id: debtor.id,
-            creditor_id: creditor.id,
-            amount: Math.round(transferAmount * 100) / 100,
-            month,
-            congregation_id: targetCongregationId,
-          });
+          if (!componentNetBalances.has(component)) {
+            componentNetBalances.set(component, new Map());
+          }
+          const balMap = componentNetBalances.get(component)!;
+
+          balMap.set(debtorId, (balMap.get(debtorId) ?? 0) - amount);
+          balMap.set(creditorId, (balMap.get(creditorId) ?? 0) + amount);
+        }
+      }
+
+      // Step 3: For each component independently, apply greedy matching
+      for (const [, balMap] of componentNetBalances) {
+        const compDebtors: Array<{ id: string; amount: number }> = [];
+        const compCreditors: Array<{ id: string; amount: number }> = [];
+
+        for (const [id, balance] of balMap) {
+          if (balance < -0.01) {
+            compDebtors.push({ id, amount: Math.abs(balance) });
+          } else if (balance > 0.01) {
+            compCreditors.push({ id, amount: balance });
+          }
         }
 
-        debtor.amount -= transferAmount;
-        creditor.amount -= transferAmount;
+        compDebtors.sort((a, b) => b.amount - a.amount);
+        compCreditors.sort((a, b) => b.amount - a.amount);
 
-        if (debtor.amount < 0.01) i++;
-        if (creditor.amount < 0.01) j++;
+        let i = 0, j = 0;
+        while (i < compDebtors.length && j < compCreditors.length) {
+          const debtor = compDebtors[i];
+          const creditor = compCreditors[j];
+          const transferAmount = Math.min(debtor.amount, creditor.amount);
+
+          if (transferAmount > 0.01) {
+            transfers.push({
+              debtor_id: debtor.id,
+              creditor_id: creditor.id,
+              amount: Math.round(transferAmount * 100) / 100,
+              month,
+              congregation_id: targetCongregationId,
+            });
+          }
+
+          debtor.amount -= transferAmount;
+          creditor.amount -= transferAmount;
+
+          if (debtor.amount < 0.01) i++;
+          if (creditor.amount < 0.01) j++;
+        }
       }
     }
 
-    console.log(`Generated ${transfers.length} optimized transfers`);
+    console.log(`Generated ${transfers.length} transfers (mode: ${transfer_mode})`);
 
     // Delete existing transfers for this month AND congregation only
     const { error: deleteTransfersError } = await supabase
@@ -419,6 +428,7 @@ Deno.serve(async (req) => {
         success: true,
         month,
         congregation_id: targetCongregationId,
+        transfer_mode,
         transactionsCount: transactions.length,
         transfersCount: transfers.length,
         message: `Fechamento do mês ${month} realizado com sucesso!`,
