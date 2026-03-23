@@ -10,6 +10,7 @@ const corsHeaders = {
 };
 
 const BRT_TIMEZONE = "America/Sao_Paulo";
+const PRE_TRIP_NOTIFICATION_TYPE = "pre_trip";
 
 function toBrtDateKey(date: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -40,6 +41,56 @@ function toBrtTimeKey(date: Date): string {
 
 function normalizeSecret(secret: string | undefined): string {
   return (secret ?? "").trim().replace(/^['"]|['"]$/g, "");
+}
+
+function addMinutes(date: Date, minutes: number): Date {
+  return new Date(date.getTime() + minutes * 60 * 1000);
+}
+
+function formatTripTime(date: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: BRT_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+async function sendOneSignalNotification(
+  apiKey: string,
+  payload: Record<string, unknown>,
+): Promise<{ response: Response; result: any }> {
+  let response = await fetch("https://onesignal.com/api/v1/notifications", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Basic ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  let result = await parseJsonSafely(response);
+
+  const authErrors = Array.isArray(result?.errors)
+    ? result.errors.map((e: unknown) => String(e).toLowerCase())
+    : [];
+  const hasAuthError = authErrors.some(
+    (msg: string) => msg.includes("access denied") || msg.includes("authorization"),
+  );
+
+  if (!response.ok && hasAuthError) {
+    response = await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Key ${apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    result = await parseJsonSafely(response);
+  }
+
+  return { response, result };
 }
 
 async function parseJsonSafely(response: Response): Promise<any> {
@@ -225,46 +276,20 @@ serve(async (req) => {
         if (userIds.length > 0) {
           const payload = {
             app_id: ONESIGNAL_APP_ID,
+            target_channel: "push",
             headings: {
               en: `Lembrete: ${setting.congregations?.name || 'Congregação'}`,
               pt: `Lembrete: ${setting.congregations?.name || 'Congregação'}`
             },
             contents: { en: setting.message, pt: setting.message },
-            include_external_user_ids: userIds
+            include_aliases: {
+              external_id: userIds,
+            },
           };
 
           console.log(`Sending scheduled notification to ${userIds.length} users for congregation ${setting.congregation_id}`);
 
-          let response = await fetch("https://onesignal.com/api/v1/notifications", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Basic ${oneSignalApiKey}`,
-            },
-            body: JSON.stringify(payload),
-          });
-
-          let result = await parseJsonSafely(response);
-
-          const authErrors = Array.isArray(result?.errors)
-            ? result.errors.map((e: unknown) => String(e).toLowerCase())
-            : [];
-          const hasAuthError = authErrors.some(
-            (msg: string) => msg.includes("access denied") || msg.includes("authorization")
-          );
-
-          // Some OneSignal keys require "Key" scheme instead of "Basic".
-          if (!response.ok && hasAuthError) {
-            response = await fetch("https://onesignal.com/api/v1/notifications", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Key ${oneSignalApiKey}`,
-              },
-              body: JSON.stringify(payload),
-            });
-            result = await parseJsonSafely(response);
-          }
+          const { response, result } = await sendOneSignalNotification(oneSignalApiKey, payload);
 
           console.log(`OneSignal response for ${setting.congregations?.name}:`, JSON.stringify(result));
           
@@ -291,6 +316,179 @@ serve(async (req) => {
         console.log(
           `Skipping setting ${setting.id}: scheduled=${scheduledTime}, current=${currentTime}, alreadyRanForThisSchedule=${alreadyRanForThisSchedule}, lastRun=${setting.last_run_at ?? "null"}`
         );
+      }
+    }
+
+    const { data: preTripSettings, error: preTripSettingsError } = await supabaseAdmin
+      .from("settings")
+      .select("congregation_id, key, value")
+      .in("key", ["pre_trip_notification_enabled", "pre_trip_notification_minutes"]);
+
+    if (preTripSettingsError) throw preTripSettingsError;
+
+    const preTripConfigByCongregation = new Map<string, { enabled: boolean; minutes: number }>();
+
+    for (const row of preTripSettings || []) {
+      const congregationId = row.congregation_id;
+      if (!congregationId) continue;
+
+      const currentConfig = preTripConfigByCongregation.get(congregationId) ?? {
+        enabled: false,
+        minutes: 60,
+      };
+
+      if (row.key === "pre_trip_notification_enabled") {
+        currentConfig.enabled = String(row.value).toLowerCase() === "true";
+      }
+
+      if (row.key === "pre_trip_notification_minutes") {
+        const parsedMinutes = Number.parseInt(String(row.value), 10);
+        if (Number.isFinite(parsedMinutes) && parsedMinutes > 0) {
+          currentConfig.minutes = parsedMinutes;
+        }
+      }
+
+      preTripConfigByCongregation.set(congregationId, currentConfig);
+    }
+
+    const enabledPreTripConfigs = Array.from(preTripConfigByCongregation.entries()).filter(
+      ([, config]) => config.enabled && config.minutes > 0,
+    );
+
+    console.log(`Found ${enabledPreTripConfigs.length} congregations with pre-trip notifications enabled`);
+
+    if (enabledPreTripConfigs.length > 0) {
+      const congregationIds = enabledPreTripConfigs.map(([congregationId]) => congregationId);
+      const maxPreTripMinutes = Math.max(...enabledPreTripConfigs.map(([, config]) => config.minutes));
+      const tripSearchEnd = addMinutes(now, maxPreTripMinutes + 1);
+
+      const { data: upcomingTrips, error: upcomingTripsError } = await supabaseAdmin
+        .from("trips")
+        .select(`
+          id,
+          congregation_id,
+          departure_at,
+          driver:profiles!trips_driver_id_fkey(user_id, full_name),
+          passengers:trip_passengers(
+            passenger:profiles!trip_passengers_passenger_id_fkey(user_id, full_name)
+          )
+        `)
+        .eq("is_active", true)
+        .in("congregation_id", congregationIds)
+        .gt("departure_at", now.toISOString())
+        .lte("departure_at", tripSearchEnd.toISOString());
+
+      if (upcomingTripsError) throw upcomingTripsError;
+
+      console.log(`Found ${(upcomingTrips || []).length} candidate trips for pre-trip reminders`);
+
+      for (const trip of upcomingTrips || []) {
+        const congregationId = trip.congregation_id;
+        if (!congregationId) continue;
+
+        const config = preTripConfigByCongregation.get(congregationId);
+        if (!config?.enabled || config.minutes <= 0) continue;
+
+        const departureAt = new Date(trip.departure_at);
+        const reminderAt = new Date(departureAt.getTime() - config.minutes * 60 * 1000);
+        const shouldSendPreTrip = now >= reminderAt && now < departureAt;
+
+        console.log("Pre-trip schedule check:", {
+          tripId: trip.id,
+          congregationId,
+          departureAt: trip.departure_at,
+          reminderAt: reminderAt.toISOString(),
+          now: now.toISOString(),
+          minutesBeforeDeparture: config.minutes,
+          shouldSendPreTrip,
+        });
+
+        if (!shouldSendPreTrip) {
+          continue;
+        }
+
+        const recipientUserIds = Array.from(
+          new Set(
+            [
+              (trip.driver as { user_id?: string | null } | null)?.user_id,
+              ...((trip.passengers as Array<{ passenger?: { user_id?: string | null } | null }> | null) ?? [])
+                .map((entry) => entry.passenger?.user_id),
+            ].filter((userId): userId is string => !!userId),
+          ),
+        );
+
+        if (recipientUserIds.length === 0) {
+          console.log(`Trip ${trip.id} has no recipients with linked user_id, skipping pre-trip notification.`);
+          continue;
+        }
+
+        const { data: sentLogs, error: sentLogsError } = await supabaseAdmin
+          .from("trip_notification_logs")
+          .select("user_id")
+          .eq("trip_id", trip.id)
+          .eq("notification_type", PRE_TRIP_NOTIFICATION_TYPE)
+          .in("user_id", recipientUserIds);
+
+        if (sentLogsError) throw sentLogsError;
+
+        const alreadySentTo = new Set((sentLogs || []).map((row) => row.user_id).filter(Boolean));
+        const pendingRecipientUserIds = recipientUserIds.filter((userId) => !alreadySentTo.has(userId));
+
+        if (pendingRecipientUserIds.length === 0) {
+          console.log(`Pre-trip reminder for trip ${trip.id} was already sent to all recipients.`);
+          continue;
+        }
+
+        const departureLabel = formatTripTime(departureAt);
+        const payload = {
+          app_id: ONESIGNAL_APP_ID,
+          target_channel: "push",
+          headings: {
+            en: "Lembrete de Viagem",
+            pt: "Lembrete de Viagem",
+          },
+          contents: {
+            en: `Sua viagem sai em ${config.minutes} minutos, as ${departureLabel}.`,
+            pt: `Sua viagem sai em ${config.minutes} minutos, as ${departureLabel}.`,
+          },
+          include_aliases: {
+            external_id: pendingRecipientUserIds,
+          },
+          data: {
+            type: PRE_TRIP_NOTIFICATION_TYPE,
+            tripId: trip.id,
+            departureAt: trip.departure_at,
+            minutesBeforeDeparture: config.minutes,
+          },
+        };
+
+        console.log(`Sending pre-trip reminder for trip ${trip.id} to ${pendingRecipientUserIds.length} users`);
+
+        const { response, result } = await sendOneSignalNotification(oneSignalApiKey, payload);
+        console.log(`OneSignal pre-trip response for trip ${trip.id}:`, JSON.stringify(result));
+
+        if (!response.ok) {
+          console.error(`OneSignal pre-trip error for trip ${trip.id}:`, result);
+          continue;
+        }
+
+        const notificationLogRows = pendingRecipientUserIds.map((userId) => ({
+          trip_id: trip.id,
+          user_id: userId,
+          notification_type: PRE_TRIP_NOTIFICATION_TYPE,
+          sent_at: now.toISOString(),
+        }));
+
+        const { error: insertLogError } = await supabaseAdmin
+          .from("trip_notification_logs")
+          .upsert(notificationLogRows, {
+            onConflict: "notification_type,trip_id,user_id",
+            ignoreDuplicates: true,
+          });
+
+        if (insertLogError) throw insertLogError;
+
+        console.log(`Pre-trip reminder logged successfully for trip ${trip.id}. Result ID: ${result.id}`);
       }
     }
 
