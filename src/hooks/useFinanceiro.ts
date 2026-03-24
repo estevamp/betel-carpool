@@ -184,13 +184,17 @@ export function useFinanceiro(selectedMonth: string) {
     const rawDebts = new Map<string, Map<string, number>>();
 
     for (const trip of tripsQuery.data) {
+      // Skip betel car trips — no cost charged
       if ((trip as any).is_betel_car) continue;
 
       for (const tp of ((trip.trip_passengers as any[]) ?? [])) {
+        // Skip if passenger is the driver themselves
         if (tp.passenger_id === trip.driver_id) continue;
 
         const passengerProfile = profileMap.get(tp.passenger_id) as any;
-        if (!passengerProfile) continue; // visitante ou desconhecido → skip
+        // Skip unknown/visitante passengers (not in congregation profile map)
+        if (!passengerProfile) continue;
+        // Skip exempt passengers
         if (passengerProfile.is_exempt) continue;
 
         const cost =
@@ -205,6 +209,9 @@ export function useFinanceiro(selectedMonth: string) {
         ) {
           debtorId = passengerProfile.spouse_id;
         }
+
+        // Após redirecionamento para cônjuge, ignorar se o devedor é o próprio motorista (auto-dívida)
+        if (debtorId === trip.driver_id) continue;
 
         if (!rawDebts.has(debtorId)) rawDebts.set(debtorId, new Map());
         const creditorMap = rawDebts.get(debtorId)!;

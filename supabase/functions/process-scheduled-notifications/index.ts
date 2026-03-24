@@ -56,6 +56,14 @@ function formatTripTime(date: Date): string {
   }).format(date);
 }
 
+function formatPassengerCount(count: number): string {
+  if (count === 1) {
+    return "1 passageiro";
+  }
+
+  return `${count} passageiros`;
+}
+
 async function sendOneSignalNotification(
   apiKey: string,
   payload: Record<string, unknown>,
@@ -407,15 +415,17 @@ serve(async (req) => {
           continue;
         }
 
-        const recipientUserIds = Array.from(
-          new Set(
-            [
-              (trip.driver as { user_id?: string | null } | null)?.user_id,
-              ...((trip.passengers as Array<{ passenger?: { user_id?: string | null } | null }> | null) ?? [])
-                .map((entry) => entry.passenger?.user_id),
-            ].filter((userId): userId is string => !!userId),
-          ),
-        );
+        const driverUserId = (trip.driver as { user_id?: string | null; full_name?: string | null } | null)?.user_id;
+        const driverName =
+          (trip.driver as { user_id?: string | null; full_name?: string | null } | null)?.full_name?.trim() ||
+          "o motorista da viagem";
+        const passengerEntries =
+          ((trip.passengers as Array<{ passenger?: { user_id?: string | null; full_name?: string | null } | null }> | null) ?? [])
+            .filter((entry) => !!entry.passenger?.user_id);
+        const passengerUserIds = passengerEntries
+          .map((entry) => entry.passenger?.user_id)
+          .filter((userId): userId is string => !!userId);
+        const recipientUserIds = Array.from(new Set([driverUserId, ...passengerUserIds].filter((userId): userId is string => !!userId)));
 
         if (recipientUserIds.length === 0) {
           console.log(`Trip ${trip.id} has no recipients with linked user_id, skipping pre-trip notification.`);
@@ -440,39 +450,90 @@ serve(async (req) => {
         }
 
         const departureLabel = formatTripTime(departureAt);
-        const payload = {
-          app_id: ONESIGNAL_APP_ID,
-          target_channel: "push",
-          headings: {
-            en: "Lembrete de Viagem",
-            pt: "Lembrete de Viagem",
-          },
-          contents: {
-            en: `Sua viagem sai em ${config.minutes} minutos, as ${departureLabel}.`,
-            pt: `Sua viagem sai em ${config.minutes} minutos, as ${departureLabel}.`,
-          },
-          include_aliases: {
-            external_id: pendingRecipientUserIds,
-          },
-          data: {
-            type: PRE_TRIP_NOTIFICATION_TYPE,
-            tripId: trip.id,
-            departureAt: trip.departure_at,
-            minutesBeforeDeparture: config.minutes,
-          },
-        };
+        const driverPendingUserIds =
+          driverUserId && pendingRecipientUserIds.includes(driverUserId) ? [driverUserId] : [];
+        const passengerPendingUserIds = pendingRecipientUserIds.filter((userId) => userId !== driverUserId);
+        const successfulRecipientUserIds: string[] = [];
 
-        console.log(`Sending pre-trip reminder for trip ${trip.id} to ${pendingRecipientUserIds.length} users`);
+        if (driverPendingUserIds.length > 0) {
+          const driverPayload = {
+            app_id: ONESIGNAL_APP_ID,
+            target_channel: "push",
+            headings: {
+              en: "Lembrete de Viagem",
+              pt: "Lembrete de Viagem",
+            },
+            contents: {
+              en: `Sua viagem sai em ${config.minutes} minutos, às ${departureLabel}. Voce estará com ${formatPassengerCount(passengerUserIds.length)}.`,
+              pt: `Sua viagem sai em ${config.minutes} minutos, às ${departureLabel}. Voce estará com ${formatPassengerCount(passengerUserIds.length)}.`,
+            },
+            include_aliases: {
+              external_id: driverPendingUserIds,
+            },
+            data: {
+              type: PRE_TRIP_NOTIFICATION_TYPE,
+              tripId: trip.id,
+              departureAt: trip.departure_at,
+              minutesBeforeDeparture: config.minutes,
+              recipientRole: "driver",
+              passengerCount: passengerUserIds.length,
+            },
+          };
 
-        const { response, result } = await sendOneSignalNotification(oneSignalApiKey, payload);
-        console.log(`OneSignal pre-trip response for trip ${trip.id}:`, JSON.stringify(result));
+          console.log(`Sending driver pre-trip reminder for trip ${trip.id} to ${driverPendingUserIds.length} user`);
 
-        if (!response.ok) {
-          console.error(`OneSignal pre-trip error for trip ${trip.id}:`, result);
+          const { response, result } = await sendOneSignalNotification(oneSignalApiKey, driverPayload);
+          console.log(`OneSignal driver pre-trip response for trip ${trip.id}:`, JSON.stringify(result));
+
+          if (!response.ok) {
+            console.error(`OneSignal driver pre-trip error for trip ${trip.id}:`, result);
+          } else {
+            successfulRecipientUserIds.push(...driverPendingUserIds);
+          }
+        }
+
+        if (passengerPendingUserIds.length > 0) {
+          const passengerPayload = {
+            app_id: ONESIGNAL_APP_ID,
+            target_channel: "push",
+            headings: {
+              en: "Lembrete de Viagem",
+              pt: "Lembrete de Viagem",
+            },
+            contents: {
+              en: `Sua viagem sai em ${config.minutes} minutos, às ${departureLabel}. Seu motorista será ${driverName}.`,
+              pt: `Sua viagem sai em ${config.minutes} minutos, às ${departureLabel}. Seu motorista será ${driverName}.`,
+            },
+            include_aliases: {
+              external_id: passengerPendingUserIds,
+            },
+            data: {
+              type: PRE_TRIP_NOTIFICATION_TYPE,
+              tripId: trip.id,
+              departureAt: trip.departure_at,
+              minutesBeforeDeparture: config.minutes,
+              recipientRole: "passenger",
+              driverName,
+            },
+          };
+
+          console.log(`Sending passenger pre-trip reminder for trip ${trip.id} to ${passengerPendingUserIds.length} users`);
+
+          const { response, result } = await sendOneSignalNotification(oneSignalApiKey, passengerPayload);
+          console.log(`OneSignal passenger pre-trip response for trip ${trip.id}:`, JSON.stringify(result));
+
+          if (!response.ok) {
+            console.error(`OneSignal passenger pre-trip error for trip ${trip.id}:`, result);
+          } else {
+            successfulRecipientUserIds.push(...passengerPendingUserIds);
+          }
+        }
+
+        if (successfulRecipientUserIds.length === 0) {
           continue;
         }
 
-        const notificationLogRows = pendingRecipientUserIds.map((userId) => ({
+        const notificationLogRows = successfulRecipientUserIds.map((userId) => ({
           trip_id: trip.id,
           user_id: userId,
           notification_type: PRE_TRIP_NOTIFICATION_TYPE,
@@ -488,7 +549,7 @@ serve(async (req) => {
 
         if (insertLogError) throw insertLogError;
 
-        console.log(`Pre-trip reminder logged successfully for trip ${trip.id}. Result ID: ${result.id}`);
+        console.log(`Pre-trip reminder logged successfully for trip ${trip.id} for ${successfulRecipientUserIds.length} users.`);
       }
     }
 

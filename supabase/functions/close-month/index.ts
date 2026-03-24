@@ -168,6 +168,7 @@ Deno.serve(async (req) => {
       .from("trips")
       .select("id, driver_id, is_betel_car, departure_at, congregation_id")
       .eq("congregation_id", targetCongregationId)
+      .eq("is_active", true)
       .gte("departure_at", startDate)
       .lte("departure_at", `${endDate}T23:59:59`);
 
@@ -202,21 +203,30 @@ Deno.serve(async (req) => {
       const trip = tripMap.get(passenger.trip_id);
       if (!trip) continue;
 
-      const passengerProfile = profileMap.get(passenger.passenger_id);
-      const driverProfile = profileMap.get(trip.driver_id);
-
-      if (!passengerProfile || !driverProfile) continue;
-
+      // Skip betel car trips — no cost charged
       if (trip.is_betel_car) continue;
-      if (passengerProfile.is_exempt) continue;
+
+      // Skip if passenger is the driver themselves
       if (passenger.passenger_id === trip.driver_id) continue;
+
+      const passengerProfile = profileMap.get(passenger.passenger_id);
+
+      // Skip unknown/visitante passengers (not in congregation profile map)
+      if (!passengerProfile) continue;
+
+      // Skip exempt passengers
+      if (passengerProfile.is_exempt) continue;
 
       const cost = passenger.trip_type === "Ida e Volta" ? ROUND_TRIP_COST : ONE_WAY_COST;
 
+      // Married women's debts are attributed to their husband
       let debtorId = passenger.passenger_id;
       if (passengerProfile.sex === "Mulher" && passengerProfile.is_married && passengerProfile.spouse_id) {
         debtorId = passengerProfile.spouse_id;
       }
+
+      // After spouse redirect, skip if debtor is the driver (self-debt)
+      if (debtorId === trip.driver_id) continue;
 
       if (!rawDebts.has(debtorId)) {
         rawDebts.set(debtorId, new Map());
