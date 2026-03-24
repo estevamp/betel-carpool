@@ -3,8 +3,9 @@ import { motion } from "framer-motion";
 import {
   Wallet, TrendingUp, TrendingDown, RotateCcw, Calendar, Check, Copy,
   Car, Users, Loader2, Lock, ChevronDown, ChevronUp,
-  ArrowRight, ArrowLeft, ArrowLeftRight, Trash2, UserPlus, X, AlertTriangle,
+  ArrowRight, ArrowLeft, ArrowLeftRight, Trash2, UserPlus, X, AlertTriangle, Building2,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -547,7 +548,15 @@ function TripAccordionItem({
               <Car className="h-5 w-5 text-primary" />
             </div>
             <div className="min-w-0">
-              <p className="font-medium text-foreground break-words">{trip.driverName}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-medium text-foreground break-words">{trip.driverName}</p>
+                {trip.isBetelCar && (
+                  <Badge variant="outline" className="gap-1 bg-info/10 text-info border-info/30 text-[10px] py-0">
+                    <Building2 className="h-3 w-3" />
+                    Carro de Betel
+                  </Badge>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
                 {format(new Date(trip.departureAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
                 {trip.returnAt && ` - ${format(new Date(trip.returnAt), "HH:mm")}`}

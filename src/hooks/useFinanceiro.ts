@@ -58,6 +58,7 @@ export interface MonthTrip {
   returnAt: string | null;
   maxPassengers: number | null;
   isActive: boolean | null;
+  isBetelCar: boolean | null;
   passengerCount: number;
   passengers: MonthTripPassenger[];
   congregationId: string | null;
@@ -302,6 +303,7 @@ export function useFinanceiro(selectedMonth: string) {
       returnAt: t.return_at,
       maxPassengers: t.max_passengers,
       isActive: t.is_active,
+      isBetelCar: t.is_betel_car,
       passengerCount: t.trip_passengers?.length ?? 0,
       passengers: ((t.trip_passengers as any[])?.map((tp) => ({
         id: tp.id,
